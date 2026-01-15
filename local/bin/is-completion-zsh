@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# is-completion-zsh
+# =============================================================================
+# Determines if ZSH should be used for completions.
+
+# Check if fzf is not installed or mode is set to zsh
+! command -v fzf &>/dev/null  || [ "$COMPLETION_MODE" == "zsh" ] || exit 1

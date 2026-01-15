@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# is-macos
+# =============================================================================
+# Determines if this is macos.
+
+if [[ "$OSTYPE" =~ ^darwin ]]; then
+  exit 0
+else
+  exit 1
+fi

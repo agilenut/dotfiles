@@ -1,0 +1,17 @@
+[user]
+	name = agilenut
+	email = 705864+agilenut@users.noreply.github.com
+[core]
+	autocrlf = input # set to true on windows
+	editor = code
+[init]
+	defaultBranch = main
+[status]
+	short = true
+[pull]
+	rebase = false
+[credential]
+	helper = 
+	helper = /usr/local/share/gcm-core/git-credential-manager
+[credential "https://dev.azure.com"]
+	useHttpPath = true

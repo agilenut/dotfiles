@@ -1,0 +1,43 @@
+# .zshenv
+# =============================================================================
+# Executed by zsh on every shell - interactive and non-interactive.
+# Keep minimal and environment layout focused.
+# See https://zsh.sourceforge.io/Guide/zshguide02.html
+
+
+# XDG - https://specifications.freedesktop.org/basedir-spec/latest/
+# -----------------------------------------------------------------------------
+
+export XDG_BIN_HOME="${XDG_BIN_HOME:-$HOME/.local/bin}"        # Executables - not true XDG but a de facto standard.
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"        # Caches
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"     # Config files
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"    # Data files - write once (e.g. fonts)
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"  # State files - used between restarts (e.g. logs and history)
+
+# ZSH
+# -----------------------------------------------------------------------------
+
+export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+
+# LESS
+# -----------------------------------------------------------------------------
+
+export LESSHISTFILE=-
+
+# NVM / NPM / NODE
+# -----------------------------------------------------------------------------
+
+export NVM_DIR="$XDG_DATA_HOME/nvm"
+export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc" # See this file for more env seutp.
+export NODE_REPL_HISTORY="$XDG_STATE_HOME/node/repl_history"
+
+# DOTNET / NUGET
+# -----------------------------------------------------------------------------
+
+export DOTNET_CLI_HOME="$XDG_STATE_HOME/dotnet"
+export DOTNET_NOLOGO=true
+export DOTNET_CLI_TELEMETRY_OPTOUT=true
+
+export NUGET_PACKAGES="$XDG_CACHE_HOME/nuget/packages"
+export NUGET_HTTP_CACHE_PATH="$XDG_CACHE_HOME/nuget/http-cache"
+export NUGET_PLUGINS_CACHE_PATH="$XDG_CACHE_HOME/nuget/plugin-cache"

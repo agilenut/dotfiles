@@ -1,0 +1,115 @@
+/* 
+  This file provides customized colors for the syntax-highlight quicklook plugin 
+  See: https://github.com/sbarex/SourceCodeSyntaxHighlight
+*/
+
+body { background-color: #1e1e1e; }
+body { color: #9cdcfe; }
+.hl {
+    background-color: #1e1e1e; 
+}
+.hl {
+    color: #9cdcfe;
+}
+.hl.num {
+    color: #b5cea8;
+}
+.hl.sng {
+    color: #d7ba7d;
+}
+.hl.esc {
+    color: #fd7ba7;
+}
+.hl.ppc {
+    color: #007acc;
+}
+.hl.pps {
+    color: #d7ba7d;
+}
+.hl.com {
+    color: #6a9955;
+}
+.hl.slc {
+    color: #6a9955;
+}
+.hl.lin {
+    color: #808080;
+}
+.hl.opt {
+    color: #d4d4d4;
+}
+.hl.ipl {
+    color: #569cd6;
+}
+.hl.kwa {
+    color: #c58ec0;
+}
+.hl.kwb {
+    color: #569cd6;
+}
+.hl.kwc {
+    color: #569cd6;
+}
+.hl.kwd {
+    color: #dcdcaa;
+}
+.hl.kwe {
+    color: #b9a66f;
+}
+.hl.kwf {
+    color: #aaaaaa;
+}
+.hl.hvr {
+cursor:help;;
+}
+.hl.err {
+    color: #ff0000;
+}
+.hl.erm {
+    color: #ff0000;
+border:solid 1px red; margin-left: 3em;;
+}
+.hl.sta {
+    color: #569cd6;
+}
+.hl.stb {
+    color: #c58ec0;
+}
+.hl.stc {
+    color: #dcdcaa;
+}
+.hl.std {
+    color: #c58ec0;
+}
+.hl.ste {
+    color: #aaaaaa;
+}
+.hl.stf {
+    color: #b9a66f;
+}
+.hl.stg {
+    color: #b9a66f;
+}
+.hl.sth {
+    color: #dcdcaa;
+}
+.hl.sti {
+    color: #dcdcaa;
+}
+.hl.stj {
+    color: #c58ec0;
+}
+.hl.stk {
+    color: #b5cea8;
+}
+.hl.stl {
+    color: #d7ba7d;
+}
+.hl.stm {
+    color: #d4d4d4;
+}
+
+/* Hide the donation footer */
+body > :last-child {
+    display: none !important;
+}

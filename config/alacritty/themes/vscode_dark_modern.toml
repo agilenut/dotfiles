@@ -1,0 +1,25 @@
+# Colors (VSCode Dark Modern)
+
+[colors.primary]
+background = '#1f1f1f'
+foreground = '#cccccc'
+
+[colors.normal]
+black   = '#1f1f1f'
+red     = '#F44747'
+green   = '#6A9955'
+yellow  = '#CE9178'
+blue    = '#569CD6'
+magenta = '#4EC9B0'
+cyan    = '#B5CEA8'
+white   = '#cccccc'
+
+[colors.bright]
+black   = '#666666'
+red     = '#F44747'
+green   = '#A4C98B'
+yellow  = '#E0BC9F'
+blue    = '#8CBCEB'
+magenta = '#7EE7C0'
+cyan    = '#D4E9D4'
+white   = '#ffffff'

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# is-completion-fzf
+# =============================================================================
+# Determines if FZF is installed and should be used for completions.
+
+# Check if fzf is installed and mode is set to fzf
+command -v fzf &>/dev/null && [ "$COMPLETION_MODE" == "fzf" ] || exit 1
