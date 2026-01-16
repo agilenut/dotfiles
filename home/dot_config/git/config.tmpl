@@ -1,8 +1,12 @@
 [user]
-	name = agilenut
-	email = 705864+agilenut@users.noreply.github.com
+	name = {{ .name }}
+	email = {{ .email }}
 [core]
-	autocrlf = input # set to true on windows
+{{- if eq .chezmoi.os "windows" }}
+	autocrlf = true
+{{- else }}
+	autocrlf = input
+{{- end }}
 	editor = code
 [init]
 	defaultBranch = main
@@ -10,8 +14,10 @@
 	short = true
 [pull]
 	rebase = false
+{{- if eq .chezmoi.os "darwin" }}
 [credential]
-	helper = 
+	helper =
 	helper = /usr/local/share/gcm-core/git-credential-manager
 [credential "https://dev.azure.com"]
 	useHttpPath = true
+{{- end }}

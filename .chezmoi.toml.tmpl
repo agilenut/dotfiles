@@ -1,0 +1,9 @@
+{{- /* Chezmoi configuration template */ -}}
+{{- /* Prompts user for personalization on first run */ -}}
+
+{{- $name := promptStringOnce . "name" "Git user name" -}}
+{{- $email := promptStringOnce . "email" "Git email" -}}
+
+[data]
+    name = {{ $name | quote }}
+    email = {{ $email | quote }}

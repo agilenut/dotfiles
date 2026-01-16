@@ -1,0 +1,65 @@
+#!/bin/bash
+# Install system packages
+# This script runs once per machine before dotfiles are applied
+
+set -e
+
+{{ if eq .chezmoi.os "darwin" -}}
+# macOS - Install Homebrew and packages
+
+# Install Homebrew if not present
+if ! command -v brew &>/dev/null; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+    # Add Homebrew to PATH for this script
+    if [ -x "/opt/homebrew/bin/brew" ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -x "/usr/local/bin/brew" ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+fi
+
+echo "Installing packages via Homebrew..."
+brew bundle --no-lock --file=/dev/stdin <<EOF
+# Terminal utilities
+brew "fzf"
+brew "fd"
+brew "bat"
+brew "eza"
+brew "zoxide"
+brew "tree"
+brew "ripgrep"
+
+# Shell and prompt
+brew "zsh"
+brew "oh-my-posh"
+
+# Development
+brew "neovim"
+brew "git"
+EOF
+
+{{ else if eq .chezmoi.os "linux" -}}
+# Linux - Detect package manager and install
+
+if command -v apt &>/dev/null; then
+    echo "Installing packages via apt..."
+    sudo apt update
+    sudo apt install -y fzf fd-find bat zoxide tree ripgrep zsh neovim git
+
+    # eza might need a different source on some distros
+    if ! command -v eza &>/dev/null; then
+        echo "eza not available in apt, skipping..."
+    fi
+elif command -v pacman &>/dev/null; then
+    echo "Installing packages via pacman..."
+    sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git
+elif command -v dnf &>/dev/null; then
+    echo "Installing packages via dnf..."
+    sudo dnf install -y fzf fd-find bat eza zoxide tree ripgrep zsh neovim git
+fi
+
+{{ end -}}
+
+echo "Package installation complete!"

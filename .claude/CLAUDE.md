@@ -4,41 +4,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a personal dotfiles repository for macOS that manages shell configuration and terminal tools using the XDG Base Directory specification.
+This is a cross-platform dotfiles repository managed by [chezmoi](https://www.chezmoi.io/). It supports macOS, Linux, and Windows while following XDG Base Directory specifications for a clean home directory.
 
 ## Architecture
 
-### Directory Structure
-- `.zshenv` - Entry point, sets XDG environment variables and ZDOTDIR
-- `config/zsh/` - Main zsh configuration (ZDOTDIR)
-  - `.zprofile` - Login shell setup (Homebrew, PATH)
-  - `.zshrc` - Interactive shell setup (plugins via antidote)
-  - `.zsh_plugins.txt` - Antidote plugin manifest with load order
-  - `shell/` - Modular configuration files loaded by antidote
-- `config/` - XDG_CONFIG_HOME configurations (git, alacritty, bat, fzf, oh-my-posh)
-- `local/bin/` - Custom scripts added to PATH (XDG_BIN_HOME)
+### Chezmoi Structure
+- `.chezmoi.toml.tmpl` - Configuration template (prompts for user name/email on first run)
+- `.chezmoiroot` - Points to `home/` as the source directory
+- `home/` - Chezmoi source directory containing dotfiles
+  - Files prefixed with `dot_` become `.` files (e.g., `dot_zshenv` → `~/.zshenv`)
+  - Files prefixed with `executable_` are made executable
+  - Files ending in `.tmpl` are processed as Go templates
+- `home/.chezmoiignore` - Platform-conditional file exclusions
+- `home/.chezmoiexternal.toml` - External dependencies (antidote plugin manager)
+- `home/.chezmoiscripts/` - Scripts run during `chezmoi apply`
 
-### Plugin System
-Uses [antidote](https://github.com/mattmc3/antidote) for zsh plugin management. Plugins are defined in `.zsh_plugins.txt` with:
-- Conditional loading via `conditional:is-macos` or `conditional:is-completion-fzf`
-- Local shell configs loaded as plugins from `$ZDOTDIR/shell/`
-- Order matters: completions must load before fzf-tab
+### Directory Layout
+```
+dotfiles/
+├── home/
+│   ├── dot_zshenv                    # → ~/.zshenv
+│   ├── dot_config/                   # → ~/.config/
+│   │   ├── zsh/
+│   │   │   ├── dot_zshrc             # → ~/.config/zsh/.zshrc
+│   │   │   └── shell/                # Modular shell configs
+│   │   ├── git/
+│   │   │   └── config.tmpl           # Templated for user info
+│   │   ├── alacritty/
+│   │   └── ...
+│   └── dot_local/bin/                # → ~/.local/bin/
+│       └── executable_*              # Helper scripts
+├── .chezmoi.toml.tmpl
+├── .chezmoiroot
+└── .claude/
+```
 
-### Completion Mode
-The `COMPLETION_MODE` variable in `.zshrc` toggles between `fzf` and `zsh` completions. The `is-completion-fzf` script checks this for conditional plugin loading.
+### Platform Support
+- **macOS**: Full support (zsh, Alacritty, Homebrew packages)
+- **Linux**: Shell configs, apt/pacman/dnf package installation
+- **Windows**: Git config only (zsh configs excluded via `.chezmoiignore`)
 
-## Key Dependencies
-- Homebrew (package manager)
-- antidote (zsh plugin manager, auto-cloned on first run)
-- fzf + fd (fuzzy finding)
-- eza (modern ls replacement)
-- bat (syntax highlighting)
-- zoxide (smart cd)
+### Key Dependencies
+Installed via `run_once_before_install-packages.sh.tmpl`:
+- fzf, fd, bat, eza, zoxide (terminal utilities)
 - oh-my-posh (prompt)
-- nvim (editor)
+- antidote (zsh plugin manager, via `.chezmoiexternal.toml`)
+- neovim (editor)
 
-## Symlink Setup
-Files need to be symlinked to their XDG locations:
-- `.zshenv` → `~/.zshenv`
-- `config/*` → `~/.config/*`
-- `local/bin/*` → `~/.local/bin/*`
+## Common Commands
+
+```bash
+# Bootstrap on new machine
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply agilenut
+
+# Preview changes
+chezmoi diff
+
+# Apply changes
+chezmoi apply -v
+
+# Add a new dotfile
+chezmoi add ~/.config/newfile
+
+# Edit source and apply
+chezmoi edit ~/.config/somefile
+chezmoi apply
+
+# Update external dependencies
+chezmoi update
+```
+
+## Templating
+
+Files ending in `.tmpl` use Go template syntax:
+- `{{ .name }}` - User's git name (prompted on first run)
+- `{{ .email }}` - User's git email
+- `{{ .chezmoi.os }}` - Operating system (darwin, linux, windows)
+- `{{ if eq .chezmoi.os "darwin" }}...{{ end }}` - Platform conditionals

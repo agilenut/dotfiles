@@ -27,13 +27,10 @@ zstyle ':completion:*:*:git:*' user-commands ignore:'helps create .gitignore fil
 # NOTE: Once antidote 2.0 is released, this will be the default & can be removed.
 zstyle ':antidote:bundle' use-friendly-names 'yes'
 
-# Load Plugins.
-# TODO: Move git clone to a bootstrap script so that network is not required for shell start. 
-[ -d "$XDG_DATA_HOME/antidote" ] ||
-  git clone --depth 1 https://github.com/mattmc3/antidote "$XDG_DATA_HOME/antidote"
-
+# Antidote is installed via chezmoi external dependencies.
+# See .chezmoiexternal.toml
 if [ ! -f "$XDG_DATA_HOME/antidote/antidote.zsh" ]; then
-  print "Antidote not found. Run bootstrap." >&2
+  print "Antidote not found. Run: chezmoi apply" >&2
   return 1
 fi
 

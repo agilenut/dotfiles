@@ -1,0 +1,23 @@
+# Chezmoi ignore file
+# See https://www.chezmoi.io/reference/special-files-and-directories/chezmoiignore/
+
+# macOS-specific files - ignore on non-macOS
+{{ if ne .chezmoi.os "darwin" }}
+.config/zsh/shell/macos.zsh
+.hushlogin
+{{ end }}
+
+# Alacritty - only on macOS (GUI terminal)
+{{ if ne .chezmoi.os "darwin" }}
+.config/alacritty/
+{{ end }}
+
+# ZSH-specific - ignore on Windows (no native zsh)
+{{ if eq .chezmoi.os "windows" }}
+.zshenv
+.config/zsh/
+.local/bin/is-macos
+.local/bin/is-completion-fzf
+.local/bin/is-completion-zsh
+.local/bin/fzf-preview
+{{ end }}
