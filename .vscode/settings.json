@@ -22,7 +22,10 @@
     "*.sh.tmpl": "shellscript",
     "*.json.tmpl": "json",
     "*.toml.tmpl": "toml",
-    "*.yaml.tmpl": "yaml"
+    "*.yaml.tmpl": "yaml",
+
+    // yaml
+    "*.zshellcheckrc": "yaml"
   },
 
   "[css]": {

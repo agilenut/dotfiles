@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "zshellcheck: Lint current file",
+      "type": "shell",
+      "command": "zshellcheck",
+      "args": ["${file}"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "zshellcheck: Lint all zsh files",
+      "type": "shell",
+      "command": "zshellcheck",
+      "args": [
+        "${workspaceFolder}/home/**/*.zsh",
+        "${workspaceFolder}/home/**/*zshenv",
+        "${workspaceFolder}/home/**/*zshrc"
+        // zshell check currently has too many bugs ot use on zprofile:
+        // https://github.com/afadesigns/zshellcheck/issues/126
+        // https://github.com/afadesigns/zshellcheck/issues/127
+        //"${workspaceFolder}/home/**/*zprofile"
+        //"${workspaceFolder}/home/**/*zlogin",
+        //"${workspaceFolder}/home/**/*zlogout"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "group": "test"
+    }
+  ]
+}
