@@ -7,7 +7,7 @@
 
 # Grouping options.
 # Can be enabled to add grouping support but it is annoying.
-# NOTE: don't use escape sequences (like '%F{red}%d%f') here, 
+# NOTE: don't use escape sequences (like '%F{red}%d%f') here,
 # fzf-tab will ignore them
 #zstyle ':completion:*:descriptions' format '[%d]'
 
@@ -92,8 +92,8 @@ zstyle ':fzf-tab:*' fzf-flags $FZF_COLOR_OPTS
 zstyle ':fzf-tab:*' switch-group '<' '>'
 
 zstyle ':fzf-tab:complete:(cd|cdi|z|ls|eza|mv|cp|rm):*' fzf-preview 'fzf-preview $realpath'
-zstyle ':fzf-tab:complete:(cd|cdi|z|ls|eza):*' fzf-flags --preview-window hidden --bind $FZF_PREVIEW_BIND --height 80% $FZF_COLOR_OPTS
-zstyle ':fzf-tab:complete:(mv|cp|rm):*' fzf-flags --multi --preview-window hidden --bind $FZF_PREVIEW_BIND --height 80% $FZF_COLOR_OPTS
+zstyle ':fzf-tab:complete:(cd|cdi|z|ls|eza):*' fzf-flags --preview-window hidden --bind "$FZF_PREVIEW_BIND" --height 80% $FZF_COLOR_OPTS
+zstyle ':fzf-tab:complete:(mv|cp|rm):*' fzf-flags --multi --preview-window hidden --bind "$FZF_PREVIEW_BIND" --height 80% $FZF_COLOR_OPTS
 
 # Zoxide
 # -----------------------------------------------------------------------------

@@ -26,8 +26,8 @@ zstyle ':antidote:bundle' use-friendly-names 'yes'
 
 # Antidote is installed via chezmoi external dependencies.
 # See .chezmoiexternal.toml
-if [ ! -f "$XDG_DATA_HOME/antidote/antidote.zsh" ]; then
-  print "Antidote not found. Run: chezmoi apply" >&2
+if [[ ! -f "$XDG_DATA_HOME/antidote/antidote.zsh" ]]; then
+  print -r "Antidote not found. Run: chezmoi apply" >&2
   return 1
 fi
 

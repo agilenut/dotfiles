@@ -28,7 +28,9 @@ alias emptytrash="\
 #  None
 # Outputs:
 #  Formulas, Casks, and Dependencies.
-function brews() {
+brews() {
+  local formulae, casks, blue, bold, off
+
   local formulae="$(brew leaves | xargs brew deps --installed --for-each)"
   local casks="$(brew list --cask 2>/dev/null)"
 

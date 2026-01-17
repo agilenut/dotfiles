@@ -22,10 +22,10 @@ DIRSTACKSIZE=8
 
 #setopt NO_GLOB        # Turn off glob expansion.
 #setopt EXTENDED_GLOB  # '#', '~', and '^' used for globbing patterns.
-setopt GLOB_DOTS      # Leading '.' in filename not needed for globbing.
+setopt GLOB_DOTS # Leading '.' in filename not needed for globbing.
 
 # Setting this allows for things like 'cd D*<tab>' to trigger fzf completion.
-# But you will still get old completion behavior when there are no matches. 
+# But you will still get old completion behavior when there are no matches.
 #setopt GLOB_COMPLETE   # Don't insert words but run completion on globs.
 
 # History
@@ -38,16 +38,16 @@ setopt HIST_IGNORE_SPACE    # Don't record entry starting with a space.
 setopt HIST_REDUCE_BLANKS   # Remove superfluous blanks from entries.
 setopt SHARE_HISTORY        # Share history between all sessions.
 
-[ -d "$XDG_STATE_HOME"/zsh ] || 
-  mkdir -p "$XDG_STATE_HOME"/zsh
+[[ -d "$XDG_STATE_HOME/zsh" ]] \
+  || mkdir -p "$XDG_STATE_HOME/zsh"
 HISTFILE="$XDG_STATE_HOME/zsh/history" # Location of the history.
-HISTSIZE=100000    # Number of history entries to keep in memory.
-SAVEHIST=$HISTSIZE # Number of history entries to save to file.
+HISTSIZE=100000                        # Number of history entries to keep in memory.
+SAVEHIST=$HISTSIZE                     # Number of history entries to save to file.
 
 # Input/Output
 # -----------------------------------------------------------------------------
 
-setopt CORRECT              # Try to correct misspelled commands.
+setopt CORRECT # Try to correct misspelled commands.
 
 # This got annoying.
 #setopt CORRECT_ALL          # Try to correct misspelled options.
