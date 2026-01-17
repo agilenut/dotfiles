@@ -21,24 +21,33 @@ if ! command -v brew &>/dev/null; then
 fi
 
 echo "Installing packages via Homebrew..."
-brew bundle --no-lock --file=/dev/stdin <<EOF
+
+# Function to install a package if not already installed
+brew_install() {
+    if ! brew list "$1" &>/dev/null; then
+        echo "Installing $1..."
+        brew install "$1"
+    else
+        echo "$1 is already installed"
+    fi
+}
+
 # Terminal utilities
-brew "fzf"
-brew "fd"
-brew "bat"
-brew "eza"
-brew "zoxide"
-brew "tree"
-brew "ripgrep"
+brew_install fzf
+brew_install fd
+brew_install bat
+brew_install eza
+brew_install zoxide
+brew_install tree
+brew_install ripgrep
 
 # Shell and prompt
-brew "zsh"
-brew "oh-my-posh"
+brew_install zsh
+brew_install jandedobbeleer/oh-my-posh/oh-my-posh
 
 # Development
-brew "neovim"
-brew "git"
-EOF
+brew_install neovim
+brew_install git
 
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install
