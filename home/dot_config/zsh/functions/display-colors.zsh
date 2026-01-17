@@ -37,10 +37,10 @@ colors=(
 # Loop through each color and display it
 for color in "${colors[@]}"; do
   # Convert the hex color to RGB for ANSI escape code
-  r=$((16#${color[2,3]}))
-  g=$((16#${color[4,5]}))
-  b=$((16#${color[6,7]}))
+  r=$((16#${color[2, 3]}))
+  g=$((16#${color[4, 5]}))
+  b=$((16#${color[6, 7]}))
 
   # Display the color with the color code as text
-  printf "\e[48;2;%d;%d;%dm %-10s \e[0m\n" $r $g $b $color"
+  printf "\e[48;2;%d;%d;%dm %-10s \e[0m\n" $r $g $b $color
 done
