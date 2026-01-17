@@ -1,0 +1,55 @@
+{
+  // File associations for chezmoi templates and dot_ prefixed files
+  "files.associations": {
+    // ignore files
+    "ignore": "ignore",
+    "*.ignore": "ignore",
+    ".chezmoiignore": "ignore",
+
+    // ini files
+    "config": "ini",
+    "npmrc": "ini",
+    "config.tmpl": "ini",
+
+    // shellscript files
+    "*zshrc": "shellscript",
+    "*zprofile": "shellscript",
+    "*zshenv": "shellscript",
+    "*zlogin": "shellscript",
+    "*zlogout": "shellscript",
+
+    // template files
+    "*.sh.tmpl": "shellscript",
+    "*.json.tmpl": "json",
+    "*.toml.tmpl": "toml",
+    "*.yaml.tmpl": "yaml"
+  },
+
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "mkhl.shfmt"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+
+  // Shellcheck: exclude zsh files and chezmoi templates
+  // Patterns cover both normal zsh files and chezmoi dot_ prefixed versions
+  "shellcheck.ignorePatterns": {
+    "**/*.zsh": true,
+    "**/*zshrc": true,
+    "**/*zprofile": true,
+    "**/*zshenv": true,
+    "**/*zlogin": true,
+    "**/*zlogout": true,
+    "**/*.tmpl": true
+  }
+}
