@@ -17,9 +17,6 @@ export COMPLETION_MODE='fzf'
 # Tell Terminal.app to disable sessions.
 export SHELL_SESSIONS_DISABLE=1
 
-#zstyle ':completion:*:*:git:*' user-commands ${${(M)${(k)commands}:#git-*}/git-/}
-zstyle ':completion:*:*:git:*' user-commands ignore:'helps create .gitignore files'
-
 # Antidote - load plugins
 # -----------------------------------------------------------------------------
 
