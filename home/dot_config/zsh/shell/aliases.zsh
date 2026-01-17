@@ -27,19 +27,19 @@ alias dl='cd ~/Downloads'   # down
 # LS
 # -----------------------------------------------------------------------------
 if command -v eza &>/dev/null; then
- # use eza if it exists
- alias l='eza --group-directories-first'             # short list
- alias ls='eza --group-directories-first'            # short list
- alias ll='eza -l --git --group-directories-first'   # long list
- alias la='eza -A --group-directories-first'         # short list with hidden files
- alias lla='eza -lA --git --group-directories-first' # long list with hidden files
+  # use eza if it exists
+  alias l='eza --group-directories-first'             # short list
+  alias ls='eza --group-directories-first'            # short list
+  alias ll='eza -l --git --group-directories-first'   # long list
+  alias la='eza -A --group-directories-first'         # short list with hidden files
+  alias lla='eza -lA --git --group-directories-first' # long list with hidden files
 else
- # fallback to ls if eza doesn't exist
- alias l='ls --color="auto"'        # short list
- alias ls='ls --color="auto"'       # short list
- alias ll='ls -lh --color="auto"'   # long list
- alias la='ls -A --color="auto"'    # short list with hidden files
- alias lla='ls -lhA --color="auto"' # long list format with hidden files
+  # fallback to ls if eza doesn't exist
+  alias l='ls --color="auto"'        # short list
+  alias ls='ls --color="auto"'       # short list
+  alias ll='ls -lh --color="auto"'   # long list
+  alias la='ls -A --color="auto"'    # short list with hidden files
+  alias lla='ls -lhA --color="auto"' # long list format with hidden files
 fi
 
 # Directory operations
@@ -103,3 +103,7 @@ alias gss='git status --short'
 alias gsb='git status --short --branch'
 
 alias cdgit='cd $(git rev-parse --show-toplevel)' # cd to git root
+
+# GO
+# -----------------------------------------------------------------------------
+alias go-bins='for f in ~/.local/bin/*; do v=$(go version "$f" 2>/dev/null); [[ -n "$v" ]] && echo "$v"; done' # list go-installed binaries
