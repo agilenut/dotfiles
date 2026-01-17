@@ -3,7 +3,7 @@
 # Sets zsh completions.
 
 # Make color constants available
-autoload -U colors && colors
+autoload -Uz colors && colors
 
 # Enable colored output from ls, etc. on FreeBSD-based systems
 export CLICOLOR=1
