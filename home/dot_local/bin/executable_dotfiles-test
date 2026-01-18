@@ -6,8 +6,6 @@
 # =============================================================================
 # Validates dotfiles installation by running automated checks and providing
 # a manual verification checklist for visual/interactive tests.
-
-# TODO: Clear zcompdump before running tests?
 # TODO: Add test for 'man ls' to see colors
 # TODO: Add test for npm completion function sine it is loaded from different repo
 # TODO: Add test to ensure fzf-tab is setup and has styles
@@ -61,6 +59,30 @@ header() {
   echo "================================================================================"
   echo -e "${BOLD}                        DOTFILES TEST SUITE${RESET}"
   echo "================================================================================"
+}
+
+# Clear zsh completion cache to ensure fresh completions during testing
+clear_zcompdump() {
+  local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+  local cleared=0
+
+  # Clear zcompdump files (may include version-specific files)
+  for f in "$cache_dir"/zcompdump*; do
+    if [[ -f "$f" ]]; then
+      rm -f "$f"
+      ((cleared++))
+    fi
+  done
+
+  # Clear completion cache directory
+  if [[ -d "$cache_dir/zcompcache" ]]; then
+    rm -rf "$cache_dir/zcompcache"
+    ((cleared++))
+  fi
+
+  if [[ $cleared -gt 0 ]]; then
+    echo -e "${BLUE}ℹ${RESET} Cleared zsh completion cache ($cleared items)"
+  fi
 }
 
 # Check if output contains ANSI escape sequences
@@ -519,6 +541,7 @@ main() {
   done
 
   header
+  clear_zcompdump
 
   test_commands_installed
   test_environment_variables
