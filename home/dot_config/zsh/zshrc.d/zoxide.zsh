@@ -2,6 +2,7 @@
 # =============================================================================
 # Setup zoxide.
 
+# TODO: Better way to dry this up with the FZF versions while still having them decoupled?
 export _ZO_FZF_OPTS="--reverse \
   --preview 'fzf-preview {2}' \
   --preview-window hidden \

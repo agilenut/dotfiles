@@ -7,6 +7,13 @@
 # Validates dotfiles installation by running automated checks and providing
 # a manual verification checklist for visual/interactive tests.
 
+# TODO: Clear zcompdump before running tests?
+# TODO: Add test for 'man ls' to see colors
+# TODO: Add test for npm completion function sine it is loaded from different repo
+# TODO: Add test to ensure fzf-tab is setup and has styles
+# TODO: Fix manual test 'Error status indicator' - either needs clarity or doesn't work
+# TODO: Work on manual test 'zoxide jump' - needs clarity.
+
 set -euo pipefail
 
 # Colors and formatting

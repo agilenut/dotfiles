@@ -28,16 +28,15 @@ romkatv/zsh-bench kind:path
 "$ZDOTDIR/zshrc.d/prompt.zsh"
 "$ZDOTDIR/zshrc.d/nvm.zsh"
 
-# Completion (fpath -> compinit -> compdef users)
+# Completions
 # -----------------------------------------------------------------------------
 
 #TODO: How do I add git sub commmand completions like git-ignore?
 
-"$ZDOTDIR/completions" kind:fpath
-"$ZDOTDIR/zshrc.d/completion.zsh"
+"zsh-users/zsh-completions" path:src kind:fpath
 "$ZDOTDIR/zshrc.d/dotnet.zsh"
-"$ZDOTDIR/zshrc.d/zoxide.zsh"
 "$ZDOTDIR/zshrc.d/fzf.zsh" conditional:is-completion-fzf
+"$ZDOTDIR/zshrc.d/zoxide.zsh"
 
 # User customization
 # -----------------------------------------------------------------------------

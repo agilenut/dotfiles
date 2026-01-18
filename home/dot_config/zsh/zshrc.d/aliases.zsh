@@ -4,7 +4,6 @@
 
 # Terminal
 # -----------------------------------------------------------------------------
-alias c='clear'                                # clear screen
 alias cls='clear'                              # clear screen
 alias reload="source ${ZDOTDIR:-$HOME}/.zshrc" # reload zsh
 alias path='echo -e ${PATH//:/\\n}'            # display path 1 line at a time
@@ -18,11 +17,12 @@ alias -- -='cd -'         # previous dir
 
 # Shortcuts
 # -----------------------------------------------------------------------------
-alias home='cd ~'           # user home
-alias dt='cd ~/Desktop'     # desktop
-alias dev='cd ~/Developer'  # dev repos
-alias docs='cd ~/Documents' # documents
-alias dl='cd ~/Downloads'   # down
+alias home='cd ~'                                   # user home
+alias dt='cd ~/Desktop'                             # desktop
+alias dev='cd ~/Developer'                          # dev repos
+alias docs='cd ~/Documents'                         # documents
+alias dl='cd ~/Downloads'                           # downloads
+alias dot='cd ~/Developer/github/agilenut/dotfiles' # dotfiles repo
 
 # LS
 # -----------------------------------------------------------------------------
