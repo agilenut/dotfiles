@@ -19,7 +19,7 @@ ohmyzsh/ohmyzsh path:plugins/colored-man-pages
 # -----------------------------------------------------------------------------
 romkatv/zsh-bench kind:path
 
-# Shell configurations
+# Core shell configuration
 # -----------------------------------------------------------------------------
 
 "$ZDOTDIR/zshrc.d/options.zsh"
@@ -29,25 +29,25 @@ romkatv/zsh-bench kind:path
 "$ZDOTDIR/zshrc.d/prompt.zsh"
 "$ZDOTDIR/zshrc.d/nvm.zsh"
 
-# Completion providers (must be before compinit)
+# Completion (fpath -> compinit -> compdef users)
 # -----------------------------------------------------------------------------
 
 #TODO: How do I add git sub commmand completions like git-ignore?
 
 "$ZDOTDIR/completions" kind:fpath
-
-# Base completions (calls compinit) - Must be done before key bindings.
 "$ZDOTDIR/zshrc.d/completion.zsh"
-
-# Do additional things that will add compeltions
 "$ZDOTDIR/zshrc.d/dotnet.zsh"
 "$ZDOTDIR/zshrc.d/zoxide.zsh"
-
-# FZF
 "$ZDOTDIR/zshrc.d/fzf.zsh" conditional:is-completion-fzf
+
+# User customization
+# -----------------------------------------------------------------------------
 
 "$ZDOTDIR/zshrc.d/hooks.zsh"
 "$ZDOTDIR/zshrc.d/aliases.zsh"
+
+# External plugins
+# -----------------------------------------------------------------------------
 
 aloxaf/fzf-tab conditional:is-completion-fzf
 zdharma-continuum/fast-syntax-highlighting
