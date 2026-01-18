@@ -36,8 +36,8 @@ romkatv/zsh-bench kind:path
 
 "$ZDOTDIR/completions" kind:fpath
 
-# Base completions (calls compinit) - Must be done before bindings.
-"$ZDOTDIR/zshrc.d/completion-base.zsh"
+# Base completions (calls compinit) - Must be done before key bindings.
+"$ZDOTDIR/zshrc.d/completion.zsh"
 
 # Do additional things that will add compeltions
 "$ZDOTDIR/zshrc.d/dotnet.zsh"
@@ -47,7 +47,7 @@ romkatv/zsh-bench kind:path
 "$ZDOTDIR/zshrc.d/keybinds.zsh"
 
 # FZF - must be done after base completions and key bindings.
-"$ZDOTDIR/zshrc.d/completion-fzf.zsh" conditional:is-completion-fzf
+"$ZDOTDIR/zshrc.d/fzf.zsh" conditional:is-completion-fzf
 
 "$ZDOTDIR/zshrc.d/hooks.zsh"
 "$ZDOTDIR/zshrc.d/aliases.zsh"

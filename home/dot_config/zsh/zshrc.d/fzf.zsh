@@ -1,6 +1,6 @@
-# completion-fzf.zsh
+# fzf.zsh
 # =============================================================================
-# Sets zsh completions
+# Sets fzf options, zsh completions, and styles.
 
 # Base completion
 # -----------------------------------------------------------------------------

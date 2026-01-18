@@ -1,9 +1,6 @@
-# completion-fzf.zsh
+# completion.zsh
 # =============================================================================
-# Sets zsh completions
-
-# Base completion
-# -----------------------------------------------------------------------------
+# Setup base zsh completions
 
 # Get cache directory
 ZSH_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
