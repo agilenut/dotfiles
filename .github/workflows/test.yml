@@ -1,0 +1,31 @@
+name: Test Dotfiles
+
+on:
+  push:
+    branches: [main, feature/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]  # Add ubuntu-latest when ready
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install chezmoi
+        run: sh -c "$(curl -fsLS get.chezmoi.io)"
+
+      - name: Apply dotfiles
+        run: |
+          ./bin/chezmoi init --apply --source=${{ github.workspace }} \
+            --promptString name="CI Bot" \
+            --promptString email="ci@example.com"
+
+      - name: Run tests
+        shell: zsh -i {0}
+        run: ~/.local/bin/dotfiles-test --auto-only

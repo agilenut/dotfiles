@@ -48,6 +48,13 @@ brew_install jandedobbeleer/oh-my-posh/oh-my-posh
 # Development
 brew_install neovim
 brew_install git
+brew_install go
+brew_install shellcheck
+brew_install shfmt
+brew_install git-ignore
+
+# Dotfiles management
+brew_install chezmoi
 
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install

@@ -1,5 +1,7 @@
 # dotfiles
 
+![Tests](https://github.com/agilenut/dotfiles/actions/workflows/test.yml/badge.svg)
+
 Cross-platform dotfiles managed with [chezmoi](https://www.chezmoi.io/).
 
 ## Quick Start
