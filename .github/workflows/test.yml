@@ -7,6 +7,71 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install linters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          # Install taplo for TOML
+          curl -fsSL https://github.com/tamasfe/taplo/releases/latest/download/taplo-linux-x86_64.gz | gunzip > /usr/local/bin/taplo
+          sudo chmod +x /usr/local/bin/taplo
+          # Install prettier and markdownlint
+          npm install -g prettier markdownlint-cli
+
+      # Shell formatting (matches pre-commit: -i 2 -bn -ci)
+      - name: Check shell formatting
+        run: shfmt -d -i 2 -bn -ci $(find . -name "*.sh" ! -name "*.tmpl")
+
+      # Shell linting (exclude zsh files and templates)
+      - name: Run shellcheck
+        run: |
+          find . -name "*.sh" ! -name "*.tmpl" | \
+            xargs -I {} sh -c 'head -1 "{}" | grep -q "^#!/.*bash\|^#!/.*sh" && echo "{}"' | \
+            xargs --no-run-if-empty shellcheck --severity=warning --shell=bash
+
+      # TOML formatting and linting (exclude templates)
+      - name: Check TOML formatting
+        run: taplo format --check $(find . -name "*.toml" ! -name "*.tmpl")
+
+      - name: Lint TOML
+        run: taplo lint $(find . -name "*.toml" ! -name "*.tmpl")
+
+      # Prettier for JSON and YAML (exclude templates)
+      - name: Check JSON/YAML formatting
+        run: prettier --check "**/*.{json,yaml,yml}" --ignore-path .gitignore || true
+
+      # Markdown linting
+      - name: Lint Markdown
+        run: markdownlint "**/*.md" --ignore node_modules || true
+
+      # Basic file hygiene
+      - name: Check for trailing whitespace
+        run: |
+          ! grep -rn '[[:blank:]]$' --include="*.sh" --include="*.zsh" --include="*.toml" --include="*.yaml" --include="*.yml" --include="*.json" . || echo "::warning::Trailing whitespace found"
+
+      - name: Check files end with newline
+        run: |
+          find . -type f \( -name "*.sh" -o -name "*.zsh" -o -name "*.toml" -o -name "*.yaml" -o -name "*.yml" -o -name "*.json" -o -name "*.md" \) ! -path "./node_modules/*" -exec sh -c 'test -n "$(tail -c 1 "$1")" && echo "No newline at end: $1"' _ {} \; | head -20
+
+      - name: Check YAML syntax
+        run: |
+          find . -name "*.yaml" -o -name "*.yml" ! -name "*.tmpl" ! -path "./node_modules/*" | xargs -I {} python3 -c "import yaml; yaml.safe_load(open('{}'))" 2>&1 || true
+
+      - name: Check for merge conflict markers
+        run: |
+          ! grep -rn "^<<<<<<< \|^=======$\|^>>>>>>> " . --include="*" || (echo "::error::Merge conflict markers found" && exit 1)
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
