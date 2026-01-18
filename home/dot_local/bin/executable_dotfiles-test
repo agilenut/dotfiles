@@ -365,8 +365,14 @@ run_manual_tests() {
   manual_test "fzf-tab completion" \
     "Type 'git c<TAB>' - fzf menu should appear with clone, commit, checkout, etc."
 
-  manual_test "Directory completion" \
-    "Type 'cd ~/<TAB><TAB>' - fzf menu should show directories (double-TAB triggers fzf)"
+  manual_test "Change directory completion" \
+    "Type 'cd ~/<TAB>' - fzf menu should show directories (TAB triggers fzf)"
+
+  manual_test "Change directory wildcard completion" \
+    "Type 'cd **' - fzf menu should show directories (TAB triggers fzf)"
+
+  manual_test "Move wildcard completion" \
+    "Type 'cp **' - fzf menu should show files (TAB triggers fzf)"
 
   manual_test "Flag completion" \
     "Type 'ls -<TAB>' - completion menu should show ls/eza flags"
