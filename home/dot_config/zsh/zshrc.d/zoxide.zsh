@@ -2,14 +2,13 @@
 # =============================================================================
 # Setup zoxide.
 
-# NOTE: Some of these optionsn rely on FZF being configured first.
 export _ZO_FZF_OPTS="--reverse \
   --preview 'fzf-preview {2}' \
   --preview-window hidden \
-  --bind $FZF_PREVIEW_BIND \
+  --bind '?:toggle-preview,ctrl-a:select-all,ctrl-f:preview-page-down,ctrl-b:preview-page-up' \
   --height 80% \
   --nth 2 \
-  $FZF_COLOR_OPTS"
+  --color=fg:7,fg+:12,pointer:4,hl:5,hl+:5,prompt:6,info:3"
 
 # Initialize zoxide
 eval "$(zoxide init zsh --cmd=cd)"
