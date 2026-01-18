@@ -43,7 +43,12 @@ brew_install ripgrep
 
 # Shell and prompt
 brew_install zsh
-brew_install jandedobbeleer/oh-my-posh/oh-my-posh
+if ! command -v oh-my-posh &>/dev/null; then
+    echo "Installing oh-my-posh..."
+    brew install --formula jandedobbeleer/oh-my-posh/oh-my-posh
+else
+    echo "oh-my-posh is already installed"
+fi
 
 # Development
 brew_install neovim
