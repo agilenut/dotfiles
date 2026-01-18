@@ -22,12 +22,12 @@ romkatv/zsh-bench kind:path
 # Shell configurations
 # -----------------------------------------------------------------------------
 
-"$ZDOTDIR/shell/options.zsh"
-"$ZDOTDIR/shell/colors.zsh"
-"$ZDOTDIR/shell/editor.zsh"
-"$ZDOTDIR/shell/macos.zsh" conditional:is-macos
-"$ZDOTDIR/shell/prompt.zsh"
-"$ZDOTDIR/shell/nvm.zsh"
+"$ZDOTDIR/zshrc.d/options.zsh"
+"$ZDOTDIR/zshrc.d/colors.zsh"
+"$ZDOTDIR/zshrc.d/editor.zsh"
+"$ZDOTDIR/zshrc.d/macos.zsh" conditional:is-macos
+"$ZDOTDIR/zshrc.d/prompt.zsh"
+"$ZDOTDIR/zshrc.d/nvm.zsh"
 
 # Completion providers (must be before compinit)
 # -----------------------------------------------------------------------------
@@ -37,20 +37,20 @@ romkatv/zsh-bench kind:path
 "$ZDOTDIR/completions" kind:fpath
 
 # Base completions (calls compinit) - Must be done before bindings.
-"$ZDOTDIR/shell/completion-base.zsh"
+"$ZDOTDIR/zshrc.d/completion-base.zsh"
 
 # Do additional things that will add compeltions
-"$ZDOTDIR/shell/dotnet.zsh"
-"$ZDOTDIR/shell/zoxide.zsh"
+"$ZDOTDIR/zshrc.d/dotnet.zsh"
+"$ZDOTDIR/zshrc.d/zoxide.zsh"
 
 # Key bindings - Must be done before FZF.
-"$ZDOTDIR/shell/keybinds.zsh"
+"$ZDOTDIR/zshrc.d/keybinds.zsh"
 
 # FZF - must be done after base completions and key bindings.
-"$ZDOTDIR/shell/completion-fzf.zsh" conditional:is-completion-fzf
+"$ZDOTDIR/zshrc.d/completion-fzf.zsh" conditional:is-completion-fzf
 
-"$ZDOTDIR/shell/hooks.zsh"
-"$ZDOTDIR/shell/aliases.zsh"
+"$ZDOTDIR/zshrc.d/hooks.zsh"
+"$ZDOTDIR/zshrc.d/aliases.zsh"
 
 aloxaf/fzf-tab conditional:is-completion-fzf
 zdharma-continuum/fast-syntax-highlighting
