@@ -63,3 +63,8 @@ setopt LONG_LIST_JOBS # Display PID when suspending processes as well.
 # -----------------------------------------------------------------------------
 
 setopt NO_BEEP # Don't beep on errors (in ZLE)
+
+# Key bindings
+# -----------------------------------------------------------------------------
+
+bindkey -v # Use vi key bindings

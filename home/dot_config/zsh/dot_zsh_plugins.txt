@@ -43,10 +43,7 @@ romkatv/zsh-bench kind:path
 "$ZDOTDIR/zshrc.d/dotnet.zsh"
 "$ZDOTDIR/zshrc.d/zoxide.zsh"
 
-# Key bindings - Must be done before FZF.
-"$ZDOTDIR/zshrc.d/keybinds.zsh"
-
-# FZF - must be done after base completions and key bindings.
+# FZF
 "$ZDOTDIR/zshrc.d/fzf.zsh" conditional:is-completion-fzf
 
 "$ZDOTDIR/zshrc.d/hooks.zsh"
