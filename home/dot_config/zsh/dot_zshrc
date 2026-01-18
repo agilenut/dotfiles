@@ -141,8 +141,8 @@ zstyle ':completion:*' completer _extensions _complete _approximate
 zstyle ':completion:*' matcher-list '' 'm:{a-z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 
 # Color options.
-# TODO: Fix issue: shfmt errors on this line every time this file is saved.
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+# NOTE: This only colors normal zshh completions. FZF completions are colored elsewhere.
+zstyle ':completion:*' list-colors "$LS_COLORS"
 
 # Grouping options.
 # DO NOT ENABLE THESE OR THEY WILL BREAK FZF COMPLETIONS.
