@@ -103,15 +103,8 @@ repos:
         # Override default entry to remove --list-different (which suppresses unchanged files)
         entry: prettier --write --ignore-unknown
         exclude: \.tmpl$
-#  # Basic file hygiene
-#  - repo: https://github.com/pre-commit/pre-commit-hooks
-#    rev: v5.0.0
-#    hooks:
-#      - id: trailing-whitespace
-#        exclude: \.md$
-#      - id: end-of-file-fixer
-#      - id: check-yaml
-#        exclude: \.tmpl$
-#      - id: check-toml
-#        exclude: \.tmpl$
-#      - id: check-merge-conflict
+  # Basic file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
