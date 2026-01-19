@@ -7,6 +7,7 @@
 # - Use the same underlying tooling across pre-commit hooks,
 #   vscode extensions defined in .vscode/extensions.json,
 #   and CI tests defined in .github/workflows/test.yml in order to ensure consistency.
+# - Lint processes should have a way to run in verbose mode to see which files are being changed (useful for debugging).
 
 repos:
   # Shell formatting (shfmt)

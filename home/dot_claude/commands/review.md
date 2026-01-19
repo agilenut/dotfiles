@@ -4,7 +4,23 @@ description: Review code changes for bugs, security issues, and quality
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Read, Grep, Glob
 ---
 
-Review the code changes on the current branch compared to main. Be critical and thorough.
+Review the specified code changes. Be critical and thorough.
+
+## Scope
+
+$ARGUMENTS
+
+**Default** (no arguments): Review current branch compared to main.
+
+**Examples of valid scopes:**
+
+- `--staged` - Review staged changes (pre-commit review)
+- `<file path>` - Review a specific file
+- `HEAD~3..HEAD` - Review last 3 commits
+- `main..feature-branch` - Review specific branch comparison
+- "the code we just wrote" - Review recent session changes (use context)
+
+If the scope is unclear, ask for clarification before proceeding.
 
 ## Review Checklist
 
