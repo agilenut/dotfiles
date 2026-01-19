@@ -29,10 +29,14 @@ repos:
               echo "Checking: $f"
               fn="$f"
               [[ ! "$f" =~ \.(sh|bash|zsh)$ ]] && fn="${f}.zsh"
+              before=$(cksum "$f")
               if formatted=$(shfmt --apply-ignore --filename "$fn" < "$f" 2>&1); then
-                if [[ -n "$formatted" ]] && ! diff -q <(cat "$f") <(echo "$formatted") >/dev/null 2>&1; then
+                if [[ -n "$formatted" ]]; then
                   echo "$formatted" > "$f"
-                  echo "  Modified: $f"
+                  after=$(cksum "$f")
+                  if [[ "$before" != "$after" ]]; then
+                    echo "  Modified: $f"
+                  fi
                 fi
               else
                 echo "$formatted" >&2
@@ -125,12 +129,12 @@ repos:
             rc=0
             modified=0
             for f; do
-              echo "Checking: $f"  # Uncomment for verbose output
-              before=$(cat "$f")
+              echo "Checking: $f"
+              before=$(cksum "$f")
               if ! markdownlint --fix "$f" 2>&1; then
                 rc=1
               fi
-              after=$(cat "$f")
+              after=$(cksum "$f")
               if [[ "$before" != "$after" ]]; then
                 echo "  Modified: $f"
                 modified=1
