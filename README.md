@@ -44,12 +44,12 @@ chezmoi update
 
 ## Platform Support
 
-| Feature | macOS | Linux | Windows |
-|---------|-------|-------|---------|
-| Shell (zsh) | ✅ | ✅ | ❌ |
-| Git config | ✅ | ✅ | ✅ |
-| Alacritty | ✅ | ❌ | ❌ |
-| Package install | ✅ Homebrew | ✅ apt/pacman/dnf | ❌ |
+| Feature         | macOS       | Linux             | Windows |
+| --------------- | ----------- | ----------------- | ------- |
+| Shell (zsh)     | ✅          | ✅                | ❌      |
+| Git config      | ✅          | ✅                | ✅      |
+| Alacritty       | ✅          | ❌                | ❌      |
+| Package install | ✅ Homebrew | ✅ apt/pacman/dnf | ❌      |
 
 ## Adding New Dotfiles
 
@@ -64,7 +64,7 @@ chezmoi apply
 
 ## Structure
 
-```
+```text
 dotfiles/
 ├── home/                    # Chezmoi source (dotfiles go here)
 │   ├── dot_zshenv          # → ~/.zshenv

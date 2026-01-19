@@ -22,7 +22,7 @@ This is a cross-platform dotfiles repository managed by [chezmoi](https://www.ch
 
 ### Directory Layout
 
-```
+```text
 dotfiles/
 ├── home/
 │   ├── dot_zshenv                    # → ~/.zshenv
@@ -92,16 +92,16 @@ Files ending in `.tmpl` use Go template syntax:
 
 Chezmoi prefixes combine and are processed in order:
 
-| Prefix | Effect |
-|--------|--------|
-| `dot_` | Becomes `.` (hidden file) |
-| `executable_` | chmod +x |
-| `private_` | chmod 600 |
-| `readonly_` | chmod 444 |
-| `empty_` | Ensure file exists (even if empty) |
-| `modify_` | Script that modifies existing file |
-| `run_` | Script executed during apply |
-| `run_once_` | Script executed only once |
+| Prefix          | Effect                               |
+| --------------- | ------------------------------------ |
+| `dot_`          | Becomes `.` (hidden file)            |
+| `executable_`   | chmod +x                             |
+| `private_`      | chmod 600                            |
+| `readonly_`     | chmod 444                            |
+| `empty_`        | Ensure file exists (even if empty)   |
+| `modify_`       | Script that modifies existing file   |
+| `run_`          | Script executed during apply         |
+| `run_once_`     | Script executed only once            |
 | `run_onchange_` | Script executed when contents change |
 
 Example: `private_executable_dot_secret.sh.tmpl` → `~/.secret.sh` (mode 700, templated)

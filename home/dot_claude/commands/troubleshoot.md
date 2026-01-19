@@ -1,7 +1,8 @@
 ---
+title: Troubleshoot Command
 description: Systematically diagnose and fix an issue
-argument-hint: [description of the problem]
 allowed-tools: Bash, Read, Grep, Glob, Edit, Write
+argument-hint: "[description of the problem]"
 ---
 
 Troubleshoot the issue: $ARGUMENTS

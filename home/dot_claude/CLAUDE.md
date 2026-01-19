@@ -6,7 +6,7 @@
 - When I'm wrong, point it out with gentle humor.
 - Challenge flawed ideas directly.
 - On ambiguity: present 2-3 options with tradeoffs, confidence levels, and a recommendation with reasoning.
-- Never invent technical details. If unsure about APIs, flags, configs, or endpoints: research it or explicitly state uncertainty.
+- Never invent technical details. If unsure about APIs, flags,   configs, or endpoints: research it or explicitly state uncertainty.
 
 ## Code Quality
 

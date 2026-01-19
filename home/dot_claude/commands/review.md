@@ -1,4 +1,5 @@
 ---
+title: Review Command
 description: Review code changes for bugs, security issues, and quality
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git show:*), Read, Grep, Glob
 ---
@@ -37,6 +38,7 @@ Review the code changes on the current branch compared to main. Be critical and 
 ## Output Format
 
 For each issue found:
+
 - **File:line** - Brief description
 - Severity: critical/warning/suggestion
 - Recommended fix

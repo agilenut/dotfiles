@@ -1,4 +1,5 @@
 ---
+title: Notes Command
 description: Write session notes and update project knowledge
 allowed-tools: Read, Write, Edit, Glob
 ---
@@ -24,14 +25,17 @@ Document learnings from this session.
 ## Session: [Date] - [Brief Topic]
 
 ### Accomplished
+
 - Item 1
 - Item 2
 
 ### Learnings
+
 - Learning 1
 - Learning 2
 
 ### Suggestions
+
 - Suggestion 1
 ```
 

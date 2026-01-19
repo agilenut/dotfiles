@@ -1,0 +1,5 @@
+# Markdownlint configuration
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Disable line length limit - too restrictive for documentation
+MD013: false
