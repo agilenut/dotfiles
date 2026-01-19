@@ -9,6 +9,7 @@ Document learnings from this session.
 ## Tasks
 
 1. **Update project CLAUDE.md** (if it exists):
+
    - Add patterns, gotchas, or context discovered
    - Keep it concise and actionable
    - Don't duplicate what's already there

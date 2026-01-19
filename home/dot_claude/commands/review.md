@@ -25,24 +25,28 @@ If the scope is unclear, ask for clarification before proceeding.
 ## Review Checklist
 
 1. **Security**
+
    - Injection vulnerabilities (SQL, command, XSS)
    - Secrets or credentials exposed
    - PII handling issues
    - Authentication/authorization gaps
 
 2. **Correctness**
+
    - Logic errors and edge cases
    - Off-by-one errors
    - Null/undefined handling
    - Race conditions
 
 3. **Quality**
+
    - Unnecessary complexity
    - Code duplication
    - Missing error handling
    - Unclear naming or structure
 
 4. **Performance**
+
    - Obvious inefficiencies
    - N+1 queries
    - Unnecessary allocations

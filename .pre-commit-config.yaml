@@ -79,82 +79,30 @@ repos:
     rev: v0.9.3
     hooks:
       - id: taplo-format
-        # Wrapper prints "Checking: <file>" for each file
-        entry: |
-          bash -c '
-            export RUST_LOG=error
-            rc=0
-            for f; do
-              echo "Checking: $f"
-              taplo format "$f" || rc=1
-            done
-            exit $rc
-          ' _
-        args: []
         types: [text]
         files: \.toml(\.tmpl)?$
-        #verbose: true # Uncomment to see files checked
       - id: taplo-lint
-        # Wrapper prints "Checking: <file>" for each file
         # Schema validation disabled in .taplo.toml; this checks syntax only
-        entry: |
-          bash -c '
-            export RUST_LOG=error
-            rc=0
-            for f; do
-              echo "Checking: $f"
-              taplo lint "$f" || rc=1
-            done
-            exit $rc
-          ' _
-        args: []
         types: [text]
         files: \.toml(\.tmpl)?$
-        #verbose: true # Uncomment to see files checked
 
-  # Markdown linting (markdownlint-cli)
+  # Markdown linting (markdownlint-cli) - lint only, prettier handles formatting
   # Settings in .markdownlint.yaml
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.43.0
     hooks:
       - id: markdownlint
-        # Wrapper that:
-        # - Prints "Checking: <file>" for each file (when verbose)
-        # - Runs markdownlint --fix to auto-fix issues
-        # - Prints "  Modified: <file>" when a file is changed
-        # - Fails if any file was modified (so pre-commit knows files changed)
-        # - Fails if unfixable errors remain
-        entry: |
-          bash -c '
-            rc=0
-            modified=0
-            for f; do
-              echo "Checking: $f"
-              before=$(cksum "$f")
-              if ! markdownlint --fix "$f" 2>&1; then
-                rc=1
-              fi
-              after=$(cksum "$f")
-              if [[ "$before" != "$after" ]]; then
-                echo "  Modified: $f"
-                modified=1
-              fi
-            done
-            [[ $modified -eq 1 ]] && rc=1
-            exit $rc
-          ' _
-        args: []
         types: [markdown]
-        verbose: true # Uncomment to see files checked
-#
-#  # Prettier for general formatting (json, yaml)
-#  - repo: https://github.com/pre-commit/mirrors-prettier
-#    rev: v4.0.0-alpha.8
-#    hooks:
-#      - id: prettier
-#        types_or: [json, yaml]
-#        exclude: \.tmpl$
-#
+
+  # Prettier for general formatting (json, yaml, markdown, css)
+  # Uses .editorconfig for settings (indent_size, end_of_line, etc.)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        # Override default entry to remove --list-different (which suppresses unchanged files)
+        entry: prettier --write --ignore-unknown
+        exclude: \.tmpl$
 #  # Basic file hygiene
 #  - repo: https://github.com/pre-commit/pre-commit-hooks
 #    rev: v5.0.0
