@@ -61,16 +61,49 @@ repos:
         types: [shell]
         exclude: (\.zsh$)
         #verbose: true # Uncomment to see files checked
-#
-#  # TOML formatting and linting (taplo)
-#  - repo: https://github.com/ComPWA/mirrors-taplo
-#    rev: v0.9.3
-#    hooks:
-#      - id: taplo-format
-#        exclude: \.tmpl$
-#      # Skip taplo-lint - schema validation fails on oh-my-posh and alacritty files
-#      # that reference external schemas. Format check is sufficient.
-#
+
+  # TOML formatting and linting (taplo)
+  # Settings in .taplo.toml (indent_tables, align_entries, etc.)
+  - repo: https://github.com/ComPWA/mirrors-taplo
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+        # Wrapper prints "Checking: <file>" and "  Modified: <file>" for changes
+        entry: |
+          bash -c '
+            export RUST_LOG=error
+            rc=0
+            for f; do
+              echo "Checking: $f"
+              if ! taplo format --check "$f" >/dev/null 2>&1; then
+                taplo format "$f" || rc=1
+                echo "  Modified: $f"
+              fi
+            done
+            exit $rc
+          ' _
+        args: []
+        types: [text]
+        files: \.toml(\.tmpl)?$
+        #verbose: true # Uncomment to see files checked
+      - id: taplo-lint
+        # Wrapper prints "Checking: <file>" for each file
+        # Schema validation disabled in .taplo.toml; this checks syntax only
+        entry: |
+          bash -c '
+            export RUST_LOG=error
+            rc=0
+            for f; do
+              echo "Checking: $f"
+              taplo lint "$f" || rc=1
+            done
+            exit $rc
+          ' _
+        args: []
+        types: [text]
+        files: \.toml(\.tmpl)?$
+        #verbose: true # Uncomment to see files checked
+
 #  # Markdown linting
 #  - repo: https://github.com/igorshubovych/markdownlint-cli
 #    rev: v0.43.0

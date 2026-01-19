@@ -1,0 +1,32 @@
+# Taplo TOML formatter/linter configuration
+# https://taplo.tamasfe.dev/configuration/file.html
+
+# Files to include (relative globs)
+include = [ "**/*.toml" ]
+
+# Exclude chezmoi template files (contain Go template syntax)
+exclude = [ "**/*.tmpl" ]
+
+[formatting]
+  # Indent nested tables/arrays
+  indent_tables  = true
+  indent_entries = true
+
+  # Align values vertically within table sections
+  align_entries  = true
+  align_comments = true
+
+  # Standard formatting
+  column_width        = 100
+  trailing_newline    = true
+  allowed_blank_lines = 1
+
+  # Array formatting
+  array_trailing_comma = true
+  array_auto_expand    = true
+  compact_arrays       = false
+
+[schema]
+  # Disable schema validation globally - causes issues with oh-my-posh/alacritty
+  # files that reference external schemas. Syntax linting still works.
+  enabled = false
