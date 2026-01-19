@@ -68,17 +68,14 @@ repos:
     rev: v0.9.3
     hooks:
       - id: taplo-format
-        # Wrapper prints "Checking: <file>" and "  Modified: <file>" for changes
+        # Wrapper prints "Checking: <file>" for each file
         entry: |
           bash -c '
             export RUST_LOG=error
             rc=0
             for f; do
               echo "Checking: $f"
-              if ! taplo format --check "$f" >/dev/null 2>&1; then
-                taplo format "$f" || rc=1
-                echo "  Modified: $f"
-              fi
+              taplo format "$f" || rc=1
             done
             exit $rc
           ' _
