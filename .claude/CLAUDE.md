@@ -29,7 +29,7 @@ dotfiles/
 │   ├── dot_config/                   # → ~/.config/
 │   │   ├── zsh/
 │   │   │   ├── dot_zshrc             # → ~/.config/zsh/.zshrc
-│   │   │   └── shell/                # Modular shell configs
+│   │   │   └── zshrc.d/              # Modular shell configs
 │   │   ├── git/
 │   │   │   └── config.tmpl           # Templated for user info
 │   │   ├── alacritty/
