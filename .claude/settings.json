@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pre-commit run --files \"$(jq -r '.tool_input.file_path')\""
+          }
+        ]
+      }
+    ]
+  }
+}

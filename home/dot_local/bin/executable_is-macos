@@ -4,7 +4,7 @@
 
 # is-macos
 # =============================================================================
-# Determines if this is macos.
+# Determines if this is macOS.
 
 if [[ "$OSTYPE" =~ ^darwin ]]; then
   exit 0

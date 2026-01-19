@@ -87,3 +87,34 @@ Files ending in `.tmpl` use Go template syntax:
 - `{{ .email }}` - User's git email
 - `{{ .chezmoi.os }}` - Operating system (darwin, linux, windows)
 - `{{ if eq .chezmoi.os "darwin" }}...{{ end }}` - Platform conditionals
+
+## File Naming Conventions
+
+Chezmoi prefixes combine and are processed in order:
+
+| Prefix | Effect |
+|--------|--------|
+| `dot_` | Becomes `.` (hidden file) |
+| `executable_` | chmod +x |
+| `private_` | chmod 600 |
+| `readonly_` | chmod 444 |
+| `empty_` | Ensure file exists (even if empty) |
+| `modify_` | Script that modifies existing file |
+| `run_` | Script executed during apply |
+| `run_once_` | Script executed only once |
+| `run_onchange_` | Script executed when contents change |
+
+Example: `private_executable_dot_secret.sh.tmpl` → `~/.secret.sh` (mode 700, templated)
+
+## Testing Changes
+
+- **Preview**: `chezmoi diff` before applying
+- **Dry run**: `chezmoi apply -v --dry-run` for verbose simulation
+- **Tests**: Run `home/dot_local/bin/executable_dotfiles-test` to verify scripts work
+- **Shell scripts**: Pre-commit runs shellcheck automatically
+
+## Gotchas
+
+- Always edit files in `home/`, never the target files directly
+- The `.tmpl` suffix is stripped from the target filename
+- `run_once_` scripts track execution by filename - rename to re-run
