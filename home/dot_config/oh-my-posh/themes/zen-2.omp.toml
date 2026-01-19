@@ -3,76 +3,76 @@ version = 3
 auto_upgrade = false
 
 [[blocks]]
-  type = 'prompt'
-  alignment = 'left'
-  newline = true
+type = 'prompt'
+alignment = 'left'
+newline = true
 
-  [[blocks.segments]]
-    type = 'path'
-    style = 'plain'
-    foreground = 'blue'
-    template = '{{ .Path }} '
-    
-    [blocks.segments.properties]
-      style = 'full'
+[[blocks.segments]]
+type = 'path'
+style = 'plain'
+foreground = 'blue'
+template = '{{ .Path }} '
 
-  [[blocks.segments]]
-    type = 'git'
-    style = 'plain'
-    foreground = 'lightGreen'
-    templates = [
-      '(',
-      '{{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }}',
-      '{{ if gt .Behind 0 }}⇣{{ end }}',
-      '{{ if gt .Ahead 0 }}⇡{{ end }}',
-      ') '
-    ]
-  
-    [blocks.segments.properties]
-      branch_icon = ''
-      commit_icon = '@'
-      fetch_status = true
+[blocks.segments.properties]
+style = 'full'
 
-[[blocks]]
-  type = 'prompt'
-  alignment = 'right'
-  overflow = 'hidden'
-  
-  [[blocks.segments]]
-    type = 'executiontime'
-    style = 'plain'
-    template = ' {{ .FormattedMs }}'
-    foreground_templates = [
-      '{{ if ge .Ms 500 }}darkGray{{ end }}',
-      # Unable to use transparent here due to bug.
-      '{{ if lt .Ms 500 }}darkGray{{ end }}'
-    ]
-    
-    [blocks.segments.properties]
-      threshold = 0
+[[blocks.segments]]
+type = 'git'
+style = 'plain'
+foreground = 'lightGreen'
+templates = [
+  '(',
+  '{{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }}',
+  '{{ if gt .Behind 0 }}⇣{{ end }}',
+  '{{ if gt .Ahead 0 }}⇡{{ end }}',
+  ') ',
+]
+
+[blocks.segments.properties]
+branch_icon = ''
+commit_icon = '@'
+fetch_status = true
 
 [[blocks]]
-  type = 'prompt'
-  alignment = 'left'
-  newline = true
-  
-  [[blocks.segments]]
-    type = 'text'
-    style = 'plain'
-    template = '❯ '
-    foreground_templates = [
-      '{{ if ne .Code 0 }}magenta{{ end }}',
-      '{{ if eq .Code 0 }}lightCyan{{ end }}',
-    ]
-    
+type = 'prompt'
+alignment = 'right'
+overflow = 'hidden'
+
+[[blocks.segments]]
+type = 'executiontime'
+style = 'plain'
+template = ' {{ .FormattedMs }}'
+foreground_templates = [
+  '{{ if ge .Ms 500 }}darkGray{{ end }}',
+  # Unable to use transparent here due to bug.
+  '{{ if lt .Ms 500 }}darkGray{{ end }}',
+]
+
+[blocks.segments.properties]
+threshold = 0
+
+[[blocks]]
+type = 'prompt'
+alignment = 'left'
+newline = true
+
+[[blocks.segments]]
+type = 'text'
+style = 'plain'
+template = '❯ '
+foreground_templates = [
+  '{{ if ne .Code 0 }}magenta{{ end }}',
+  '{{ if eq .Code 0 }}lightCyan{{ end }}',
+]
+
 [transient_prompt]
-  newline = true
-  template = '❯ '
-  foreground_templates = [
-    '{{ if ne .Code 0 }}magenta{{ end }}',
-    '{{ if eq .Code 0 }}lightCyan{{ end }}',
-  ]
-  
+newline = true
+template = '❯ '
+foreground_templates = [
+  '{{ if ne .Code 0 }}magenta{{ end }}',
+  '{{ if eq .Code 0 }}lightCyan{{ end }}',
+]
+
 [secondary_prompt]
-  foreground = 'lightBlue'
-  template = '❯❯ '
+foreground = 'lightBlue'
+template = '❯❯ '

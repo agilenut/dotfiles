@@ -1,12 +1,12 @@
-/* 
-  This file provides customized colors for the syntax-highlight quicklook plugin 
+/*
+  This file provides customized colors for the syntax-highlight quicklook plugin
   See: https://github.com/sbarex/SourceCodeSyntaxHighlight
 */
 
 body { background-color: #1e1e1e; }
 body { color: #9cdcfe; }
 .hl {
-    background-color: #1e1e1e; 
+    background-color: #1e1e1e;
 }
 .hl {
     color: #9cdcfe;

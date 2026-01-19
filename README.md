@@ -18,6 +18,7 @@ chezmoi init --apply agilenut
 ```
 
 On first run, you'll be prompted for:
+
 - Git user name
 - Git email
 
@@ -74,6 +75,7 @@ dotfiles/
 ```
 
 Files use chezmoi naming conventions:
+
 - `dot_` prefix → `.` in target
 - `executable_` prefix → made executable
 - `.tmpl` suffix → processed as template

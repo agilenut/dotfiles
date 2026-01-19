@@ -13,7 +13,6 @@ command_not_found_handler() {
     $EDITOR "$1"
     return 0
   fi
-    echo "zsh: command not found: $1"
-    return 127
+  echo "zsh: command not found: $1"
+  return 127
 }
-

@@ -352,24 +352,24 @@ manual_test() {
   while true; do
     read -r -p "Result? [p]ass / [f]ail / [s]kip: " response
     case "$response" in
-    p | P | pass)
-      ((MANUAL_PASSED++))
-      echo -e "  ${GREEN}✓${RESET} Passed"
-      break
-      ;;
-    f | F | fail)
-      ((MANUAL_FAILED++))
-      echo -e "  ${RED}✗${RESET} Failed"
-      break
-      ;;
-    s | S | skip)
-      ((MANUAL_SKIPPED++))
-      echo -e "  ${YELLOW}○${RESET} Skipped"
-      break
-      ;;
-    *)
-      echo "Please enter p, f, or s"
-      ;;
+      p | P | pass)
+        ((MANUAL_PASSED++))
+        echo -e "  ${GREEN}✓${RESET} Passed"
+        break
+        ;;
+      f | F | fail)
+        ((MANUAL_FAILED++))
+        echo -e "  ${RED}✗${RESET} Failed"
+        break
+        ;;
+      s | S | skip)
+        ((MANUAL_SKIPPED++))
+        echo -e "  ${YELLOW}○${RESET} Skipped"
+        break
+        ;;
+      *)
+        echo "Please enter p, f, or s"
+        ;;
     esac
   done
 }
@@ -524,19 +524,19 @@ main() {
 
   while [[ $# -gt 0 ]]; do
     case $1 in
-    --auto-only)
-      auto_only=true
-      shift
-      ;;
-    --help | -h)
-      show_help
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1"
-      show_help
-      exit 1
-      ;;
+      --auto-only)
+        auto_only=true
+        shift
+        ;;
+      --help | -h)
+        show_help
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $1"
+        show_help
+        exit 1
+        ;;
     esac
   done
 

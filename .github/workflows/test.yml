@@ -76,7 +76,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest]  # Add ubuntu-latest when ready
+        os: [macos-latest] # Add ubuntu-latest when ready
       fail-fast: false
 
     steps:

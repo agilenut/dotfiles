@@ -6,8 +6,7 @@ _dotnet_zsh_complete() {
   local completions=("$(dotnet complete "$words")")
 
   # If the completion list is empty, just continue with filename selection
-  if [ -z "$completions" ]
-  then
+  if [ -z "$completions" ]; then
     _arguments '*::arguments: _normal'
     return
   fi

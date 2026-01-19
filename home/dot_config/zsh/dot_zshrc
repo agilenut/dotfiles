@@ -46,8 +46,8 @@ setopt HIST_IGNORE_SPACE    # Don't record entry starting with a space.
 setopt HIST_REDUCE_BLANKS   # Remove superfluous blanks from entries.
 setopt SHARE_HISTORY        # Share history between all sessions.
 
-[[ -d "$XDG_STATE_HOME/zsh" ]] ||
-  mkdir -p "$XDG_STATE_HOME/zsh"
+[[ -d "$XDG_STATE_HOME/zsh" ]] \
+  || mkdir -p "$XDG_STATE_HOME/zsh"
 HISTFILE="$XDG_STATE_HOME/zsh/history" # Location of the history.
 HISTSIZE=100000                        # Number of history entries to keep in memory.
 SAVEHIST=$HISTSIZE                     # Number of history entries to save to file.

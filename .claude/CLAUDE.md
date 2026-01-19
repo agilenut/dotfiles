@@ -9,6 +9,7 @@ This is a cross-platform dotfiles repository managed by [chezmoi](https://www.ch
 ## Architecture
 
 ### Chezmoi Structure
+
 - `.chezmoi.toml.tmpl` - Configuration template (prompts for user name/email on first run)
 - `.chezmoiroot` - Points to `home/` as the source directory
 - `home/` - Chezmoi source directory containing dotfiles
@@ -20,6 +21,7 @@ This is a cross-platform dotfiles repository managed by [chezmoi](https://www.ch
 - `home/.chezmoiscripts/` - Scripts run during `chezmoi apply`
 
 ### Directory Layout
+
 ```
 dotfiles/
 ├── home/
@@ -40,12 +42,15 @@ dotfiles/
 ```
 
 ### Platform Support
+
 - **macOS**: Full support (zsh, Alacritty, Homebrew packages)
 - **Linux**: Shell configs, apt/pacman/dnf package installation
 - **Windows**: Git config only (zsh configs excluded via `.chezmoiignore`)
 
 ### Key Dependencies
+
 Installed via `run_once_before_install-packages.sh.tmpl`:
+
 - fzf, fd, bat, eza, zoxide (terminal utilities)
 - oh-my-posh (prompt)
 - antidote (zsh plugin manager, via `.chezmoiexternal.toml`)
@@ -77,6 +82,7 @@ chezmoi update
 ## Templating
 
 Files ending in `.tmpl` use Go template syntax:
+
 - `{{ .name }}` - User's git name (prompted on first run)
 - `{{ .email }}` - User's git email
 - `{{ .chezmoi.os }}` - Operating system (darwin, linux, windows)

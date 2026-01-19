@@ -1,6 +1,6 @@
 [general]
 
-# allow external commands to create new windows 
+# allow external commands to create new windows
 ipc_socket = true
 
 #import = ["~/.config/alacritty/themes/visual_studio_dark_plus.toml"]

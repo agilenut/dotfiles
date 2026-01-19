@@ -3,7 +3,6 @@
 # Executed by zsh on each login shell.
 # See https://zsh.sourceforge.io/Guide/zshguide02.html
 
-
 # Homebrew
 # -----------------------------------------------------------------------------
 # Homebrew must be configured in .zprofile instead of .zshenv.
@@ -28,7 +27,7 @@ fi
 # Path
 # -----------------------------------------------------------------------------
 
-typeset -U path PATH   # No dupes
+typeset -U path PATH # No dupes
 path=(
   "$XDG_BIN_HOME"
   $path

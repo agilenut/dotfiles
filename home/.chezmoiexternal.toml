@@ -4,7 +4,7 @@
 # Antidote - zsh plugin manager
 # Previously cloned dynamically in .zshrc, now managed by chezmoi
 [".local/share/antidote"]
-    type = "git-repo"
-    url = "https://github.com/mattmc3/antidote.git"
-    clone.args = ["--depth", "1"]
-    pull.args = ["--ff-only"]
+type = "git-repo"
+url = "https://github.com/mattmc3/antidote.git"
+clone.args = ["--depth", "1"]
+pull.args = ["--ff-only"]

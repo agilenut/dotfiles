@@ -15,10 +15,14 @@ insert_final_newline = true
 # Two trailing spaces = <br> in Markdown
 trim_trailing_whitespace = false
 
-[*.{sh,bash,zsh,zshrc,zprofile,zshenv}]
-# shfmt formatting options (google style guide conventions)
+# Shell scripts - shfmt formatting options (google style guide conventions)
+[{*.sh,*.bash,*.zsh,*zshrc,*zshenv,*zprofile,*zlogin,*zlogout}]
 binary_next_line = true
 switch_case_indent = true
 space_redirects = false
 keep_padding = false
 function_next_line = false
+
+# Ignore problematic files from shfmt formatting
+[dotnet.zsh]
+ignore = true

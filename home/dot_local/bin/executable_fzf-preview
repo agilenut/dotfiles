@@ -17,16 +17,16 @@ elif [[ -e ${input} && $(file --mime "${input}") =~ binary ]]; then
   # binary file
   echo -ne "$(basename "$input")\n\nThis is a binary file"
 
-elif [[ -e $(echo -ne "${input}" | cut -d " " -f 2 2> /dev/null) ]]; then
+elif [[ -e $(echo -ne "${input}" | cut -d " " -f 2 2>/dev/null) ]]; then
   # readable file
   f=$(echo -ne "${input}" | cut -d " " -f 2)
-  (bat --color=always --wrap never --style=plain --line-range :200 "$f") 2> /dev/null
+  (bat --color=always --wrap never --style=plain --line-range :200 "$f") 2>/dev/null
 
-elif builtin command -v "$(echo -ne "${command_history}" | cut -d ' ' -f 1)" > /dev/null 2>&1; then
+elif builtin command -v "$(echo -ne "${command_history}" | cut -d ' ' -f 1)" >/dev/null 2>&1; then
   # history
-  (echo -ne "${command_history}" | bat --color=always --wrap character --terminal-width 80 -l sh --style=plain --line-range :200 || echo -ne "${command_history}") 2> /dev/null
+  (echo -ne "${command_history}" | bat --color=always --wrap character --terminal-width 80 -l sh --style=plain --line-range :200 || echo -ne "${command_history}") 2>/dev/null
 
 else
   # other
-  (echo -ne "${input}" | bat --color=always --wrap never --style=plain --line-range :200 || echo -ne "${input}") 2> /dev/null
+  (echo -ne "${input}" | bat --color=always --wrap never --style=plain --line-range :200 || echo -ne "${input}") 2>/dev/null
 fi

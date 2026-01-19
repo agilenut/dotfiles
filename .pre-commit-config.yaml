@@ -1,0 +1,68 @@
+# Pre-commit hooks for linting and formatting
+# Install: brew install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Shell formatting (shfmt)
+  # Uses .editorconfig for settings (indent_size, binary_next_line, etc.)
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-1
+    hooks:
+      - id: shfmt
+        # Verbose wrapper: prints each file, formats in-place, lists modified
+        # Uses --filename with .zsh suffix for files without shell extension (dot_zshenv, etc.)
+        # Empty output from shfmt means file was ignored via editorconfig
+        entry: 'bash -c ''rc=0; for f; do echo "Checking: $f"; fn="$f"; [[ ! "$f" =~ \.(sh|bash|zsh)$ ]] && fn="${f}.zsh"; if formatted=$(shfmt --apply-ignore --filename "$fn" < "$f"); then [[ -n "$formatted" ]] && ! diff -q <(cat "$f") <(echo "$formatted") >/dev/null 2>&1 && { echo "$formatted" > "$f"; echo "$f"; }; :; else rc=1; fi; done; exit $rc'' _'
+        args: [] # Override default -w arg
+        verbose: true # Always show output, even on success
+        # Match shell files by extension or executable_ prefix
+        types: [text] # Accept any file type
+        exclude_types: [] # Override upstream exclusion of zsh
+        files: (\.(sh|bash|zsh)$|\.(sh|bash|zsh)\.tmpl$|executable_|zshrc|zshenv|zprofile|zlogin|zlogout)
+
+#  # Shell linting (shellcheck) - for bash/sh files only
+#  - repo: https://github.com/shellcheck-py/shellcheck-py
+#    rev: v0.10.0.1
+#    hooks:
+#      - id: shellcheck
+#        args: ["--severity=warning"]
+#        types: [shell]
+#        # Exclude zsh files - shellcheck doesn't support zsh
+#        exclude: (\.zsh$|zshrc|zshenv|zprofile|zlogin|zlogout|^home/dot_config/zsh/)
+#
+#  # TOML formatting and linting (taplo)
+#  - repo: https://github.com/ComPWA/mirrors-taplo
+#    rev: v0.9.3
+#    hooks:
+#      - id: taplo-format
+#        exclude: \.tmpl$
+#      # Skip taplo-lint - schema validation fails on oh-my-posh and alacritty files
+#      # that reference external schemas. Format check is sufficient.
+#
+#  # Markdown linting
+#  - repo: https://github.com/igorshubovych/markdownlint-cli
+#    rev: v0.43.0
+#    hooks:
+#      - id: markdownlint
+#        args: ["--fix"]
+#
+#  # Prettier for general formatting (json, yaml)
+#  - repo: https://github.com/pre-commit/mirrors-prettier
+#    rev: v4.0.0-alpha.8
+#    hooks:
+#      - id: prettier
+#        types_or: [json, yaml]
+#        exclude: \.tmpl$
+#
+#  # Basic file hygiene
+#  - repo: https://github.com/pre-commit/pre-commit-hooks
+#    rev: v5.0.0
+#    hooks:
+#      - id: trailing-whitespace
+#        exclude: \.md$
+#      - id: end-of-file-fixer
+#      - id: check-yaml
+#        exclude: \.tmpl$
+#      - id: check-toml
+#        exclude: \.tmpl$
+#      - id: check-merge-conflict
