@@ -2,9 +2,10 @@ name: Test Dotfiles
 
 on:
   push:
-    branches: [main, feature/*]
+    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch: # Manual trigger for feature branches
 
 jobs:
   lint:

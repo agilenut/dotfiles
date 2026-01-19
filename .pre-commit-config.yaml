@@ -9,12 +9,33 @@ repos:
     rev: v3.10.0-1
     hooks:
       - id: shfmt
-        # Verbose wrapper: prints each file, formats in-place, lists modified
-        # Uses --filename with .zsh suffix for files without shell extension (dot_zshenv, etc.)
-        # Empty output from shfmt means file was ignored via editorconfig
-        entry: 'bash -c ''rc=0; for f; do echo "Checking: $f"; fn="$f"; [[ ! "$f" =~ \.(sh|bash|zsh)$ ]] && fn="${f}.zsh"; if formatted=$(shfmt --apply-ignore --filename "$fn" < "$f"); then [[ -n "$formatted" ]] && ! diff -q <(cat "$f") <(echo "$formatted") >/dev/null 2>&1 && { echo "$formatted" > "$f"; echo "$f"; }; :; else rc=1; fi; done; exit $rc'' _'
+        # Verbose wrapper that:
+        # - Prints "Checking: <file>" for each file
+        # - Prints "  Modified: <file>" when a file is reformatted
+        # - Lets errors pass through to stderr naturally
+        # - Uses --filename with .zsh suffix for extensionless files (dot_zshenv, etc.)
+        # - Empty shfmt output means file was ignored via editorconfig
+        entry: |
+          bash -c '
+            rc=0
+            for f; do
+              echo "Checking: $f"
+              fn="$f"
+              [[ ! "$f" =~ \.(sh|bash|zsh)$ ]] && fn="${f}.zsh"
+              if formatted=$(shfmt --apply-ignore --filename "$fn" < "$f" 2>&1); then
+                if [[ -n "$formatted" ]] && ! diff -q <(cat "$f") <(echo "$formatted") >/dev/null 2>&1; then
+                  echo "$formatted" > "$f"
+                  echo "  Modified: $f"
+                fi
+              else
+                echo "$formatted" >&2
+                rc=1
+              fi
+            done
+            exit $rc
+          ' _
         args: [] # Override default -w arg
-        verbose: true # Always show output, even on success
+        #verbose: true # Uncomment this if you want verbose logging.
         # Match shell files by extension or executable_ prefix
         types: [text] # Accept any file type
         exclude_types: [] # Override upstream exclusion of zsh
