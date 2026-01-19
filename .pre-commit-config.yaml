@@ -41,15 +41,18 @@ repos:
         exclude_types: [] # Override upstream exclusion of zsh
         files: (\.(sh|bash|zsh)$|\.(sh|bash|zsh)\.tmpl$|executable_|zshrc|zshenv|zprofile|zlogin|zlogout)
 
-#  # Shell linting (shellcheck) - for bash/sh files only
-#  - repo: https://github.com/shellcheck-py/shellcheck-py
-#    rev: v0.10.0.1
-#    hooks:
-#      - id: shellcheck
-#        args: ["--severity=warning"]
-#        types: [shell]
-#        # Exclude zsh files - shellcheck doesn't support zsh
-#        exclude: (\.zsh$|zshrc|zshenv|zprofile|zlogin|zlogout|^home/dot_config/zsh/)
+  # Shell linting (shellcheck) - for bash/sh files only
+  # Shellcheck doesn't support zsh, so we exclude zsh-specific files
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args:
+          - --severity=warning
+          #- --format=gcc # Uncomment for compact single-line output
+        types: [shell]
+        exclude: (\.zsh$)
+        #verbose: true # Uncomment for logging.
 #
 #  # TOML formatting and linting (taplo)
 #  - repo: https://github.com/ComPWA/mirrors-taplo
