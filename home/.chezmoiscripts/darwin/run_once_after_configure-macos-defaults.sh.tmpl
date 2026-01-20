@@ -1,0 +1,1322 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# macOS Defaults Configuration Script
+# Based on: https://github.com/mathiasbynens/dotfiles/blob/master/.macos
+#
+# ⚠️  WARNING: This script is DISABLED by default.
+# To enable, remove the 'exit 0' line below after reviewing each setting.
+#
+# Each setting shows:
+# - CURRENT: Your current value (as of script generation)
+# - RECOMMEND: Whether this change benefits a developer workflow
+# - REVERT: Command to restore your original setting
+#
+# Review each setting before enabling the script.
+
+echo "macOS defaults script is currently DISABLED for review."
+echo "Edit this file and remove the 'exit 0' line to enable."
+exit 0
+
+# Close any open System Preferences panes, to prevent them from overriding
+# settings we're about to change
+osascript -e 'tell application "System Preferences" to quit'
+
+# Ask for the administrator password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until script has finished
+while true; do
+  sudo -n true
+  sleep 60
+  kill -0 "$$" || exit
+done 2>/dev/null &
+
+###############################################################################
+# General UI/UX                                                               #
+###############################################################################
+
+# Set computer name (as done via System Preferences → Sharing)
+# CURRENT: ComputerName="Eric's MacBook Pro (2023)", LocalHostName="Erics-MacBook-Pro-2023"
+# RECOMMEND: Skip - personal preference, already set
+# REVERT: sudo scutil --set ComputerName "Eric's MacBook Pro (2023)" && sudo scutil --set LocalHostName "Erics-MacBook-Pro-2023"
+# Decision: TBD - Maybe parameterize and allow skipping. Would be good to have them all match.
+#sudo scutil --set ComputerName "0x6D746873"
+#sudo scutil --set HostName "0x6D746873"
+#sudo scutil --set LocalHostName "0x6D746873"
+#sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "0x6D746873"
+
+# Disable the sound effects on boot
+# CURRENT: Default (sound enabled)
+# RECOMMEND: Yes - startup sound can be annoying in quiet environments
+# REVERT: sudo nvram StartupMute=%00
+# DECISION: Yes (disable)
+sudo nvram StartupMute=%01
+
+# Disable transparency in the menu bar and elsewhere
+# CURRENT: not set (transparency enabled)
+# RECOMMEND: No - transparency looks nice, minimal performance impact on modern Macs
+# REVERT: defaults delete com.apple.universalaccess reduceTransparency
+# DECISION: No (keep transparency)
+# defaults write com.apple.universalaccess reduceTransparency -bool true
+
+# Set highlight color to green
+# CURRENT: not set (default blue)
+# RECOMMEND: No - purely cosmetic preference
+# REVERT: defaults delete NSGlobalDomain AppleHighlightColor
+# DECISION: No (keep default)
+# defaults write NSGlobalDomain AppleHighlightColor -string "0.764700 0.976500 0.568600"
+
+# Set sidebar icon size to medium
+# CURRENT: 2 (medium) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 2
+# DECISION: Yes (medium)
+defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 2
+
+# Always show scrollbars
+# CURRENT: not set (Automatic based on mouse/trackpad)
+# RECOMMEND: No - "Automatic" works well with trackpad, shows when needed
+# REVERT: defaults delete NSGlobalDomain AppleShowScrollBars
+# Possible values: `WhenScrolling`, `Automatic` and `Always`
+# DECISION: No (don't show scroolbars)
+# defaults write NSGlobalDomain AppleShowScrollBars -string "Always"
+
+# Disable the over-the-top focus ring animation
+# CURRENT: not set (enabled)
+# RECOMMEND: Maybe - minor visual cleanup, but accessibility feature
+# REVERT: defaults delete NSGlobalDomain NSUseAnimatedFocusRing
+# DECISION: No (keep focus ring)
+# defaults write NSGlobalDomain NSUseAnimatedFocusRing -bool false
+
+# Disable smooth scrolling
+# CURRENT: not set (enabled)
+# RECOMMEND: No - smooth scrolling looks better on modern Macs
+# REVERT: defaults delete NSGlobalDomain NSScrollAnimationEnabled
+# DECISION: No (keep smooth scrolling)
+# defaults write NSGlobalDomain NSScrollAnimationEnabled -bool false
+
+# Increase window resize speed for Cocoa applications
+# CURRENT: not set (default ~0.)
+# RECOMMEND: Yes - faster animations feel snappier for dev work
+# REVERT: defaults delete NSGlobalDomain NSWindowResizeTime
+# DECISION: Yes (faster)
+defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
+
+# Expand save panel by default
+# CURRENT: not set (collapsed)
+# RECOMMEND: Yes - always want to see full path when saving
+# REVERT: defaults delete NSGlobalDomain NSNavPanelExpandedStateForSaveMode; defaults delete NSGlobalDomain NSNavPanelExpandedStateForSaveMode2
+# DECISION: Yes (expand)
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
+
+# Expand print panel by default
+# CURRENT: not set (collapsed)
+# RECOMMEND: Yes - easier to access print options
+# REVERT: defaults delete NSGlobalDomain PMPrintingExpandedStateForPrint; defaults delete NSGlobalDomain PMPrintingExpandedStateForPrint2
+# DECISION: Yes (expand)
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
+
+# Save to disk (not to iCloud) by default
+# CURRENT: not set (iCloud default)
+# RECOMMEND: Yes - developers typically want local saves for version control
+# REVERT: defaults delete NSGlobalDomain NSDocumentSaveNewDocumentsToCloud
+# DECISION: Yes (save local)
+defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+
+# Automatically quit printer app once the print jobs complete
+# CURRENT: not set (stays open)
+# RECOMMEND: Yes - reduces clutter
+# REVERT: defaults delete com.apple.print.PrintingPrefs "Quit When Finished"
+# DECISION: Yes (quit when finished)
+defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
+
+# Disable the "Are you sure you want to open this application?" dialog
+# CURRENT: not set (dialog enabled)
+# RECOMMEND: Maybe - Security protection to keep enabled. Can be annoying for if frequently opening new apps.
+# REVERT: defaults delete com.apple.LaunchServices LSQuarantine
+# DECISION: No (small price for an extra moment to consider security)
+# defaults write com.apple.LaunchServices LSQuarantine -bool false
+
+# Display ASCII control characters using caret notation in standard text views
+# CURRENT: not set (hidden)
+# RECOMMEND: Maybe - Only useful for debugging text issues
+# REVERT: defaults delete NSGlobalDomain NSTextShowsControlCharacters
+# DECISION: No (keep hidden)
+# defaults write NSGlobalDomain NSTextShowsControlCharacters -bool true
+
+# Disable Resume system-wide
+# CURRENT: not set (Resume enabled)
+# RECOMMEND: Maybe - depends if you like apps reopening previous state
+# REVERT: defaults delete com.apple.systempreferences NSQuitAlwaysKeepsWindows
+# DECISION: No (resume enabled)
+# defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
+
+# Disable automatic termination of inactive apps
+# CURRENT: not set (auto-termination enabled)
+# RECOMMEND: Maybe - can cause confusion when apps "disappear"
+# REVERT: defaults delete NSGlobalDomain NSDisableAutomaticTermination
+# DECISION: No (keep enabled)
+# defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
+
+# Disable the crash reporter
+# CURRENT: not set (enabled)
+# RECOMMEND: No - crash reports help debug issues
+# REVERT: defaults delete com.apple.CrashReporter DialogType
+# DECISION: Yes (pop is annoying and I never want to send)
+defaults write com.apple.CrashReporter DialogType -string "none"
+
+# Set Help Viewer windows to non-floating mode
+# CURRENT: not set (floating)
+# RECOMMEND: Yes - floating help windows are annoying
+# REVERT: defaults delete com.apple.helpviewer DevMode
+# DECISION: No (doesn't bother me)
+# defaults write com.apple.helpviewer DevMode -bool true
+
+# Reveal IP address, hostname, OS version, etc. when clicking the clock in the login window
+# CURRENT: N/A
+# RECOMMEND: Yes - useful for remote troubleshooting
+# REVERT: sudo defaults delete /Library/Preferences/com.apple.loginwindow AdminHostInfo
+# DECISION: No (privacy concern)
+# sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
+
+# Disable automatic capitalization as it's annoying when typing code
+# CURRENT: 0 (disabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool true
+# DECISION: Yes (already set)
+defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool false
+
+# Disable smart dashes as they're annoying when typing code
+# CURRENT: 0 (disabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool true
+# DECISION: Yes (already set)
+defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
+
+# Disable automatic period substitution as it's annoying when typing code
+# CURRENT: 1 (enabled)
+# RECOMMEND: Yes - double-space to period is annoying when typing code
+# REVERT: defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled -bool true
+# DECISION: Yes (it is annoying)
+defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled -bool false
+
+# Disable smart quotes as they're annoying when typing code
+# CURRENT: 0 (disabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool true
+# DECISION: Yes (already set)
+defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
+
+# Disable auto-correct
+# CURRENT: 0 (disabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool true
+# DECISION: Yes (already set)
+defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
+
+###############################################################################
+# Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
+###############################################################################
+
+# Trackpad: enable tap to click for this user and for the login screen
+# CURRENT: Clicking=1 (enabled), tapBehavior=1 - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true; defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+# DECISION: Yes (already set)
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
+# Disable "natural" (Lion-style) scrolling
+# CURRENT: not set (natural scrolling enabled by default)
+# RECOMMEND: Personal preference - many devs prefer traditional scrolling
+# REVERT: defaults delete NSGlobalDomain com.apple.swipescrolldirection
+# DECISION: No
+# defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
+
+# Increase sound quality for Bluetooth headphones/headsets
+# CURRENT: not set
+# RECOMMEND: Yes - better audio quality for Bluetooth headphones
+# REVERT: defaults delete com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)"
+# DECISION: Yes
+defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
+
+# Enable full keyboard access for all controls
+# CURRENT: 1 (text boxes and lists only)
+# RECOMMEND: Yes - Tab through all controls is essential for keyboard-driven workflow
+# REVERT: defaults write NSGlobalDomain AppleKeyboardUIMode -int 1
+# DECISION: Yes
+defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
+
+# Use scroll gesture with the Ctrl (^) modifier key to zoom
+# CURRENT: not set (disabled)
+# RECOMMEND: Yes - useful accessibility feature for presentations/demos
+# REVERT: defaults delete com.apple.universalaccess closeViewScrollWheelToggle; defaults delete com.apple.universalaccess HIDScrollZoomModifierMask; defaults delete com.apple.universalaccess closeViewZoomFollowsFocus
+# DECISION: Yes
+defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
+defaults write com.apple.universalaccess HIDScrollZoomModifierMask -int 262144
+# Follow the keyboard focus while zoomed in
+defaults write com.apple.universalaccess closeViewZoomFollowsFocus -bool true
+
+# Disable press-and-hold for keys in favor of key repeat
+# CURRENT: not set (press-and-hold enabled for accents)
+# RECOMMEND: Yes - developers need key repeat more than accent popups
+# REVERT: defaults delete NSGlobalDomain ApplePressAndHoldEnabled
+# DECISION: Yes
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+
+# Set a blazingly fast keyboard repeat rate
+# CURRENT: not set (default ~6 repeat, ~25 initial)
+# RECOMMEND: Yes - fast key repeat is essential for Vim/terminal work
+# REVERT: defaults delete NSGlobalDomain KeyRepeat; defaults delete NSGlobalDomain InitialKeyRepeat
+# DECISION: Yes
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+
+# Set language and text formats
+# CURRENT: AppleLanguages=("en-US"), AppleLocale=en_US
+# RECOMMEND: Skip - keep your current locale settings
+# REVERT: defaults write NSGlobalDomain AppleLanguages -array "en-US"; defaults write NSGlobalDomain AppleLocale -string "en_US"
+# DECISION: No
+defaults write NSGlobalDomain AppleLanguages -array "en-US"
+defaults write NSGlobalDomain AppleLocale -string "en_US"
+
+# Show language menu in the top right corner of the boot screen
+# CURRENT: N/A
+# RECOMMEND: Maybe - useful if you switch languages
+# REVERT: sudo defaults delete /Library/Preferences/com.apple.loginwindow showInputMenu
+# DECISION: No
+# sudo defaults write /Library/Preferences/com.apple.loginwindow showInputMenu -bool true
+
+# Set the timezone; see `sudo systemsetup -listtimezones` for other values
+# CURRENT: Your current timezone (couldn't read without sudo)
+# RECOMMEND: Skip - timezone is personal setting
+# REVERT: sudo systemsetup -settimezone "America/Los_Angeles" (or your timezone)
+# DECISION: Yes but change value
+sudo systemsetup -settimezone "America/Los_Angeles" >/dev/null
+
+###############################################################################
+# Energy saving                                                               #
+###############################################################################
+
+# Enable lid wakeup
+# CURRENT: Enabled by default
+# RECOMMEND: Yes - standard behavior
+# REVERT: sudo pmset -a lidwake 1 (already default)
+# DECISION: Yes
+sudo pmset -a lidwake 1
+
+# Restart automatically on power loss
+# CURRENT: N/A
+# RECOMMEND: Maybe - useful for servers, less so for laptops
+# REVERT: sudo pmset -a autorestart 0
+# DECISION: No
+# sudo pmset -a autorestart 1
+
+# Restart automatically if the computer freezes
+# CURRENT: N/A
+# RECOMMEND: Yes - automatic recovery from freezes
+# REVERT: sudo systemsetup -setrestartfreeze off
+# DECISION: Yes
+sudo systemsetup -setrestartfreeze on 2>/dev/null
+
+# Sleep the display after 15 minutes
+# CURRENT: displaysleep=30
+# RECOMMEND: Personal preference - 15-30 min both reasonable
+# REVERT: sudo pmset -a displaysleep 30
+# DECISION: Yes but change value
+sudo pmset -a displaysleep 30
+
+# Disable machine sleep while charging
+# CURRENT: sleep=1 (enabled)
+# RECOMMEND: Maybe - depends on your workflow
+# REVERT: sudo pmset -c sleep 1
+# DECISION: No
+# sudo pmset -c sleep 0
+
+# Set machine sleep to 5 minutes on battery
+# CURRENT: Varies (see pmset -g)
+# RECOMMEND: Maybe - 5 min is aggressive, 10-15 more balanced
+# REVERT: sudo pmset -b sleep 1 (or check pmset -g for your value)
+# DECISION: Yes but change value
+sudo pmset -b sleep 1
+
+# Set standby delay to 24 hours (default is 1 hour)
+# CURRENT: standby=1
+# RECOMMEND: Maybe - longer standby preserves RAM state but uses more battery
+# REVERT: sudo pmset -a standbydelay 10800 (default 3 hours on newer Macs)
+# DECISION: No
+# sudo pmset -a standbydelay 86400
+
+# Never go into computer sleep mode
+# CURRENT: sleep=1 (enabled)
+# RECOMMEND: No - sleep saves energy on laptops
+# REVERT: sudo systemsetup -setcomputersleep 1
+# DECISION: No
+#sudo systemsetup -setcomputersleep Off > /dev/null
+
+# Hibernation mode
+# CURRENT: hibernatemode=3 (safe sleep - RAM + disk)
+# RECOMMEND: No - mode 3 is safest; mode 0 risks data loss on battery drain
+# REVERT: sudo pmset -a hibernatemode 3
+# 0: Disable hibernation (speeds up entering sleep mode)
+# 3: Copy RAM to disk so the system state can still be restored in case of power failure.
+# DECISION: No
+#sudo pmset -a hibernatemode 0
+
+###############################################################################
+# Screen                                                                      #
+###############################################################################
+
+# Require password immediately after sleep or screen saver begins
+# CURRENT: not set (delay enabled)
+# RECOMMEND: Yes - security best practice
+# REVERT: defaults delete com.apple.screensaver askForPassword; defaults delete com.apple.screensaver askForPasswordDelay
+# DECISION: Yes
+defaults write com.apple.screensaver askForPassword -int 1
+defaults write com.apple.screensaver askForPasswordDelay -int 0
+
+# Save screenshots to the desktop
+# CURRENT: not set (Desktop is default)
+# RECOMMEND: Yes - explicit is better, or consider ~/Screenshots
+# REVERT: defaults delete com.apple.screencapture location
+# DECISION: Yes but different value
+defaults write com.apple.screencapture location -string "${HOME}/Screenshots"
+
+# Save screenshots in PNG format (other options: BMP, GIF, JPG, PDF, TIFF)
+# CURRENT: not set (PNG is default)
+# RECOMMEND: Yes - PNG is lossless, good for screenshots
+# REVERT: defaults delete com.apple.screencapture type
+# DECISION: Yes
+defaults write com.apple.screencapture type -string "png"
+
+# Disable shadow in screenshots
+# CURRENT: not set (shadow enabled)
+# RECOMMEND: Yes - shadows add unnecessary size and look cluttered
+# REVERT: defaults delete com.apple.screencapture disable-shadow
+# DECISION: Yes
+defaults write com.apple.screencapture disable-shadow -bool true
+
+# Enable subpixel font rendering on non-Apple LCDs
+# CURRENT: not set
+# RECOMMEND: Maybe - only relevant for external non-Retina displays
+# REVERT: defaults delete NSGlobalDomain AppleFontSmoothing
+# DECISION: Yes
+defaults write NSGlobalDomain AppleFontSmoothing -int 1
+
+# Enable HiDPI display modes (requires restart)
+# CURRENT: N/A
+# RECOMMEND: Yes - enables more resolution options for external displays
+# REVERT: sudo defaults delete /Library/Preferences/com.apple.windowserver DisplayResolutionEnabled
+# DECISION: Yes
+sudo defaults write /Library/Preferences/com.apple.windowserver DisplayResolutionEnabled -bool true
+
+###############################################################################
+# Finder                                                                      #
+###############################################################################
+
+# Finder: allow quitting via ⌘ + Q; doing so will also hide desktop icons
+# CURRENT: not set (quit disabled)
+# RECOMMEND: Maybe - convenient but hides desktop icons
+# REVERT: defaults delete com.apple.finder QuitMenuItem
+# DECISION: Yes
+defaults write com.apple.finder QuitMenuItem -bool true
+
+# Set Desktop as the default location for new Finder windows
+# CURRENT: NewWindowTarget=PfDo (Documents), NewWindowTargetPath=file:///Users/eric/Documents/
+# RECOMMEND: Personal preference - Documents is fine, Home (~) also popular
+# REVERT: defaults write com.apple.finder NewWindowTarget -string "PfDo"; defaults write com.apple.finder NewWindowTargetPath -string "file:///Users/eric/Documents/"
+# For other paths, use `PfLo` and `file:///full/path/here/`
+# DECISION: Yes
+defaults write com.apple.finder NewWindowTarget -string "PfDe"
+defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/"
+
+# Show icons for hard drives, servers, and removable media on the desktop
+# CURRENT: ShowExternalHardDrivesOnDesktop=0, ShowHardDrivesOnDesktop=0, ShowRemovableMediaOnDesktop=0
+# RECOMMEND: Personal preference - keeping desktop clean is also valid
+# REVERT: defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool false; defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false; defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool false
+# DECISION: Yes but change values
+defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool false
+defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
+defaults write com.apple.finder ShowMountedServersOnDesktop -bool false
+defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool false
+
+# Finder: show hidden files by default
+# CURRENT: AppleShowAllFiles=0 (hidden files not shown)
+# RECOMMEND: Maybe - useful for devs but clutters view; use Cmd+Shift+. to toggle
+# REVERT: defaults write com.apple.finder AppleShowAllFiles -bool false
+# DECISION: No
+#defaults write com.apple.finder AppleShowAllFiles -bool true
+
+# Finder: show all filename extensions
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+# DECISION: Yes
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+
+# Finder: show status bar
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.finder ShowStatusBar -bool true
+# DECISION: Yes
+defaults write com.apple.finder ShowStatusBar -bool true
+
+# Finder: show path bar
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.finder ShowPathbar -bool true
+# DECISION: Yes
+defaults write com.apple.finder ShowPathbar -bool true
+
+# Display full POSIX path as Finder window title
+# CURRENT: not set (simple title)
+# RECOMMEND: Yes - very useful for developers
+# REVERT: defaults delete com.apple.finder _FXShowPosixPathInTitle
+# DECISION: No
+# defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
+
+# Keep folders on top when sorting by name
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.finder _FXSortFoldersFirst -bool true
+# DECISION: Yes
+defaults write com.apple.finder _FXSortFoldersFirst -bool true
+
+# When performing a search, search the current folder by default
+# CURRENT: SCcf (current folder) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
+# DECISION: Yes
+defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
+
+# Disable the warning when changing a file extension
+# CURRENT: not set (warning enabled)
+# RECOMMEND: Yes - developers change extensions frequently
+# REVERT: defaults delete com.apple.finder FXEnableExtensionChangeWarning
+# DECISION: Yes
+defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+
+# Enable spring loading for directories
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write NSGlobalDomain com.apple.springing.enabled -bool true
+# DECISION: Yes
+defaults write NSGlobalDomain com.apple.springing.enabled -bool true
+
+# Remove the spring loading delay for directories
+# CURRENT: 0.5 (half second)
+# RECOMMEND: Yes - faster is better
+# REVERT: defaults write NSGlobalDomain com.apple.springing.delay -float 0.5
+# DECISION: Yes
+defaults write NSGlobalDomain com.apple.springing.delay -float 0
+
+# Avoid creating .DS_Store files on network or USB volumes
+# CURRENT: not set (.DS_Store created)
+# RECOMMEND: Yes - .DS_Store files pollute network shares and repos
+# REVERT: defaults delete com.apple.desktopservices DSDontWriteNetworkStores; defaults delete com.apple.desktopservices DSDontWriteUSBStores
+# DECISION: Yes
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+
+# Disable disk image verification
+# CURRENT: not set (verification enabled)
+# RECOMMEND: Maybe - speeds up DMG mounting but reduces security
+# REVERT: defaults delete com.apple.frameworks.diskimages skip-verify; defaults delete com.apple.frameworks.diskimages skip-verify-locked; defaults delete com.apple.frameworks.diskimages skip-verify-remote
+# DECISION: No
+#defaults write com.apple.frameworks.diskimages skip-verify -bool true
+#defaults write com.apple.frameworks.diskimages skip-verify-locked -bool true
+#defaults write com.apple.frameworks.diskimages skip-verify-remote -bool true
+
+# Automatically open a new Finder window when a volume is mounted
+# CURRENT: not set (doesn't auto-open)
+# RECOMMEND: Maybe - can be convenient or annoying depending on workflow
+# REVERT: defaults delete com.apple.frameworks.diskimages auto-open-ro-root; defaults delete com.apple.frameworks.diskimages auto-open-rw-root; defaults delete com.apple.finder OpenWindowForNewRemovableDisk
+# DECISION: No
+#defaults write com.apple.frameworks.diskimages auto-open-ro-root -bool true
+#defaults write com.apple.frameworks.diskimages auto-open-rw-root -bool true
+#defaults write com.apple.finder OpenWindowForNewRemovableDisk -bool true
+
+# Show item info near icons on the desktop and in other icon views
+# CURRENT: N/A (plist modification)
+# RECOMMEND: Maybe - adds clutter but shows file size/count
+# REVERT: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo false" ~/Library/Preferences/com.apple.finder.plist
+# DECISION: No
+#/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+#/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+#/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+
+# Show item info to the right of the icons on the desktop
+# CURRENT: N/A (plist modification)
+# RECOMMEND: Skip - goes with above setting
+# REVERT: /usr/libexec/PlistBuddy -c "Set DesktopViewSettings:IconViewSettings:labelOnBottom true" ~/Library/Preferences/com.apple.finder.plist
+# DECISION: No
+#/usr/libexec/PlistBuddy -c "Set DesktopViewSettings:IconViewSettings:labelOnBottom false" ~/Library/Preferences/com.apple.finder.plist
+
+# Enable snap-to-grid for icons on the desktop and in other icon views
+# CURRENT: N/A (plist modification)
+# RECOMMEND: Yes - keeps desktop organized
+# REVERT: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy none" ~/Library/Preferences/com.apple.finder.plist
+# DECSION: Yes
+/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+
+# TODO: What about stacks?
+
+# Increase grid spacing for icons on the desktop and in other icon views
+# CURRENT: N/A (plist modification)
+# RECOMMEND: Personal preference
+# REVERT: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:gridSpacing 54" ~/Library/Preferences/com.apple.finder.plist (default)
+# DECSION: No
+#/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:gridSpacing 100" ~/Library/Preferences/com.apple.finder.plist
+#/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:gridSpacing 100" ~/Library/Preferences/com.apple.finder.plist
+#/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:gridSpacing 100" ~/Library/Preferences/com.apple.finder.plist
+
+# Increase the size of icons on the desktop and in other icon views
+# CURRENT: N/A (plist modification)
+# RECOMMEND: Personal preference
+# REVERT: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:iconSize 64" ~/Library/Preferences/com.apple.finder.plist (default)
+# DECSION: No
+#/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:iconSize 80" ~/Library/Preferences/com.apple.finder.plist
+#/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:iconSize 80" ~/Library/Preferences/com.apple.finder.plist
+#/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:iconSize 80" ~/Library/Preferences/com.apple.finder.plist
+
+# Use list view in all Finder windows by default
+# CURRENT: Nlsv (list view) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
+# Four-letter codes for the other view modes: `icnv`, `clmv`, `glyv`
+# DECSION: Yes
+defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
+
+# Disable the warning before emptying the Trash
+# CURRENT: not set (warning enabled)
+# RECOMMEND: Maybe - convenient but risky
+# REVERT: defaults delete com.apple.finder WarnOnEmptyTrash
+# DECSION: Yes
+defaults write com.apple.finder WarnOnEmptyTrash -bool false
+
+# Enable AirDrop over Ethernet and on unsupported Macs running Lion
+# CURRENT: not set
+# RECOMMEND: Yes - more AirDrop compatibility
+# REVERT: defaults delete com.apple.NetworkBrowser BrowseAllInterfaces
+# DECSION: No
+# defaults write com.apple.NetworkBrowser BrowseAllInterfaces -bool true
+
+# Show the ~/Library folder
+# CURRENT: hidden
+# RECOMMEND: Yes - developers frequently need access to Library
+# REVERT: chflags hidden ~/Library
+# DECSION: Yes
+chflags nohidden ~/Library && xattr -d com.apple.FinderInfo ~/Library 2>/dev/null
+
+# Show the /Volumes folder
+# CURRENT: hidden
+# RECOMMEND: Yes - easier access to mounted volumes
+# REVERT: sudo chflags hidden /Volumes
+# DECSION: Yes
+sudo chflags nohidden /Volumes
+
+# Expand the following File Info panes:
+# "General", "Open with", and "Sharing & Permissions"
+# CURRENT: N/A
+# RECOMMEND: Yes - commonly used panels
+# REVERT: defaults delete com.apple.finder FXInfoPanesExpanded
+# DECSION: Yes
+defaults write com.apple.finder FXInfoPanesExpanded -dict \
+  General -bool true \
+  OpenWith -bool true \
+  Privileges -bool true
+
+###############################################################################
+# Dock and hot corners                                                        #
+###############################################################################
+
+# Enable highlight hover effect for the grid view of a stack (Dock)
+# CURRENT: not set
+# RECOMMEND: Yes - visual feedback when hovering
+# REVERT: defaults delete com.apple.dock mouse-over-hilite-stack
+# DECISION: No
+# defaults write com.apple.dock mouse-over-hilite-stack -bool true
+
+# Set the icon size of Dock items to 36 pixels
+# CURRENT: 48
+# RECOMMEND: Personal preference - 36-48 both reasonable
+# REVERT: defaults write com.apple.dock tilesize -int 48
+# DECISION: Yes but change value
+defaults write com.apple.dock tilesize -int 48
+
+# Change minimize/maximize window effect
+# CURRENT: scale - already set
+# RECOMMEND: Already matches - scale is faster than genie
+# REVERT: defaults write com.apple.dock mineffect -string "scale"
+# DECISION: Yes
+defaults write com.apple.dock mineffect -string "scale"
+
+# Minimize windows into their application's icon
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.dock minimize-to-application -bool true
+# DECISION: Yes
+defaults write com.apple.dock minimize-to-application -bool true
+
+# Enable spring loading for all Dock items
+# CURRENT: not set
+# RECOMMEND: Yes - drag files onto Dock icons to open
+# REVERT: defaults delete com.apple.dock enable-spring-load-actions-on-all-items
+# DECISION: Yes
+defaults write com.apple.dock enable-spring-load-actions-on-all-items -bool true
+
+# Show indicator lights for open applications in the Dock
+# CURRENT: not set (enabled by default)
+# RECOMMEND: Yes - useful visual cue
+# REVERT: defaults delete com.apple.dock show-process-indicators
+# DECISION: Yes
+defaults write com.apple.dock show-process-indicators -bool true
+
+# Wipe all (default) app icons from the Dock
+# CURRENT: N/A
+# RECOMMEND: No - too aggressive for most users
+# REVERT: N/A - would need to manually re-add apps
+# DECISION: No but I would like to set specific ones.
+# defaults write com.apple.dock persistent-apps -array
+
+# TODO: Set specific apps in Dock.
+
+# Show only open applications in the Dock
+# CURRENT: not set (static icons shown)
+# RECOMMEND: No - persistent icons useful for frequent apps
+# REVERT: defaults delete com.apple.dock static-only
+# DECISION: No
+# defaults write com.apple.dock static-only -bool true
+
+# Don't animate opening applications from the Dock
+# CURRENT: not set (animation enabled)
+# RECOMMEND: Maybe - removes bouncing animation
+# REVERT: defaults delete com.apple.dock launchanim
+# DECISION: No
+# defaults write com.apple.dock launchanim -bool false
+
+# Speed up Mission Control animations
+# CURRENT: not set (default)
+# RECOMMEND: Yes - faster animation feels snappier
+# REVERT: defaults delete com.apple.dock expose-animation-duration
+# DECISION: Yes
+defaults write com.apple.dock expose-animation-duration -float 0.1
+
+# Don't group windows by application in Mission Control
+# CURRENT: not set (grouped)
+# RECOMMEND: Personal preference - ungrouped shows all windows at once
+# REVERT: defaults delete com.apple.dock expose-group-by-app
+# DECISION: No
+#defaults write com.apple.dock expose-group-by-app -bool false
+
+# Don't automatically rearrange Spaces based on most recent use
+# CURRENT: 0 (disabled) - already set
+# RECOMMEND: Already matches - stable Space order is better for muscle memory
+# REVERT: defaults write com.apple.dock mru-spaces -bool false
+# DECISION: Yes
+defaults write com.apple.dock mru-spaces -bool false
+
+# Remove the auto-hiding Dock delay
+# CURRENT: not set (default delay)
+# RECOMMEND: Yes - instant show/hide for auto-hiding Dock
+# REVERT: defaults delete com.apple.dock autohide-delay
+defaults write com.apple.dock autohide-delay -float 0
+
+# Remove the animation when hiding/showing the Dock
+# CURRENT: 0.15 (slight animation)
+# RECOMMEND: Yes - faster or personal preference
+# REVERT: defaults write com.apple.dock autohide-time-modifier -float 0.15
+# DECISION: Yes but change value
+defaults write com.apple.dock autohide-time-modifier -float 0.1
+
+# Automatically hide and show the Dock
+# CURRENT: 1 (enabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.dock autohide -bool true
+defaults write com.apple.dock autohide -bool true
+
+# Make Dock icons of hidden applications translucent
+# CURRENT: not set
+# RECOMMEND: Yes - visual indicator for hidden apps
+# REVERT: defaults delete com.apple.dock showhidden
+# DECISION: Yes
+defaults write com.apple.dock showhidden -bool true
+
+# Don't show recent applications in Dock
+# CURRENT: 0 (disabled) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.dock show-recents -bool false
+# DECISION: Yes
+defaults write com.apple.dock show-recents -bool false
+
+# Disable the Launchpad gesture (pinch with thumb and three fingers)
+# CURRENT: not set (enabled)
+# RECOMMEND: Maybe - prevents accidental activation
+# REVERT: defaults delete com.apple.dock showLaunchpadGestureEnabled
+# DECISION: No but setup my genstures instead
+#defaults write com.apple.dock showLaunchpadGestureEnabled -int 0
+
+# TODO: Setup my gestures
+
+# Hot corners
+# Possible values:
+#  0: no-op
+#  2: Mission Control
+#  3: Show application windows
+#  4: Desktop
+#  5: Start screen saver
+#  6: Disable screen saver
+#  7: Dashboard
+# 10: Put display to sleep
+# 11: Launchpad
+# 12: Notification Center
+# 13: Lock Screen
+# 14: Quick Note
+
+# CURRENT: wvous-br-corner=14 (Quick Note bottom-right), others not set
+# RECOMMEND: Personal preference - keep Quick Note or customize
+# REVERT for all corners: defaults delete com.apple.dock wvous-tl-corner; defaults delete com.apple.dock wvous-tr-corner; defaults delete com.apple.dock wvous-bl-corner; defaults write com.apple.dock wvous-br-corner -int 14
+# Top left screen corner → Mission Control
+#defaults write com.apple.dock wvous-tl-corner -int 2
+#defaults write com.apple.dock wvous-tl-modifier -int 0
+# Top right screen corner → Desktop
+#defaults write com.apple.dock wvous-tr-corner -int 4
+#defaults write com.apple.dock wvous-tr-modifier -int 0
+# Bottom left screen corner → Start screen saver
+#defaults write com.apple.dock wvous-bl-corner -int 5
+#defaults write com.apple.dock wvous-bl-modifier -int 0
+# DECISION: Yes but disable all
+defaults write com.apple.dock wvous-tl-corner -int 0
+defaults write com.apple.dock wvous-tr-corner -int 0
+defaults write com.apple.dock wvous-bl-corner -int 0
+defaults write com.apple.dock wvous-br-corner -int 0
+
+###############################################################################
+# Safari & WebKit                                                             #
+###############################################################################
+
+# Privacy: don't send search queries to Apple
+# CURRENT: not set
+# RECOMMEND: Yes - privacy improvement
+# REVERT: defaults delete com.apple.Safari UniversalSearchEnabled; defaults delete com.apple.Safari SuppressSearchSuggestions
+# DECISION: No but setup my genstures instead
+defaults write com.apple.Safari UniversalSearchEnabled -bool false
+defaults write com.apple.Safari SuppressSearchSuggestions -bool true
+
+# Press Tab to highlight each item on a web page
+# CURRENT: not set
+# RECOMMEND: Yes - accessibility improvement
+# REVERT: defaults delete com.apple.Safari WebKitTabToLinksPreferenceKey; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2TabsToLinks
+# DECISION: No
+# defaults write com.apple.Safari WebKitTabToLinksPreferenceKey -bool true
+# defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2TabsToLinks -bool true
+
+# Show the full URL in the address bar (note: this still hides the scheme)
+# CURRENT: not set
+# RECOMMEND: Yes - see full URL for debugging/dev
+# REVERT: defaults delete com.apple.Safari ShowFullURLInSmartSearchField
+# DECISION: Yes
+defaults write com.apple.Safari ShowFullURLInSmartSearchField -bool true
+
+# Set Safari's home page to `about:blank` for faster loading
+# CURRENT: (empty string)
+# RECOMMEND: Maybe - faster but less useful
+# REVERT: defaults write com.apple.Safari HomePage -string ""
+# DECISION: No
+# defaults write com.apple.Safari HomePage -string "about:blank"
+
+# Prevent Safari from opening 'safe' files automatically after downloading
+# CURRENT: not set (auto-open enabled)
+# RECOMMEND: Yes - security improvement
+# REVERT: defaults delete com.apple.Safari AutoOpenSafeDownloads
+# DECISION: Yes
+defaults write com.apple.Safari AutoOpenSafeDownloads -bool false
+
+# Allow hitting the Backspace key to go to the previous page in history
+# CURRENT: not set
+# RECOMMEND: Maybe - can cause accidental navigation when editing text
+# REVERT: defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2BackspaceKeyNavigationEnabled
+# DECISION: No
+#defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2BackspaceKeyNavigationEnabled -bool true
+
+# Hide Safari's bookmarks bar by default
+# CURRENT: not set
+# RECOMMEND: Personal preference
+# REVERT: defaults delete com.apple.Safari ShowFavoritesBar
+# DECISION: No
+#defaults write com.apple.Safari ShowFavoritesBar -bool false
+
+# Hide Safari's sidebar in Top Sites
+# CURRENT: 0 (hidden) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.Safari ShowSidebarInTopSites -bool false
+# DECISION: Yes
+defaults write com.apple.Safari ShowSidebarInTopSites -bool false
+
+# Disable Safari's thumbnail cache for History and Top Sites
+# CURRENT: not set
+# RECOMMEND: Maybe - saves disk space
+# REVERT: defaults delete com.apple.Safari DebugSnapshotsUpdatePolicy
+# DECISION: No
+#defaults write com.apple.Safari DebugSnapshotsUpdatePolicy -int 2
+
+# Enable Safari's debug menu
+# CURRENT: not set
+# RECOMMEND: Yes - useful for development
+# REVERT: defaults delete com.apple.Safari IncludeInternalDebugMenu
+# DECISION: Yes
+defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
+
+# Make Safari's search banners default to Contains instead of Starts With
+# CURRENT: 0 (Contains) - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
+# DECISION: Yes
+defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
+
+# Remove useless icons from Safari's bookmarks bar
+# CURRENT: N/A
+# RECOMMEND: Maybe
+# REVERT: defaults delete com.apple.Safari ProxiesInBookmarksBar
+#defaults write com.apple.Safari ProxiesInBookmarksBar "()"
+
+# Enable the Develop menu and the Web Inspector in Safari
+# CURRENT: IncludeDevelopMenu=1, WebKitDeveloperExtrasEnabledPreferenceKey=1 - already set
+# RECOMMEND: Already matches
+# REVERT: defaults write com.apple.Safari IncludeDevelopMenu -bool true (already your setting)
+defaults write com.apple.Safari IncludeDevelopMenu -bool true
+defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
+
+# Add a context menu item for showing the Web Inspector in web views
+# CURRENT: not set
+# RECOMMEND: Yes - useful for development
+# REVERT: defaults delete NSGlobalDomain WebKitDeveloperExtras
+defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
+
+# Enable continuous spellchecking
+# CURRENT: not set
+# RECOMMEND: Yes - catch typos
+# REVERT: defaults delete com.apple.Safari WebContinuousSpellCheckingEnabled
+defaults write com.apple.Safari WebContinuousSpellCheckingEnabled -bool true
+
+# Disable auto-correct
+# CURRENT: not set
+# RECOMMEND: Yes - auto-correct can be annoying
+# REVERT: defaults delete com.apple.Safari WebAutomaticSpellingCorrectionEnabled
+defaults write com.apple.Safari WebAutomaticSpellingCorrectionEnabled -bool false
+
+# Disable AutoFill
+# CURRENT: AutoFillFromAddressBook=0, AutoFillPasswords=0, AutoFillCreditCardData=0, AutoFillMiscellaneousForms=0 - already disabled
+# RECOMMEND: Already matches - use a password manager instead
+# REVERT: defaults write com.apple.Safari AutoFillFromAddressBook -bool false (already your setting)
+defaults write com.apple.Safari AutoFillFromAddressBook -bool false
+defaults write com.apple.Safari AutoFillPasswords -bool false
+defaults write com.apple.Safari AutoFillCreditCardData -bool false
+defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
+
+# Warn about fraudulent websites
+# CURRENT: not set (enabled by default)
+# RECOMMEND: Yes - security
+# REVERT: defaults delete com.apple.Safari WarnAboutFraudulentWebsites
+defaults write com.apple.Safari WarnAboutFraudulentWebsites -bool true
+
+# Disable plug-ins
+# CURRENT: not set
+# RECOMMEND: Yes - plug-ins are legacy and security risk
+# REVERT: defaults delete com.apple.Safari WebKitPluginsEnabled; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2PluginsEnabled
+defaults write com.apple.Safari WebKitPluginsEnabled -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2PluginsEnabled -bool false
+
+# Disable Java
+# CURRENT: not set
+# RECOMMEND: Yes - Java in browser is a security risk
+# REVERT: defaults delete com.apple.Safari WebKitJavaEnabled; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles
+defaults write com.apple.Safari WebKitJavaEnabled -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles -bool false
+
+# Block pop-up windows
+# CURRENT: not set
+# RECOMMEND: Yes - block annoying popups
+# REVERT: defaults delete com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptCanOpenWindowsAutomatically
+defaults write com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptCanOpenWindowsAutomatically -bool false
+
+# Enable "Do Not Track"
+# CURRENT: not set
+# RECOMMEND: Maybe - many sites ignore it, but signals privacy preference
+# REVERT: defaults delete com.apple.Safari SendDoNotTrackHTTPHeader
+defaults write com.apple.Safari SendDoNotTrackHTTPHeader -bool true
+
+# Update extensions automatically
+# CURRENT: not set
+# RECOMMEND: Yes - security updates
+# REVERT: defaults delete com.apple.Safari InstallExtensionUpdatesAutomatically
+defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
+
+###############################################################################
+# Mail                                                                        #
+###############################################################################
+
+# Disable send and reply animations in Mail.app
+# CURRENT: not set
+# RECOMMEND: Maybe - minor speed improvement
+# REVERT: defaults delete com.apple.mail DisableReplyAnimations; defaults delete com.apple.mail DisableSendAnimations
+#defaults write com.apple.mail DisableReplyAnimations -bool true
+#defaults write com.apple.mail DisableSendAnimations -bool true
+
+# Copy email addresses as `foo@example.com` instead of `Foo Bar <foo@example.com>` in Mail.app
+# CURRENT: not set (includes name)
+# RECOMMEND: Yes - cleaner for pasting into code/configs
+# REVERT: defaults delete com.apple.mail AddressesIncludeNameOnPasteboard
+defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+
+# Add the keyboard shortcut ⌘ + Enter to send an email in Mail.app
+# CURRENT: not set
+# RECOMMEND: Yes - common shortcut in other mail clients
+# REVERT: defaults delete com.apple.mail NSUserKeyEquivalents
+defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
+
+# Display emails in threaded mode, sorted by date (oldest at the top)
+# CURRENT: N/A
+# RECOMMEND: Personal preference
+# REVERT: defaults delete com.apple.mail DraftsViewerAttributes
+#defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
+#defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
+#defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
+
+# Disable inline attachments (just show the icons)
+# CURRENT: not set (inline enabled)
+# RECOMMEND: Maybe - icons can be cleaner
+# REVERT: defaults delete com.apple.mail DisableInlineAttachmentViewing
+#defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
+
+# Disable automatic spell checking
+# CURRENT: InlineSpellCheckingEnabled
+# RECOMMEND: No - spell checking is useful for emails
+# REVERT: defaults write com.apple.mail SpellCheckingBehavior -string "InlineSpellCheckingEnabled"
+#defaults write com.apple.mail SpellCheckingBehavior -string "NoSpellCheckingEnabled"
+
+###############################################################################
+# Spotlight                                                                   #
+###############################################################################
+
+# Note: Spotlight configuration is complex and may conflict with Raycast
+# CURRENT: Not modified
+# RECOMMEND: Skip if using Raycast as primary launcher
+
+# Disable Spotlight indexing for any volume that gets mounted and has not yet been indexed before
+# CURRENT: N/A
+# RECOMMEND: Yes - prevents indexing of external drives
+# REVERT: sudo defaults delete /.Spotlight-V100/VolumeConfiguration Exclusions
+#sudo defaults write /.Spotlight-V100/VolumeConfiguration Exclusions -array "/Volumes"
+
+# Change indexing order and disable some search results
+# CURRENT: not set
+# RECOMMEND: Maybe - customize based on what you search for
+# REVERT: defaults delete com.apple.spotlight orderedItems
+#defaults write com.apple.spotlight orderedItems -array \
+#	'{"enabled" = 1;"name" = "APPLICATIONS";}' \
+#	'{"enabled" = 1;"name" = "SYSTEM_PREFS";}' \
+#	'{"enabled" = 1;"name" = "DIRECTORIES";}' \
+#	'{"enabled" = 1;"name" = "PDF";}' \
+#	'{"enabled" = 1;"name" = "FONTS";}' \
+#	'{"enabled" = 0;"name" = "DOCUMENTS";}' \
+#	'{"enabled" = 0;"name" = "MESSAGES";}' \
+#	'{"enabled" = 0;"name" = "CONTACT";}' \
+#	'{"enabled" = 0;"name" = "EVENT_TODO";}' \
+#	'{"enabled" = 0;"name" = "IMAGES";}' \
+#	'{"enabled" = 0;"name" = "BOOKMARKS";}' \
+#	'{"enabled" = 0;"name" = "MUSIC";}' \
+#	'{"enabled" = 0;"name" = "MOVIES";}' \
+#	'{"enabled" = 0;"name" = "PRESENTATIONS";}' \
+#	'{"enabled" = 0;"name" = "SPREADSHEETS";}' \
+#	'{"enabled" = 0;"name" = "SOURCE";}' \
+#	'{"enabled" = 0;"name" = "MENU_DEFINITION";}' \
+#	'{"enabled" = 0;"name" = "MENU_OTHER";}' \
+#	'{"enabled" = 0;"name" = "MENU_CONVERSION";}' \
+#	'{"enabled" = 0;"name" = "MENU_EXPRESSION";}' \
+#	'{"enabled" = 0;"name" = "MENU_WEBSEARCH";}' \
+#	'{"enabled" = 0;"name" = "MENU_SPOTLIGHT_SUGGESTIONS";}'
+
+###############################################################################
+# Terminal & iTerm 2                                                          #
+###############################################################################
+
+# Only use UTF-8 in Terminal.app
+# CURRENT: not set
+# RECOMMEND: Yes - UTF-8 is standard
+# REVERT: defaults delete com.apple.terminal StringEncodings
+defaults write com.apple.terminal StringEncodings -array 4
+
+# Enable Secure Keyboard Entry in Terminal.app
+# CURRENT: 0 (disabled)
+# RECOMMEND: Yes - security improvement
+# REVERT: defaults write com.apple.terminal SecureKeyboardEntry -bool false
+# See: https://security.stackexchange.com/a/47786/8918
+defaults write com.apple.terminal SecureKeyboardEntry -bool true
+
+# Disable the annoying line marks
+# CURRENT: not set
+# RECOMMEND: Yes - cleaner terminal appearance
+# REVERT: defaults delete com.apple.Terminal ShowLineMarks
+defaults write com.apple.Terminal ShowLineMarks -int 0
+
+# Don't display the annoying prompt when quitting iTerm
+# CURRENT: not set
+# RECOMMEND: Yes - faster quitting
+# REVERT: defaults delete com.googlecode.iterm2 PromptOnQuit
+defaults write com.googlecode.iterm2 PromptOnQuit -bool false
+
+###############################################################################
+# Time Machine                                                                #
+###############################################################################
+
+# Prevent Time Machine from prompting to use new hard drives as backup volume
+# CURRENT: not set
+# RECOMMEND: Yes - prevents annoying dialogs when connecting drives
+# REVERT: defaults delete com.apple.TimeMachine DoNotOfferNewDisksForBackup
+defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
+
+# Disable local Time Machine backups
+# CURRENT: N/A (tmutil)
+# RECOMMEND: No - local backups are useful protection
+# REVERT: hash tmutil &> /dev/null && sudo tmutil enablelocal
+# hash tmutil &> /dev/null && sudo tmutil disablelocal
+
+###############################################################################
+# Activity Monitor                                                            #
+###############################################################################
+
+# Show the main window when launching Activity Monitor
+# CURRENT: 0 (doesn't auto-show)
+# RECOMMEND: Yes - want to see the window when launching
+# REVERT: defaults write com.apple.ActivityMonitor OpenMainWindow -bool false
+defaults write com.apple.ActivityMonitor OpenMainWindow -bool true
+
+# Visualize CPU usage in the Activity Monitor Dock icon
+# CURRENT: not set (default icon)
+# RECOMMEND: Yes - useful at-a-glance CPU monitoring
+# REVERT: defaults delete com.apple.ActivityMonitor IconType
+defaults write com.apple.ActivityMonitor IconType -int 5
+
+# Show all processes in Activity Monitor
+# CURRENT: 100 (all processes hierarchically)
+# RECOMMEND: Yes - see all processes, not just user
+# REVERT: defaults write com.apple.ActivityMonitor ShowCategory -int 100
+defaults write com.apple.ActivityMonitor ShowCategory -int 0
+
+# Sort Activity Monitor results by CPU usage
+# CURRENT: not set
+# RECOMMEND: Yes - most useful default sort
+# REVERT: defaults delete com.apple.ActivityMonitor SortColumn; defaults delete com.apple.ActivityMonitor SortDirection
+# defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
+# defaults write com.apple.ActivityMonitor SortDirection -int 0
+
+###############################################################################
+# Address Book, Dashboard, iCal, TextEdit, and Disk Utility                   #
+###############################################################################
+
+# Enable the debug menu in Address Book
+# CURRENT: not set
+# RECOMMEND: Maybe - only useful for troubleshooting
+# REVERT: defaults delete com.apple.addressbook ABShowDebugMenu
+#defaults write com.apple.addressbook ABShowDebugMenu -bool true
+
+# Enable Dashboard dev mode (allows keeping widgets on the desktop)
+# CURRENT: not set
+# RECOMMEND: N/A - Dashboard removed in Catalina and later
+# REVERT: defaults delete com.apple.dashboard devmode
+#defaults write com.apple.dashboard devmode -bool true
+
+# Enable the debug menu in iCal (pre-10.8)
+# CURRENT: not set
+# RECOMMEND: Skip - very old setting
+# REVERT: defaults delete com.apple.iCal IncludeDebugMenu
+#defaults write com.apple.iCal IncludeDebugMenu -bool true
+
+# Use plain text mode for new TextEdit documents
+# CURRENT: not set (rich text)
+# RECOMMEND: Yes - developers usually want plain text
+# REVERT: defaults delete com.apple.TextEdit RichText
+defaults write com.apple.TextEdit RichText -int 0
+
+# Open and save files as UTF-8 in TextEdit
+# CURRENT: not set
+# RECOMMEND: Yes - UTF-8 is standard
+# REVERT: defaults delete com.apple.TextEdit PlainTextEncoding; defaults delete com.apple.TextEdit PlainTextEncodingForWrite
+defaults write com.apple.TextEdit PlainTextEncoding -int 4
+defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+# Enable the debug menu in Disk Utility
+# CURRENT: not set
+# RECOMMEND: Maybe - only useful for advanced disk operations
+# REVERT: defaults delete com.apple.DiskUtility DUDebugMenuEnabled; defaults delete com.apple.DiskUtility advanced-image-options
+#defaults write com.apple.DiskUtility DUDebugMenuEnabled -bool true
+#defaults write com.apple.DiskUtility advanced-image-options -bool true
+
+# Auto-play videos when opened with QuickTime Player
+# CURRENT: not set
+# RECOMMEND: Maybe - personal preference
+# REVERT: defaults delete com.apple.QuickTimePlayerX MGPlayMovieOnOpen
+#defaults write com.apple.QuickTimePlayerX MGPlayMovieOnOpen -bool true
+
+###############################################################################
+# Mac App Store                                                               #
+###############################################################################
+
+# Enable the WebKit Developer Tools in the Mac App Store
+# CURRENT: not set
+# RECOMMEND: Maybe - only useful for App Store debugging
+# REVERT: defaults delete com.apple.appstore WebKitDeveloperExtras
+#defaults write com.apple.appstore WebKitDeveloperExtras -bool true
+
+# Enable Debug Menu in the Mac App Store
+# CURRENT: not set
+# RECOMMEND: Maybe - only useful for App Store debugging
+# REVERT: defaults delete com.apple.appstore ShowDebugMenu
+#defaults write com.apple.appstore ShowDebugMenu -bool true
+
+# Enable the automatic update check
+# CURRENT: not set (enabled by default)
+# RECOMMEND: Yes - security
+# REVERT: defaults delete com.apple.SoftwareUpdate AutomaticCheckEnabled
+defaults write com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+
+# Check for software updates daily, not just once per week
+# CURRENT: not set (weekly)
+# RECOMMEND: Yes - get updates faster
+# REVERT: defaults delete com.apple.SoftwareUpdate ScheduleFrequency
+defaults write com.apple.SoftwareUpdate ScheduleFrequency -int 1
+
+# Download newly available updates in background
+# CURRENT: not set
+# RECOMMEND: Yes - ready when you want to install
+# REVERT: defaults delete com.apple.SoftwareUpdate AutomaticDownload
+defaults write com.apple.SoftwareUpdate AutomaticDownload -int 1
+
+# Install System data files & security updates
+# CURRENT: not set
+# RECOMMEND: Yes - security
+# REVERT: defaults delete com.apple.SoftwareUpdate CriticalUpdateInstall
+defaults write com.apple.SoftwareUpdate CriticalUpdateInstall -int 1
+
+# Automatically download apps purchased on other Macs
+# CURRENT: not set
+# RECOMMEND: Maybe - depends if you want auto-sync
+# REVERT: defaults delete com.apple.SoftwareUpdate ConfigDataInstall
+#defaults write com.apple.SoftwareUpdate ConfigDataInstall -int 1
+
+# Turn on app auto-update
+# CURRENT: not set
+# RECOMMEND: Yes - security and convenience
+# REVERT: defaults delete com.apple.commerce AutoUpdate
+defaults write com.apple.commerce AutoUpdate -bool true
+
+# Allow the App Store to reboot machine on macOS updates
+# CURRENT: not set
+# RECOMMEND: Maybe - convenient but can be disruptive
+# REVERT: defaults delete com.apple.commerce AutoUpdateRestartRequired
+#defaults write com.apple.commerce AutoUpdateRestartRequired -bool true
+
+###############################################################################
+# Photos                                                                      #
+###############################################################################
+
+# Prevent Photos from opening automatically when devices are plugged in
+# CURRENT: not set
+# RECOMMEND: Yes - prevents interruption when connecting iPhone/camera
+# REVERT: defaults -currentHost delete com.apple.ImageCapture disableHotPlug
+defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
+
+###############################################################################
+# Messages                                                                    #
+###############################################################################
+
+# Disable automatic emoji substitution (i.e. use plain text smileys)
+# CURRENT: not set
+# RECOMMEND: Maybe - keeps :) as text instead of emoji
+# REVERT: defaults delete com.apple.messageshelper.MessageController SOInputLineSettings
+#defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticEmojiSubstitutionEnablediMessage" -bool false
+
+# Disable smart quotes as it's annoying for messages that contain code
+# CURRENT: not set
+# RECOMMEND: Yes - straight quotes for code snippets
+# REVERT: defaults delete com.apple.messageshelper.MessageController SOInputLineSettings
+defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticQuoteSubstitutionEnabled" -bool false
+
+# Disable continuous spell checking
+# CURRENT: not set
+# RECOMMEND: No - spell checking is useful for messages
+# REVERT: defaults delete com.apple.messageshelper.MessageController SOInputLineSettings
+#defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "continuousSpellCheckingEnabled" -bool false
+
+###############################################################################
+# Google Chrome & Google Chrome Canary                                        #
+###############################################################################
+
+# Disable the all too sensitive backswipe on trackpads
+# CURRENT: not set
+# RECOMMEND: Yes - prevents accidental back navigation
+# REVERT: defaults delete com.google.Chrome AppleEnableSwipeNavigateWithScrolls; defaults delete com.google.Chrome.canary AppleEnableSwipeNavigateWithScrolls
+defaults write com.google.Chrome AppleEnableSwipeNavigateWithScrolls -bool false
+defaults write com.google.Chrome.canary AppleEnableSwipeNavigateWithScrolls -bool false
+
+# Disable the all too sensitive backswipe on Magic Mouse
+# CURRENT: not set
+# RECOMMEND: Yes - prevents accidental back navigation
+# REVERT: defaults delete com.google.Chrome AppleEnableMouseSwipeNavigateWithScrolls; defaults delete com.google.Chrome.canary AppleEnableMouseSwipeNavigateWithScrolls
+defaults write com.google.Chrome AppleEnableMouseSwipeNavigateWithScrolls -bool false
+defaults write com.google.Chrome.canary AppleEnableMouseSwipeNavigateWithScrolls -bool false
+
+# Use the system-native print preview dialog
+# CURRENT: not set (Chrome's dialog)
+# RECOMMEND: Maybe - system dialog is more consistent
+# REVERT: defaults delete com.google.Chrome DisablePrintPreview; defaults delete com.google.Chrome.canary DisablePrintPreview
+#defaults write com.google.Chrome DisablePrintPreview -bool true
+#defaults write com.google.Chrome.canary DisablePrintPreview -bool true
+
+# Expand the print dialog by default
+# CURRENT: not set
+# RECOMMEND: Yes - show all print options
+# REVERT: defaults delete com.google.Chrome PMPrintingExpandedStateForPrint2; defaults delete com.google.Chrome.canary PMPrintingExpandedStateForPrint2
+defaults write com.google.Chrome PMPrintingExpandedStateForPrint2 -bool true
+defaults write com.google.Chrome.canary PMPrintingExpandedStateForPrint2 -bool true
+
+###############################################################################
+# Kill affected applications                                                  #
+###############################################################################
+
+# Note: Uncomment this section when you enable the script
+# This will restart the affected applications to apply changes
+
+#for app in "Activity Monitor" \
+#	"Address Book" \
+#	"Calendar" \
+#	"cfprefsd" \
+#	"Contacts" \
+#	"Dock" \
+#	"Finder" \
+#	"Google Chrome Canary" \
+#	"Google Chrome" \
+#	"Mail" \
+#	"Messages" \
+#	"Photos" \
+#	"Safari" \
+#	"SystemUIServer" \
+#	"Terminal" \
+#	"iCal"; do
+#	killall "${app}" &> /dev/null
+#done
+
+echo "Done. Note that some of these changes require a logout/restart to take effect."
+{{ end }}
