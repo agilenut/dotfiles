@@ -1,16 +1,27 @@
 # Import More Configuration
 
-## Goal
+## Goals
 
-1. Scan the ~/ home folder looking for any common environment configuration files. Include XDG and other common tool folders or file paths. Iignore mac folders like Documents, Downloads, etc.
-2. Find any files that are not in the optimum XDG locations. Propose a plan to move them there. Include any new environment variables needed.The arch linux wiki has a very good site that describes common tool setups to meet XDG ([text](https://wiki.archlinux.org/title/XDG_Base_Directory)).
-3. Find any configuration that belongs in the dotfiles repo but is not present. Create a plan that combines changes from step 2 and 3 so that the environment files can be added to the repo and restructured to fit best practices.
-4. As a final step, look for any installed packages using tools that should have been installed differently (e.g. npm instead of npx; pip instead of pip instead of pipx; downloaded instead of brewed).
+1. **Scan** `~/` for shell and app configs. Skip macOS folders (Documents, Downloads, etc.).
+2. **XDG compliance**: Move configs to XDG locations where supported. Add required env vars. Flag unsupported tools. Reference: <https://wiki.archlinux.org/title/XDG_Base_Directory>
+3. **Repo integration**: Add configs to dotfiles repo. Combine with XDG moves into unified migration plan.
+4. **Package audit**: Find packages installed suboptimally (npm globals → npx, pip → pipx, downloads → Homebrew). Include migration steps.
+
+## Known Items
+
+- qlmarkdown, karabiner, raycast, .ssh (maybe)
+- `~/npm` - misplaced
+- `~/vscode` - misplaced, has good user config
+- `~/.aspnet` - misplaced, unclear how to prevent recreation
+- pipx already installed
 
 ## Approach
 
-Use /note along the way to write out progress so that separate claude sessions can resume.
+- Use `/notes` to persist progress across sessions
+- Iterate in small batches: migrate → chezmoi apply → manual verification
+- Don't break working setups; flag unsupported XDG moves
 
 ## Output
 
-Ask questions iterative and as needed. Present the plan and be ready to show steps to move things iteratively. Tests will be needed for each config change.
+- Ask questions as needed
+- Present incremental, testable migration steps
