@@ -239,13 +239,6 @@ defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 # DECISION: No
 # defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
 
-# Increase sound quality for Bluetooth headphones/headsets
-# CURRENT: not set
-# RECOMMEND: Yes - better audio quality for Bluetooth headphones
-# REVERT: defaults delete com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)"
-# DECISION: Yes
-defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
-
 # Enable full keyboard access for all controls
 # CURRENT: 1 (text boxes and lists only)
 # RECOMMEND: Yes - Tab through all controls is essential for keyboard-driven workflow
@@ -401,20 +394,6 @@ defaults write com.apple.screencapture type -string "png"
 # REVERT: defaults delete com.apple.screencapture disable-shadow
 # DECISION: Yes
 defaults write com.apple.screencapture disable-shadow -bool true
-
-# Enable subpixel font rendering on non-Apple LCDs
-# CURRENT: not set
-# RECOMMEND: Maybe - only relevant for external non-Retina displays
-# REVERT: defaults delete NSGlobalDomain AppleFontSmoothing
-# DECISION: Yes
-defaults write NSGlobalDomain AppleFontSmoothing -int 1
-
-# Enable HiDPI display modes (requires restart)
-# CURRENT: N/A
-# RECOMMEND: Yes - enables more resolution options for external displays
-# REVERT: sudo defaults delete /Library/Preferences/com.apple.windowserver DisplayResolutionEnabled
-# DECISION: Yes
-sudo defaults write /Library/Preferences/com.apple.windowserver DisplayResolutionEnabled -bool true
 
 ###############################################################################
 # Finder                                                                      #
@@ -602,13 +581,6 @@ defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 # DECSION: Yes
 defaults write com.apple.finder WarnOnEmptyTrash -bool false
 
-# Enable AirDrop over Ethernet and on unsupported Macs running Lion
-# CURRENT: not set
-# RECOMMEND: Yes - more AirDrop compatibility
-# REVERT: defaults delete com.apple.NetworkBrowser BrowseAllInterfaces
-# DECSION: No
-# defaults write com.apple.NetworkBrowser BrowseAllInterfaces -bool true
-
 # Show the ~/Library folder
 # CURRENT: hidden
 # RECOMMEND: Yes - developers frequently need access to Library
@@ -626,9 +598,9 @@ sudo chflags nohidden /Volumes
 # Expand the following File Info panes:
 # "General", "Open with", and "Sharing & Permissions"
 # CURRENT: N/A
-# RECOMMEND: Yes - commonly used panels
+# RECOMMEND: Maybe - test to verify it works
 # REVERT: defaults delete com.apple.finder FXInfoPanesExpanded
-# DECSION: Yes
+# DECISION: Yes
 defaults write com.apple.finder FXInfoPanesExpanded -dict \
   General -bool true \
   OpenWith -bool true \
@@ -637,13 +609,6 @@ defaults write com.apple.finder FXInfoPanesExpanded -dict \
 ###############################################################################
 # Dock and hot corners                                                        #
 ###############################################################################
-
-# Enable highlight hover effect for the grid view of a stack (Dock)
-# CURRENT: not set
-# RECOMMEND: Yes - visual feedback when hovering
-# REVERT: defaults delete com.apple.dock mouse-over-hilite-stack
-# DECISION: No
-# defaults write com.apple.dock mouse-over-hilite-stack -bool true
 
 # Set the icon size of Dock items to 36 pixels
 # CURRENT: 48
@@ -854,20 +819,6 @@ defaults write com.apple.Safari AutoOpenSafeDownloads -bool false
 # DECISION: No
 #defaults write com.apple.Safari ShowFavoritesBar -bool false
 
-# Hide Safari's sidebar in Top Sites
-# CURRENT: 0 (hidden) - already set
-# RECOMMEND: Already matches
-# REVERT: defaults write com.apple.Safari ShowSidebarInTopSites -bool false
-# DECISION: Yes
-defaults write com.apple.Safari ShowSidebarInTopSites -bool false
-
-# Disable Safari's thumbnail cache for History and Top Sites
-# CURRENT: not set
-# RECOMMEND: Maybe - saves disk space
-# REVERT: defaults delete com.apple.Safari DebugSnapshotsUpdatePolicy
-# DECISION: No
-#defaults write com.apple.Safari DebugSnapshotsUpdatePolicy -int 2
-
 # Enable Safari's debug menu
 # CURRENT: not set
 # RECOMMEND: Yes - useful for development
@@ -881,12 +832,6 @@ defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
 # REVERT: defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
 # DECISION: Yes
 defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
-
-# Remove useless icons from Safari's bookmarks bar
-# CURRENT: N/A
-# RECOMMEND: Maybe
-# REVERT: defaults delete com.apple.Safari ProxiesInBookmarksBar
-#defaults write com.apple.Safari ProxiesInBookmarksBar "()"
 
 # Enable the Develop menu and the Web Inspector in Safari
 # CURRENT: IncludeDevelopMenu=1, WebKitDeveloperExtrasEnabledPreferenceKey=1 - already set
@@ -928,21 +873,6 @@ defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
 # RECOMMEND: Yes - security
 # REVERT: defaults delete com.apple.Safari WarnAboutFraudulentWebsites
 defaults write com.apple.Safari WarnAboutFraudulentWebsites -bool true
-
-# Disable plug-ins
-# CURRENT: not set
-# RECOMMEND: Yes - plug-ins are legacy and security risk
-# REVERT: defaults delete com.apple.Safari WebKitPluginsEnabled; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2PluginsEnabled
-defaults write com.apple.Safari WebKitPluginsEnabled -bool false
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2PluginsEnabled -bool false
-
-# Disable Java
-# CURRENT: not set
-# RECOMMEND: Yes - Java in browser is a security risk
-# REVERT: defaults delete com.apple.Safari WebKitJavaEnabled; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles
-defaults write com.apple.Safari WebKitJavaEnabled -bool false
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled -bool false
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles -bool false
 
 # Block pop-up windows
 # CURRENT: not set
@@ -1007,48 +937,6 @@ defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
 #defaults write com.apple.mail SpellCheckingBehavior -string "NoSpellCheckingEnabled"
 
 ###############################################################################
-# Spotlight                                                                   #
-###############################################################################
-
-# Note: Spotlight configuration is complex and may conflict with Raycast
-# CURRENT: Not modified
-# RECOMMEND: Skip if using Raycast as primary launcher
-
-# Disable Spotlight indexing for any volume that gets mounted and has not yet been indexed before
-# CURRENT: N/A
-# RECOMMEND: Yes - prevents indexing of external drives
-# REVERT: sudo defaults delete /.Spotlight-V100/VolumeConfiguration Exclusions
-#sudo defaults write /.Spotlight-V100/VolumeConfiguration Exclusions -array "/Volumes"
-
-# Change indexing order and disable some search results
-# CURRENT: not set
-# RECOMMEND: Maybe - customize based on what you search for
-# REVERT: defaults delete com.apple.spotlight orderedItems
-#defaults write com.apple.spotlight orderedItems -array \
-#	'{"enabled" = 1;"name" = "APPLICATIONS";}' \
-#	'{"enabled" = 1;"name" = "SYSTEM_PREFS";}' \
-#	'{"enabled" = 1;"name" = "DIRECTORIES";}' \
-#	'{"enabled" = 1;"name" = "PDF";}' \
-#	'{"enabled" = 1;"name" = "FONTS";}' \
-#	'{"enabled" = 0;"name" = "DOCUMENTS";}' \
-#	'{"enabled" = 0;"name" = "MESSAGES";}' \
-#	'{"enabled" = 0;"name" = "CONTACT";}' \
-#	'{"enabled" = 0;"name" = "EVENT_TODO";}' \
-#	'{"enabled" = 0;"name" = "IMAGES";}' \
-#	'{"enabled" = 0;"name" = "BOOKMARKS";}' \
-#	'{"enabled" = 0;"name" = "MUSIC";}' \
-#	'{"enabled" = 0;"name" = "MOVIES";}' \
-#	'{"enabled" = 0;"name" = "PRESENTATIONS";}' \
-#	'{"enabled" = 0;"name" = "SPREADSHEETS";}' \
-#	'{"enabled" = 0;"name" = "SOURCE";}' \
-#	'{"enabled" = 0;"name" = "MENU_DEFINITION";}' \
-#	'{"enabled" = 0;"name" = "MENU_OTHER";}' \
-#	'{"enabled" = 0;"name" = "MENU_CONVERSION";}' \
-#	'{"enabled" = 0;"name" = "MENU_EXPRESSION";}' \
-#	'{"enabled" = 0;"name" = "MENU_WEBSEARCH";}' \
-#	'{"enabled" = 0;"name" = "MENU_SPOTLIGHT_SUGGESTIONS";}'
-
-###############################################################################
 # Terminal & iTerm 2                                                          #
 ###############################################################################
 
@@ -1086,12 +974,6 @@ defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 # RECOMMEND: Yes - prevents annoying dialogs when connecting drives
 # REVERT: defaults delete com.apple.TimeMachine DoNotOfferNewDisksForBackup
 defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
-
-# Disable local Time Machine backups
-# CURRENT: N/A (tmutil)
-# RECOMMEND: No - local backups are useful protection
-# REVERT: hash tmutil &> /dev/null && sudo tmutil enablelocal
-# hash tmutil &> /dev/null && sudo tmutil disablelocal
 
 ###############################################################################
 # Activity Monitor                                                            #
@@ -1131,18 +1013,6 @@ defaults write com.apple.ActivityMonitor ShowCategory -int 0
 # RECOMMEND: Maybe - only useful for troubleshooting
 # REVERT: defaults delete com.apple.addressbook ABShowDebugMenu
 #defaults write com.apple.addressbook ABShowDebugMenu -bool true
-
-# Enable Dashboard dev mode (allows keeping widgets on the desktop)
-# CURRENT: not set
-# RECOMMEND: N/A - Dashboard removed in Catalina and later
-# REVERT: defaults delete com.apple.dashboard devmode
-#defaults write com.apple.dashboard devmode -bool true
-
-# Enable the debug menu in iCal (pre-10.8)
-# CURRENT: not set
-# RECOMMEND: Skip - very old setting
-# REVERT: defaults delete com.apple.iCal IncludeDebugMenu
-#defaults write com.apple.iCal IncludeDebugMenu -bool true
 
 # Use plain text mode for new TextEdit documents
 # CURRENT: not set (rich text)
@@ -1242,23 +1112,13 @@ defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 # Messages                                                                    #
 ###############################################################################
 
-# Disable automatic emoji substitution (i.e. use plain text smileys)
-# CURRENT: not set
-# RECOMMEND: Maybe - keeps :) as text instead of emoji
-# REVERT: defaults delete com.apple.messageshelper.MessageController SOInputLineSettings
-#defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticEmojiSubstitutionEnablediMessage" -bool false
-
-# Disable smart quotes as it's annoying for messages that contain code
-# CURRENT: not set
-# RECOMMEND: Yes - straight quotes for code snippets
-# REVERT: defaults delete com.apple.messageshelper.MessageController SOInputLineSettings
-defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticQuoteSubstitutionEnabled" -bool false
-
-# Disable continuous spell checking
-# CURRENT: not set
-# RECOMMEND: No - spell checking is useful for messages
-# REVERT: defaults delete com.apple.messageshelper.MessageController SOInputLineSettings
-#defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "continuousSpellCheckingEnabled" -bool false
+# Messages settings via SOInputLineSettings
+# DEPRECATED: These settings are unreliable on modern macOS. The Messages app
+# now uses different preference keys and these changes often don't persist.
+# Use Messages → Settings → General for these options instead.
+# defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticEmojiSubstitutionEnablediMessage" -bool false
+# defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticQuoteSubstitutionEnabled" -bool false
+# defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "continuousSpellCheckingEnabled" -bool false
 
 ###############################################################################
 # Google Chrome & Google Chrome Canary                                        #
