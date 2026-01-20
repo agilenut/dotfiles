@@ -1,0 +1,9 @@
+/*
+  This file provides customizations to the qlmarkdown quicklook plugin
+  See: https://github.com/sbarex/QLMarkdown
+*/
+
+/* Hide the donation footer */
+body > :last-child > :last-child {
+  display: none !important;
+}

@@ -3,21 +3,23 @@
 
 # macOS-specific files - ignore on non-macOS
 {{ if ne .chezmoi.os "darwin" }}
-.config/zsh/shell/macos.zsh
+.claude/
+.config/alacritty/
+.config/karabiner/
+.config/qlmarkdown/
+.config/syntax-highlight/
+.config/zsh/zshrc.d/macos.zsh
 .hushlogin
 {{ end }}
 
-# Alacritty - only on macOS (GUI terminal)
-{{ if ne .chezmoi.os "darwin" }}
-.config/alacritty/
-{{ end }}
 
-# ZSH-specific - ignore on Windows (no native zsh)
+# Windows-specific ignores
 {{ if eq .chezmoi.os "windows" }}
+# No native zsh
 .zshenv
 .config/zsh/
-.local/bin/is-macos
+.local/bin/fzf-preview
 .local/bin/is-completion-fzf
 .local/bin/is-completion-zsh
-.local/bin/fzf-preview
+.local/bin/is-macos
 {{ end }}

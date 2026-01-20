@@ -61,6 +61,14 @@ brew_install git-ignore
 # Dotfiles management
 brew_install chezmoi
 
+# GUI apps (casks)
+if ! brew list --cask visual-studio-code &>/dev/null; then
+  echo "Installing Visual Studio Code..."
+  brew install --cask visual-studio-code
+else
+  echo "visual-studio-code is already installed"
+fi
+
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install
 
