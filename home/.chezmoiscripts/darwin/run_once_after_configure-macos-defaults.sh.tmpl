@@ -837,6 +837,7 @@ defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
 # CURRENT: IncludeDevelopMenu=1, WebKitDeveloperExtrasEnabledPreferenceKey=1 - already set
 # RECOMMEND: Already matches
 # REVERT: defaults write com.apple.Safari IncludeDevelopMenu -bool true (already your setting)
+# DECISION: Yes
 defaults write com.apple.Safari IncludeDevelopMenu -bool true
 defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
 defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
@@ -845,24 +846,28 @@ defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebK
 # CURRENT: not set
 # RECOMMEND: Yes - useful for development
 # REVERT: defaults delete NSGlobalDomain WebKitDeveloperExtras
+# DECISION: Yes
 defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
 
 # Enable continuous spellchecking
 # CURRENT: not set
 # RECOMMEND: Yes - catch typos
 # REVERT: defaults delete com.apple.Safari WebContinuousSpellCheckingEnabled
+# DECISION: Yes
 defaults write com.apple.Safari WebContinuousSpellCheckingEnabled -bool true
 
 # Disable auto-correct
 # CURRENT: not set
 # RECOMMEND: Yes - auto-correct can be annoying
 # REVERT: defaults delete com.apple.Safari WebAutomaticSpellingCorrectionEnabled
+# DECISION: Yes
 defaults write com.apple.Safari WebAutomaticSpellingCorrectionEnabled -bool false
 
 # Disable AutoFill
 # CURRENT: AutoFillFromAddressBook=0, AutoFillPasswords=0, AutoFillCreditCardData=0, AutoFillMiscellaneousForms=0 - already disabled
 # RECOMMEND: Already matches - use a password manager instead
 # REVERT: defaults write com.apple.Safari AutoFillFromAddressBook -bool false (already your setting)
+# DECISION: Yes
 defaults write com.apple.Safari AutoFillFromAddressBook -bool false
 defaults write com.apple.Safari AutoFillPasswords -bool false
 defaults write com.apple.Safari AutoFillCreditCardData -bool false
@@ -872,12 +877,14 @@ defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
 # CURRENT: not set (enabled by default)
 # RECOMMEND: Yes - security
 # REVERT: defaults delete com.apple.Safari WarnAboutFraudulentWebsites
+# DECISION: Yes
 defaults write com.apple.Safari WarnAboutFraudulentWebsites -bool true
 
 # Block pop-up windows
 # CURRENT: not set
 # RECOMMEND: Yes - block annoying popups
 # REVERT: defaults delete com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptCanOpenWindowsAutomatically
+# DECISION: Yes
 defaults write com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically -bool false
 defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptCanOpenWindowsAutomatically -bool false
 
@@ -885,12 +892,14 @@ defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebK
 # CURRENT: not set
 # RECOMMEND: Maybe - many sites ignore it, but signals privacy preference
 # REVERT: defaults delete com.apple.Safari SendDoNotTrackHTTPHeader
+# DECISION: No
 defaults write com.apple.Safari SendDoNotTrackHTTPHeader -bool true
 
 # Update extensions automatically
 # CURRENT: not set
 # RECOMMEND: Yes - security updates
 # REVERT: defaults delete com.apple.Safari InstallExtensionUpdatesAutomatically
+# DECISION: Yes
 defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
 
 ###############################################################################
@@ -901,6 +910,7 @@ defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
 # CURRENT: not set
 # RECOMMEND: Maybe - minor speed improvement
 # REVERT: defaults delete com.apple.mail DisableReplyAnimations; defaults delete com.apple.mail DisableSendAnimations
+# DECISION: No
 #defaults write com.apple.mail DisableReplyAnimations -bool true
 #defaults write com.apple.mail DisableSendAnimations -bool true
 
@@ -908,32 +918,37 @@ defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
 # CURRENT: not set (includes name)
 # RECOMMEND: Yes - cleaner for pasting into code/configs
 # REVERT: defaults delete com.apple.mail AddressesIncludeNameOnPasteboard
+# DECISION: Yes
 defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
 
 # Add the keyboard shortcut ⌘ + Enter to send an email in Mail.app
 # CURRENT: not set
 # RECOMMEND: Yes - common shortcut in other mail clients
 # REVERT: defaults delete com.apple.mail NSUserKeyEquivalents
+# DECISION: Yes
 defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
 
 # Display emails in threaded mode, sorted by date (oldest at the top)
-# CURRENT: N/A
+# CURRENT: Matches
 # RECOMMEND: Personal preference
 # REVERT: defaults delete com.apple.mail DraftsViewerAttributes
-#defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
-#defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
-#defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
+# DECISION: Yes
+defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
+defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
+defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
 
 # Disable inline attachments (just show the icons)
 # CURRENT: not set (inline enabled)
 # RECOMMEND: Maybe - icons can be cleaner
 # REVERT: defaults delete com.apple.mail DisableInlineAttachmentViewing
+# DECISION: No
 #defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
 
 # Disable automatic spell checking
 # CURRENT: InlineSpellCheckingEnabled
 # RECOMMEND: No - spell checking is useful for emails
 # REVERT: defaults write com.apple.mail SpellCheckingBehavior -string "InlineSpellCheckingEnabled"
+# DECISION: No
 #defaults write com.apple.mail SpellCheckingBehavior -string "NoSpellCheckingEnabled"
 
 ###############################################################################
@@ -944,6 +959,7 @@ defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
 # CURRENT: not set
 # RECOMMEND: Yes - UTF-8 is standard
 # REVERT: defaults delete com.apple.terminal StringEncodings
+# DECISION: Yes
 defaults write com.apple.terminal StringEncodings -array 4
 
 # Enable Secure Keyboard Entry in Terminal.app
@@ -951,19 +967,15 @@ defaults write com.apple.terminal StringEncodings -array 4
 # RECOMMEND: Yes - security improvement
 # REVERT: defaults write com.apple.terminal SecureKeyboardEntry -bool false
 # See: https://security.stackexchange.com/a/47786/8918
+# DECISION: Yes
 defaults write com.apple.terminal SecureKeyboardEntry -bool true
 
 # Disable the annoying line marks
 # CURRENT: not set
 # RECOMMEND: Yes - cleaner terminal appearance
 # REVERT: defaults delete com.apple.Terminal ShowLineMarks
+# DECISION: Yes
 defaults write com.apple.Terminal ShowLineMarks -int 0
-
-# Don't display the annoying prompt when quitting iTerm
-# CURRENT: not set
-# RECOMMEND: Yes - faster quitting
-# REVERT: defaults delete com.googlecode.iterm2 PromptOnQuit
-defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 
 ###############################################################################
 # Time Machine                                                                #
@@ -973,57 +985,36 @@ defaults write com.googlecode.iterm2 PromptOnQuit -bool false
 # CURRENT: not set
 # RECOMMEND: Yes - prevents annoying dialogs when connecting drives
 # REVERT: defaults delete com.apple.TimeMachine DoNotOfferNewDisksForBackup
+# DECISION: Yes
 defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
 
 ###############################################################################
 # Activity Monitor                                                            #
 ###############################################################################
 
-# Show the main window when launching Activity Monitor
-# CURRENT: 0 (doesn't auto-show)
-# RECOMMEND: Yes - want to see the window when launching
-# REVERT: defaults write com.apple.ActivityMonitor OpenMainWindow -bool false
-defaults write com.apple.ActivityMonitor OpenMainWindow -bool true
-
-# Visualize CPU usage in the Activity Monitor Dock icon
-# CURRENT: not set (default icon)
-# RECOMMEND: Yes - useful at-a-glance CPU monitoring
-# REVERT: defaults delete com.apple.ActivityMonitor IconType
-defaults write com.apple.ActivityMonitor IconType -int 5
-
 # Show all processes in Activity Monitor
 # CURRENT: 100 (all processes hierarchically)
 # RECOMMEND: Yes - see all processes, not just user
 # REVERT: defaults write com.apple.ActivityMonitor ShowCategory -int 100
+# DECISION: Yes
 defaults write com.apple.ActivityMonitor ShowCategory -int 0
-
-# Sort Activity Monitor results by CPU usage
-# CURRENT: not set
-# RECOMMEND: Yes - most useful default sort
-# REVERT: defaults delete com.apple.ActivityMonitor SortColumn; defaults delete com.apple.ActivityMonitor SortDirection
-# defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
-# defaults write com.apple.ActivityMonitor SortDirection -int 0
 
 ###############################################################################
 # Address Book, Dashboard, iCal, TextEdit, and Disk Utility                   #
 ###############################################################################
 
-# Enable the debug menu in Address Book
-# CURRENT: not set
-# RECOMMEND: Maybe - only useful for troubleshooting
-# REVERT: defaults delete com.apple.addressbook ABShowDebugMenu
-#defaults write com.apple.addressbook ABShowDebugMenu -bool true
-
 # Use plain text mode for new TextEdit documents
 # CURRENT: not set (rich text)
 # RECOMMEND: Yes - developers usually want plain text
 # REVERT: defaults delete com.apple.TextEdit RichText
+# DECISION: Yes
 defaults write com.apple.TextEdit RichText -int 0
 
 # Open and save files as UTF-8 in TextEdit
 # CURRENT: not set
 # RECOMMEND: Yes - UTF-8 is standard
 # REVERT: defaults delete com.apple.TextEdit PlainTextEncoding; defaults delete com.apple.TextEdit PlainTextEncodingForWrite
+# DECISION: Yes
 defaults write com.apple.TextEdit PlainTextEncoding -int 4
 defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
 
@@ -1031,14 +1022,9 @@ defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
 # CURRENT: not set
 # RECOMMEND: Maybe - only useful for advanced disk operations
 # REVERT: defaults delete com.apple.DiskUtility DUDebugMenuEnabled; defaults delete com.apple.DiskUtility advanced-image-options
+# DECISION: No
 #defaults write com.apple.DiskUtility DUDebugMenuEnabled -bool true
 #defaults write com.apple.DiskUtility advanced-image-options -bool true
-
-# Auto-play videos when opened with QuickTime Player
-# CURRENT: not set
-# RECOMMEND: Maybe - personal preference
-# REVERT: defaults delete com.apple.QuickTimePlayerX MGPlayMovieOnOpen
-#defaults write com.apple.QuickTimePlayerX MGPlayMovieOnOpen -bool true
 
 ###############################################################################
 # Mac App Store                                                               #
@@ -1048,54 +1034,63 @@ defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
 # CURRENT: not set
 # RECOMMEND: Maybe - only useful for App Store debugging
 # REVERT: defaults delete com.apple.appstore WebKitDeveloperExtras
+# DECISION: No
 #defaults write com.apple.appstore WebKitDeveloperExtras -bool true
 
 # Enable Debug Menu in the Mac App Store
 # CURRENT: not set
 # RECOMMEND: Maybe - only useful for App Store debugging
 # REVERT: defaults delete com.apple.appstore ShowDebugMenu
+# DECISION: No
 #defaults write com.apple.appstore ShowDebugMenu -bool true
 
 # Enable the automatic update check
 # CURRENT: not set (enabled by default)
 # RECOMMEND: Yes - security
 # REVERT: defaults delete com.apple.SoftwareUpdate AutomaticCheckEnabled
+# DECISION: Yes
 defaults write com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
 
 # Check for software updates daily, not just once per week
 # CURRENT: not set (weekly)
 # RECOMMEND: Yes - get updates faster
 # REVERT: defaults delete com.apple.SoftwareUpdate ScheduleFrequency
-defaults write com.apple.SoftwareUpdate ScheduleFrequency -int 1
+# DECISION: No
+# defaults write com.apple.SoftwareUpdate ScheduleFrequency -int 1
 
 # Download newly available updates in background
 # CURRENT: not set
 # RECOMMEND: Yes - ready when you want to install
 # REVERT: defaults delete com.apple.SoftwareUpdate AutomaticDownload
+# DECISION: Yes
 defaults write com.apple.SoftwareUpdate AutomaticDownload -int 1
 
 # Install System data files & security updates
 # CURRENT: not set
 # RECOMMEND: Yes - security
 # REVERT: defaults delete com.apple.SoftwareUpdate CriticalUpdateInstall
+# DECISION: Yes
 defaults write com.apple.SoftwareUpdate CriticalUpdateInstall -int 1
 
 # Automatically download apps purchased on other Macs
 # CURRENT: not set
 # RECOMMEND: Maybe - depends if you want auto-sync
 # REVERT: defaults delete com.apple.SoftwareUpdate ConfigDataInstall
+# DECISION: No
 #defaults write com.apple.SoftwareUpdate ConfigDataInstall -int 1
 
 # Turn on app auto-update
 # CURRENT: not set
 # RECOMMEND: Yes - security and convenience
 # REVERT: defaults delete com.apple.commerce AutoUpdate
+# DECISION: Yes
 defaults write com.apple.commerce AutoUpdate -bool true
 
 # Allow the App Store to reboot machine on macOS updates
 # CURRENT: not set
 # RECOMMEND: Maybe - convenient but can be disruptive
 # REVERT: defaults delete com.apple.commerce AutoUpdateRestartRequired
+# DECISION: No
 #defaults write com.apple.commerce AutoUpdateRestartRequired -bool true
 
 ###############################################################################
@@ -1106,51 +1101,8 @@ defaults write com.apple.commerce AutoUpdate -bool true
 # CURRENT: not set
 # RECOMMEND: Yes - prevents interruption when connecting iPhone/camera
 # REVERT: defaults -currentHost delete com.apple.ImageCapture disableHotPlug
+# DECISION: Yes
 defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
-
-###############################################################################
-# Messages                                                                    #
-###############################################################################
-
-# Messages settings via SOInputLineSettings
-# DEPRECATED: These settings are unreliable on modern macOS. The Messages app
-# now uses different preference keys and these changes often don't persist.
-# Use Messages → Settings → General for these options instead.
-# defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticEmojiSubstitutionEnablediMessage" -bool false
-# defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "automaticQuoteSubstitutionEnabled" -bool false
-# defaults write com.apple.messageshelper.MessageController SOInputLineSettings -dict-add "continuousSpellCheckingEnabled" -bool false
-
-###############################################################################
-# Google Chrome & Google Chrome Canary                                        #
-###############################################################################
-
-# Disable the all too sensitive backswipe on trackpads
-# CURRENT: not set
-# RECOMMEND: Yes - prevents accidental back navigation
-# REVERT: defaults delete com.google.Chrome AppleEnableSwipeNavigateWithScrolls; defaults delete com.google.Chrome.canary AppleEnableSwipeNavigateWithScrolls
-defaults write com.google.Chrome AppleEnableSwipeNavigateWithScrolls -bool false
-defaults write com.google.Chrome.canary AppleEnableSwipeNavigateWithScrolls -bool false
-
-# Disable the all too sensitive backswipe on Magic Mouse
-# CURRENT: not set
-# RECOMMEND: Yes - prevents accidental back navigation
-# REVERT: defaults delete com.google.Chrome AppleEnableMouseSwipeNavigateWithScrolls; defaults delete com.google.Chrome.canary AppleEnableMouseSwipeNavigateWithScrolls
-defaults write com.google.Chrome AppleEnableMouseSwipeNavigateWithScrolls -bool false
-defaults write com.google.Chrome.canary AppleEnableMouseSwipeNavigateWithScrolls -bool false
-
-# Use the system-native print preview dialog
-# CURRENT: not set (Chrome's dialog)
-# RECOMMEND: Maybe - system dialog is more consistent
-# REVERT: defaults delete com.google.Chrome DisablePrintPreview; defaults delete com.google.Chrome.canary DisablePrintPreview
-#defaults write com.google.Chrome DisablePrintPreview -bool true
-#defaults write com.google.Chrome.canary DisablePrintPreview -bool true
-
-# Expand the print dialog by default
-# CURRENT: not set
-# RECOMMEND: Yes - show all print options
-# REVERT: defaults delete com.google.Chrome PMPrintingExpandedStateForPrint2; defaults delete com.google.Chrome.canary PMPrintingExpandedStateForPrint2
-defaults write com.google.Chrome PMPrintingExpandedStateForPrint2 -bool true
-defaults write com.google.Chrome.canary PMPrintingExpandedStateForPrint2 -bool true
 
 ###############################################################################
 # Kill affected applications                                                  #
@@ -1159,24 +1111,20 @@ defaults write com.google.Chrome.canary PMPrintingExpandedStateForPrint2 -bool t
 # Note: Uncomment this section when you enable the script
 # This will restart the affected applications to apply changes
 
-#for app in "Activity Monitor" \
-#	"Address Book" \
-#	"Calendar" \
-#	"cfprefsd" \
-#	"Contacts" \
-#	"Dock" \
-#	"Finder" \
-#	"Google Chrome Canary" \
-#	"Google Chrome" \
-#	"Mail" \
-#	"Messages" \
-#	"Photos" \
-#	"Safari" \
-#	"SystemUIServer" \
-#	"Terminal" \
-#	"iCal"; do
-#	killall "${app}" &> /dev/null
-#done
+for app in "Activity Monitor" \
+  "Calendar" \
+  "Contacts" \
+  "Dock" \
+  "Finder" \
+  "Mail" \
+  "Messages" \
+  "Photos" \
+  "Safari" \
+  "SystemUIServer" \
+  "Terminal" \
+  "Calendar"; do
+  killall "${app}" &>/dev/null
+done
 
 echo "Done. Note that some of these changes require a logout/restart to take effect."
 {{ end }}
