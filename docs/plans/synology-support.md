@@ -49,6 +49,8 @@ Example: XDG and basic args that are currently in zshenv may need to be extracte
 
 Example: Aliases are currently in zsh specific files but many will be shared. Ideally no aliases would be zsh specific. If there are any, it might be better to define them as functions.
 
+Use /note along the way to write out progress so that separate claude sessions can resume.
+
 ## Success
 
 ### Successful First Iteration

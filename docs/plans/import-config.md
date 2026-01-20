@@ -7,6 +7,10 @@
 3. Find any configuration that belongs in the dotfiles repo but is not present. Create a plan that combines changes from step 2 and 3 so that the environment files can be added to the repo and restructured to fit best practices.
 4. As a final step, look for any installed packages using tools that should have been installed differently (e.g. npm instead of npx; pip instead of pip instead of pipx; downloaded instead of brewed).
 
+## Approach
+
+Use /note along the way to write out progress so that separate claude sessions can resume.
+
 ## Output
 
 Ask questions iterative and as needed. Present the plan and be ready to show steps to move things iteratively. Tests will be needed for each config change.
