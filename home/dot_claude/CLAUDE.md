@@ -8,6 +8,28 @@
 - On ambiguity: present 2-3 options with tradeoffs, confidence levels, and a recommendation with reasoning.
 - Never invent technical details. If unsure about APIs, flags, configs, or endpoints: research it or explicitly state uncertainty.
 
+## Planning
+
+- For non-trivial tasks, use plan mode first. Iterate on the plan until the approach is solid before writing code.
+- Break complex work into smaller, verifiable steps.
+- When uncertain about approach, present options with tradeoffs rather than guessing.
+
+## Definition of Done
+
+Before considering development tasks complete:
+
+1. **Pre-commit checks**: Run `pre-commit run --all-files`
+2. **Tests**: Run relevant tests. Write new tests for new functionality.
+3. **Documentation**: Update README.md and code comments if behavior changed.
+4. **Project knowledge**: Update project CLAUDE.md with patterns/gotchas.
+5. **Test integrity**: Never remove/skip failing tests without permission.
+6. **Self-review**: Re-read changes for logic errors, security, complexity.
+
+### Session Completion
+
+- **Session notes**: Write/append NOTES.md with learnings and suggestions.
+- **Retro consideration**: For significant sessions with lessons learned, suggest /retro. User can trigger manually at any time.
+
 ## Code Quality
 
 ### General
@@ -87,28 +109,3 @@ Primary: C#, React, TypeScript, zsh, PowerShell
 - For reading specific files: use `raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` directly - skip the HTML github.com pages.
 - For listing/finding files in a repo: use `gh api repos/{owner}/{repo}/contents/{path}`
 - Only suggest cloning if exploring extensively or contributing.
-
-## Planning
-
-- For non-trivial tasks, use plan mode first. Iterate on the plan until the approach is solid before writing code.
-- Break complex work into smaller, verifiable steps.
-- When uncertain about approach, present options with tradeoffs rather than guessing.
-
-## Definition of Done
-
-Before considering development tasks complete:
-
-1. **Pre-commit checks**: Run `pre-commit run --all-files` to verify all linting and formatting passes.
-2. **Tests**: Run all relevant tests to ensure functionality works. Write new tests where feasible and valuable.
-3. **Documentation**: Update code comments and README.md if behavior or usage changed.
-4. **Project knowledge**: Analyze the session and update the project's `CLAUDE.md` with patterns, gotchas, or context that would help in future sessions.
-5. **Session notes**: Write a `NOTES.md` (or append to existing) summarizing:
-   - Key learnings from this session
-   - Suggestions that would have made the work smoother/faster
-   - Context not suited for `CLAUDE.md` but useful across sessions
-6. **Test integrity**: Never remove, skip, or bypass failing tests without explicit permission. Failing tests indicate problems to fix, not obstacles to remove.
-7. **Self-review**: Before declaring done, re-read all changes with fresh eyes. Check for:
-   - Logic errors or edge cases
-   - Security issues (injection, secrets, PII)
-   - Unnecessary complexity
-   - Missing error handling

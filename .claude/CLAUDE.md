@@ -1,130 +1,99 @@
-# CLAUDE.md
+# Dotfiles Project
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Repository Overview
-
-This is a cross-platform dotfiles repository managed by [chezmoi](https://www.chezmoi.io/). It supports macOS, Linux, and Windows while following XDG Base Directory specifications for a clean home directory.
+Cross-platform dotfiles managed with [chezmoi](https://www.chezmoi.io/), following XDG Base Directory specifications.
 
 ## Architecture
 
-### Chezmoi Structure
+### How Chezmoi Works
 
-- `.chezmoi.toml.tmpl` - Configuration template (prompts for user name/email on first run)
-- `.chezmoiroot` - Points to `home/` as the source directory
-- `home/` - Chezmoi source directory containing dotfiles
-  - Files prefixed with `dot_` become `.` files (e.g., `dot_zshenv` → `~/.zshenv`)
-  - Files prefixed with `executable_` are made executable
-  - Files ending in `.tmpl` are processed as Go templates
-- `home/.chezmoiignore` - Platform-conditional file exclusions
-- `home/.chezmoiexternal.toml` - External dependencies (antidote plugin manager)
-- `home/.chezmoiscripts/` - Scripts run during `chezmoi apply`
+Source files in `home/` are transformed and installed to target locations:
 
-### Directory Layout
+- `dot_` prefix → `.` (hidden file)
+- `executable_` prefix → chmod +x
+- `.tmpl` suffix → Go template processing (stripped from target)
+- `run_once_` scripts execute once per machine
+
+### Key Directories
 
 ```text
 dotfiles/
-├── home/
-│   ├── dot_zshenv                    # → ~/.zshenv
-│   ├── dot_config/                   # → ~/.config/
-│   │   ├── zsh/
-│   │   │   ├── dot_zshrc             # → ~/.config/zsh/.zshrc
-│   │   │   └── zshrc.d/              # Modular shell configs
-│   │   ├── git/
-│   │   │   └── config.tmpl           # Templated for user info
-│   │   ├── alacritty/
+├── home/                      # Chezmoi source directory
+│   ├── dot_zshenv             # → ~/.zshenv
+│   ├── dot_config/            # → ~/.config/
+│   │   ├── zsh/               # Shell config
+│   │   ├── git/               # Git config (templated)
 │   │   └── ...
-│   └── dot_local/bin/                # → ~/.local/bin/
-│       └── executable_*              # Helper scripts
-├── .chezmoi.toml.tmpl
-├── .chezmoiroot
-└── .claude/
+│   ├── dot_local/bin/         # → ~/.local/bin/ (scripts)
+│   └── dot_local/lib/         # Test library
+├── .chezmoi.toml.tmpl         # User config (name, email)
+└── .claude/                   # Claude Code config
 ```
 
 ### Platform Support
 
-- **macOS**: Full support (zsh, Alacritty, Homebrew packages)
-- **Linux**: Shell configs, apt/pacman/dnf package installation
-- **Windows**: Git config only (zsh configs excluded via `.chezmoiignore`)
+| Platform | Shell | Packages | GUI Apps |
+| -------- | ----- | -------- | -------- |
+| macOS    | zsh   | Homebrew | Casks    |
+| Linux    | zsh   | apt/dnf  | -        |
+| Windows  | -     | -        | -        |
 
-### Key Dependencies
+## Development Workflow
 
-Installed via `run_once_before_install-packages.sh.tmpl`:
+### Editing Files
 
-- fzf, fd, bat, eza, zoxide (terminal utilities)
-- oh-my-posh (prompt)
-- antidote (zsh plugin manager, via `.chezmoiexternal.toml`)
-- neovim (editor)
+Always edit in `home/`, never target files directly.
 
-## Common Commands
+| Prefix          | Effect                           |
+| --------------- | -------------------------------- |
+| `dot_`          | Becomes `.` (hidden file)        |
+| `executable_`   | chmod +x                         |
+| `private_`      | chmod 600                        |
+| `run_once_`     | Script runs once per machine     |
+| `run_onchange_` | Script runs when content changes |
+
+### Testing Changes
 
 ```bash
-# Bootstrap on new machine
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply agilenut
-
-# Preview changes
+# Preview what will change
 chezmoi diff
 
-# Apply changes
-chezmoi apply -v
+# Run automated tests
+dotfiles-test --auto-only
+
+# Run pre-commit hooks
+pre-commit run --all-files
+```
+
+### Applying Changes
+
+- **Safe to auto-apply**: Env var changes, config additions, test updates
+- **Ask before applying**: Scripts, macOS defaults, system-wide changes
+
+### Committing
+
+1. Run tests and ensure they pass
+2. Make small, focused commits
+3. When adding new functionality, suggest corresponding tests
+
+## Common Tasks
+
+```bash
+# Bootstrap new machine
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply agilenut
 
 # Add a new dotfile
-chezmoi add ~/.config/newfile
+chezmoi add ~/.config/newapp/config
 
-# Edit source and apply
-chezmoi edit ~/.config/somefile
-chezmoi apply
+# Preview and apply
+chezmoi diff && chezmoi apply -v
 
 # Update external dependencies
 chezmoi update
 ```
 
-## Templating
-
-Files ending in `.tmpl` use Go template syntax:
-
-- `{{ .name }}` - User's git name (prompted on first run)
-- `{{ .email }}` - User's git email
-- `{{ .chezmoi.os }}` - Operating system (darwin, linux, windows)
-- `{{ if eq .chezmoi.os "darwin" }}...{{ end }}` - Platform conditionals
-
-## File Naming Conventions
-
-Chezmoi prefixes combine and are processed in order:
-
-| Prefix          | Effect                               |
-| --------------- | ------------------------------------ |
-| `dot_`          | Becomes `.` (hidden file)            |
-| `executable_`   | chmod +x                             |
-| `private_`      | chmod 600                            |
-| `readonly_`     | chmod 444                            |
-| `empty_`        | Ensure file exists (even if empty)   |
-| `modify_`       | Script that modifies existing file   |
-| `run_`          | Script executed during apply         |
-| `run_once_`     | Script executed only once            |
-| `run_onchange_` | Script executed when contents change |
-
-Example: `private_executable_dot_secret.sh.tmpl` → `~/.secret.sh` (mode 700, templated)
-
-## Testing Changes
-
-- **Preview**: `chezmoi diff` before applying
-- **Dry run**: `chezmoi apply -v --dry-run` for verbose simulation
-- **Tests**: Run `home/dot_local/bin/executable_dotfiles-test` to verify scripts work
-- **Shell scripts**: Pre-commit runs shellcheck automatically
-- **Before committing**: Always run tests and ensure they pass
-- **Commit often**: Make small, focused commits so changes are easy to review
-
-When adding new functionality (env vars, config files, macOS defaults, etc.), suggest adding corresponding tests to `dotfiles-test`.
-
-## Applying Changes
-
-- **Safe to auto-apply**: Simple env var changes, config file additions, test updates
-- **Ask before applying**: Scripts, macOS defaults, changes affecting multiple system components, or any change that could be difficult to reverse
-
 ## Gotchas
 
-- Always edit files in `home/`, never the target files directly
-- The `.tmpl` suffix is stripped from the target filename
-- `run_once_` scripts track execution by filename - rename to re-run
-- macOS sandboxed apps (Safari, etc.) store preferences in `~/Library/Containers/` - reading these requires Full Disk Access permission for the terminal app
+- The `.tmpl` suffix is stripped from target filenames
+- `run_once_` scripts track execution by filename hash - rename to re-run
+- macOS sandboxed apps (Safari) store prefs in `~/Library/Containers/` - requires Full Disk Access
+- Some dotfiles-test checks require sudo (firewall tests) or Full Disk Access (Safari)
