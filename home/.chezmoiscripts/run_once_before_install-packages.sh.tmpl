@@ -23,13 +23,26 @@ fi
 echo "Installing packages via Homebrew..."
 
 # Function to install a package if not already installed
+# Usage: brew_install <package> [command_name]
+# If command_name is provided, checks for that command instead of package name
 brew_install() {
-  if ! brew list "$1" &>/dev/null; then
-    echo "Installing $1..."
-    brew install "$1"
-  else
-    echo "$1 is already installed"
+  local package="$1"
+  local cmd="${2:-$1}"
+
+  # Skip if command already exists (installed via other means)
+  if command -v "$cmd" &>/dev/null; then
+    echo "$package is already available (command: $cmd)"
+    return 0
   fi
+
+  # Skip if already installed via brew
+  if brew list "$package" &>/dev/null; then
+    echo "$package is already installed via brew"
+    return 0
+  fi
+
+  echo "Installing $package..."
+  brew install "$package"
 }
 
 # Terminal utilities
@@ -51,17 +64,17 @@ else
 fi
 
 # Development
-brew_install neovim
+brew_install neovim nvim
 brew_install git
 brew_install go
 brew_install shellcheck
 brew_install shfmt
 brew_install git-ignore
-brew_install git-credential-manager
-brew_install dotnet-sdk
+brew_install git-credential-manager git-credential-manager-core
+brew_install dotnet-sdk dotnet
 
 # PowerShell
-brew_install powershell
+brew_install powershell pwsh
 
 # Dotfiles management
 brew_install chezmoi
@@ -71,29 +84,48 @@ brew_install syntax-highlight
 brew_install qlmarkdown
 
 # Function to install a cask if not already installed
+# Usage: brew_cask_install <cask> [app_name]
+# If app_name is provided, checks for that app instead of deriving from cask name
 brew_cask_install() {
-  if ! brew list --cask "$1" &>/dev/null; then
-    echo "Installing $1..."
-    brew install --cask "$1"
-  else
-    echo "$1 is already installed"
+  local cask="$1"
+  local app="${2:-}"
+
+  # If no app name provided, try common patterns
+  if [[ -z "$app" ]]; then
+    # Convert cask name to likely app name (e.g., visual-studio-code -> Visual Studio Code)
+    app=$(echo "$cask" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
   fi
+
+  # Check if app exists in /Applications or ~/Applications
+  if [[ -d "/Applications/${app}.app" ]] || [[ -d "${HOME}/Applications/${app}.app" ]]; then
+    echo "$cask is already installed (found ${app}.app)"
+    return 0
+  fi
+
+  # Skip if already installed via brew
+  if brew list --cask "$cask" &>/dev/null; then
+    echo "$cask is already installed via brew"
+    return 0
+  fi
+
+  echo "Installing $cask..."
+  brew install --cask "$cask"
 }
 
 # GUI apps (casks)
-brew_cask_install visual-studio-code
-brew_cask_install warp
-brew_cask_install alfred
+brew_cask_install visual-studio-code "Visual Studio Code"
+brew_cask_install warp "Warp"
+brew_cask_install alfred "Alfred 5"
 
 # Browsers
-brew_cask_install firefox
-brew_cask_install google-chrome
+brew_cask_install firefox "Firefox"
+brew_cask_install google-chrome "Google Chrome"
 
 # Utilities
-brew_cask_install 1password
-brew_cask_install appcleaner
-brew_cask_install rectangle-pro
-brew_cask_install logi-options-plus
+brew_cask_install 1password "1Password"
+brew_cask_install appcleaner "AppCleaner"
+brew_cask_install rectangle-pro "Rectangle Pro"
+brew_cask_install logi-options-plus "Logi Options+"
 
 # Virtualization (optional - large download)
 # brew_cask_install vmware-fusion

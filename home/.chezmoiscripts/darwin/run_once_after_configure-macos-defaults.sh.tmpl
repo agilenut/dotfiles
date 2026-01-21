@@ -38,11 +38,6 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 # Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode off
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
 
-# Firewall logging
-# Values: on=Enabled, off=Disabled [DEFAULT]
-# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setloggingmode off
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setloggingmode on
-
 # Allow signed apps automatically
 # Values: on=Allow signed [DEFAULT], off=Block all
 # Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
@@ -72,7 +67,10 @@ defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
 # Disable SSH remote login
 # Values: on=Enabled, off=Disabled [DEFAULT]
 # Reset: sudo systemsetup -setremotelogin on
-sudo systemsetup -setremotelogin off 2>/dev/null
+# Note: systemsetup throws Error:-99 if value already set; check first
+if sudo systemsetup -getremotelogin 2>/dev/null | grep -q "On"; then
+  echo "yes" | sudo systemsetup -setremotelogin off 2>/dev/null
+fi
 
 # Disable automatic login (requires password at login)
 # Values: Delete key to disable auto-login
@@ -341,7 +339,10 @@ defaults write NSGlobalDomain AppleLocale -string "en_US"
 # Timezone
 # Values: See `sudo systemsetup -listtimezones`
 # Reset: sudo systemsetup -settimezone "America/Los_Angeles"
-sudo systemsetup -settimezone "America/New_York" >/dev/null
+# Note: systemsetup throws Error:-99 if value already set; check first
+if ! sudo systemsetup -gettimezone 2>/dev/null | grep -q "America/New_York"; then
+  sudo systemsetup -settimezone "America/New_York" 2>/dev/null
+fi
 
 ###############################################################################
 # Energy saving                                                               #
@@ -360,22 +361,27 @@ sudo systemsetup -settimezone "America/New_York" >/dev/null
 # Restart on freeze
 # Values: on=Auto-restart, off=Manual recovery [DEFAULT]
 # Reset: sudo systemsetup -setrestartfreeze off
-sudo systemsetup -setrestartfreeze on 2>/dev/null
+# Note: systemsetup throws Error:-99 if value already set; check first
+if ! sudo systemsetup -getrestartfreeze 2>/dev/null | grep -q "On"; then
+  sudo systemsetup -setrestartfreeze on 2>/dev/null
+fi
 
 # Display sleep timeout (minutes)
 # Values: Integer minutes; Default varies by power source
-# Reset: sudo pmset -a displaysleep 10
-sudo pmset -a displaysleep 30
+# Note: Display sleep should be <= system sleep to avoid warnings
+# Reset: sudo pmset -b displaysleep 2; sudo pmset -c displaysleep 10
+sudo pmset -b displaysleep 10
+sudo pmset -c displaysleep 30
 
-# Machine sleep while charging
+# Machine sleep while charging (minutes)
 # Values: Integer minutes (0=Never); Default ~10
 # Reset: sudo pmset -c sleep 10
-# sudo pmset -c sleep 0
+sudo pmset -c sleep 45
 
 # Machine sleep on battery (minutes)
 # Values: Integer minutes; Default ~1-2
-# Reset: sudo pmset -b sleep 1
-sudo pmset -b sleep 5
+# Reset: sudo pmset -b sleep 5
+sudo pmset -b sleep 15
 
 # Standby delay (seconds before hibernating from sleep)
 # Values: Integer seconds; Default ~10800 (3 hours)
