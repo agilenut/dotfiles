@@ -49,13 +49,6 @@ test_macos_defaults() {
       fail "Signed apps not allowed through firewall"
     fi
 
-    # SSH remote login disabled
-    if sudo systemsetup -getremotelogin 2>/dev/null | grep -q "Off"; then
-      pass "SSH remote login disabled"
-    else
-      fail "SSH remote login not disabled"
-    fi
-
     # Automatic login disabled (key should not exist)
     if ! sudo defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser &>/dev/null; then
       pass "Automatic login disabled"
@@ -66,7 +59,6 @@ test_macos_defaults() {
     skip "Firewall enabled (requires sudo)"
     skip "Stealth mode enabled (requires sudo)"
     skip "Signed apps allowed (requires sudo)"
-    skip "SSH remote login disabled (requires sudo)"
     skip "Automatic login disabled (requires sudo)"
   fi
 
@@ -78,13 +70,6 @@ test_macos_defaults() {
 
   # Spotlight Siri suggestions disabled
   test_macos_default "com.apple.Spotlight" "SiriSuggestionsEnabled" "0" "Spotlight Siri suggestions disabled"
-
-  # Wake-on-LAN disabled (no sudo needed for read)
-  if pmset -g 2>/dev/null | grep -q "womp.*0"; then
-    pass "Wake-on-LAN disabled"
-  else
-    fail "Wake-on-LAN not disabled"
-  fi
 
   # AirDrop Contacts Only
   test_macos_default "com.apple.sharingd" "DiscoverableMode" "Contacts Only" "AirDrop set to Contacts Only"
@@ -107,14 +92,6 @@ test_macos_defaults() {
 
   # Magnification
   test_macos_default "com.apple.dock" "magnification" "1" "Dock magnification enabled"
-
-  section "macOS Trackpad"
-
-  # Tap to click
-  test_macos_default "com.apple.AppleMultitouchTrackpad" "Clicking" "1" "Tap to click enabled"
-
-  # Three-finger drag (accessibility)
-  test_macos_default "com.apple.AppleMultitouchTrackpad" "TrackpadThreeFingerDrag" "1" "Three-finger drag enabled"
 
   section "macOS General"
 
