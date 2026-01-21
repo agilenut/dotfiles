@@ -85,7 +85,7 @@ Before considering development tasks complete:
   - Related work: continue on current branch.
   - Unrelated work: suggest committing current changes, then create a new branch.
 - **Uncommitted changes before switching**: Suggest commit first.
-- **Atomic progress**: When work is tested and functional, suggest committing to the feature branch.
+- **Atomic progress**: When work is tested and functional, suggest committing to the feature branch. **NEVER execute git commit without explicit user approval** - always present the proposed commit message and wait for confirmation.
 
 ### Rules
 
@@ -97,7 +97,7 @@ Before considering development tasks complete:
 ```text
 Brief summary of change
 
-One to two short paragraphs with context, reasoning, or details.
+One to two short paragraphs with context, reasoning, or details. Prefer bullets.
 ```
 
 ## Languages

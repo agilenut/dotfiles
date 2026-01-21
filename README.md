@@ -26,7 +26,7 @@ On first run, you'll be prompted for git user name and email.
 - **Alacritty** terminal (macOS)
 - Plugins: fzf-tab, fast-syntax-highlighting, zsh-autosuggestions
 
-### Development Tools
+### Terminal Utilities
 
 - **fzf** - fuzzy finder with custom keybindings (Ctrl-T, Ctrl-R, Alt-C)
 - **fd** - fast file finder
@@ -34,7 +34,16 @@ On first run, you'll be prompted for git user name and email.
 - **eza** - modern ls replacement
 - **zoxide** - smart cd
 - **ripgrep** - fast grep
+- **tree** - directory tree viewer
+
+### Development Tools
+
 - **neovim** - editor
+- **git** with git-credential-manager
+- **go** - Go programming language
+- **dotnet-sdk** - .NET development
+- **powershell** - cross-platform shell
+- **shellcheck** / **shfmt** - shell linting and formatting
 
 ### XDG Compliance
 
@@ -71,12 +80,17 @@ chezmoi add ~/.config/newapp/config
 ## Testing
 
 ```bash
-# Run automated tests
+# Run automated tests (installed version)
 dotfiles-test --auto-only
 
 # Run with manual tests (interactive)
 dotfiles-test
 ```
+
+**Testing from source** (during development, before `chezmoi apply`):
+
+- VS Code: `Cmd+Shift+P` → "Tasks: Run Test Task"
+- Terminal: `./home/dot_local/bin/executable_dotfiles-test`
 
 **Note**: Some tests require:
 
@@ -133,15 +147,41 @@ Hooks: shfmt (shell formatting), shellcheck (linting), taplo (TOML), prettier, m
 
 ### Local Development
 
-To test changes before committing:
+To develop against a local clone instead of the remote repo:
 
 ```bash
-# Point chezmoi to local repo
-chezmoi init --source=/path/to/dotfiles
+# Clone the repo
+git clone https://github.com/agilenut/dotfiles.git ~/Developer/dotfiles
+cd ~/Developer/dotfiles
 
-# Preview and apply
+# Configure chezmoi to use local source
+# Edit ~/.config/chezmoi/chezmoi.toml and set:
+#   [data]
+#   name = "Your Name"
+#   email = "you@example.com"
+#
+# Then run:
+chezmoi init --source=~/Developer/dotfiles
+
+# Preview and apply changes
 chezmoi diff
 chezmoi apply -v
+```
+
+### Resetting Chezmoi State
+
+To re-run `run_once_` scripts (e.g., after changing install-packages.sh):
+
+```bash
+# View tracked script state
+chezmoi state dump | grep scriptState
+
+# Clear state for a specific script (forces re-run)
+chezmoi state delete-bucket --bucket=scriptState
+
+# Or clear all chezmoi state
+rm -rf ~/.local/share/chezmoi
+chezmoi init --source=/path/to/dotfiles
 ```
 
 ## Platform Support

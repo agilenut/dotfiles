@@ -28,7 +28,7 @@ Review this session and consolidate learnings into persistent artifacts.
    Group by file and show what will change.
 
 4. **Write NOTES.md**
-   After approved changes, append brief session summary to project NOTES.md.
+   After approved changes, prepend brief session summary to project docs/NOTES.md (newest first).
 
 ## Output Format
 

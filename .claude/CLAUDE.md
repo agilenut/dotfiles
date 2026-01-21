@@ -97,3 +97,4 @@ chezmoi update
 - `run_once_` scripts track execution by filename hash - rename to re-run
 - macOS sandboxed apps (Safari) store prefs in `~/Library/Containers/` - requires Full Disk Access
 - Some dotfiles-test checks require sudo (firewall tests) or Full Disk Access (Safari)
+- `dotfiles-test` runs from installed location (`~/.local/bin`); to test source changes before `chezmoi apply`, run `./home/dot_local/bin/executable_dotfiles-test` or use VS Code's "Run Test Task"
