@@ -59,7 +59,7 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on
 
 # Share Mac Analytics (Share with Apple)
 # Values: Disable by modifying SystemConfiguration plist
-defaults write "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory" AutoSubmit -bool false 2>/dev/null || true
+sudo defaults write "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory" AutoSubmit -bool false 2>/dev/null || true
 
 # Disable Siri analytics
 defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -int 2
@@ -442,7 +442,7 @@ sudo pmset -b sleep 5
 # Screen saver start time (minutes of inactivity)
 # Values: Integer minutes; 0=Never; Default 20
 # Reset: defaults -currentHost delete com.apple.screensaver idleTime
-defaults -currentHost write com.apple.screensaver idleTime -int 1200
+defaults -currentHost write com.apple.screensaver idleTime -int 20
 
 # Require password after sleep/screensaver
 # Values: askForPassword 1=Require, 0=Don't require [DEFAULT]; askForPasswordDelay seconds (0=immediate)
@@ -857,7 +857,7 @@ defaults write com.apple.Safari BlockStoragePolicy -int 2
 defaults write com.apple.Safari "WebKitPreferences.storageBlockingPolicy" -int 1
 
 # Hide IP address from trackers (requires iCloud Private Relay or uses enhanced privacy mode)
-# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Values: true=Enabled, false=Disabled [DEFAULT]
 # Reset: defaults delete com.apple.Safari EnableEnhancedPrivacyInRegularBrowsing
 defaults write com.apple.Safari EnableEnhancedPrivacyInRegularBrowsing -bool true
 
