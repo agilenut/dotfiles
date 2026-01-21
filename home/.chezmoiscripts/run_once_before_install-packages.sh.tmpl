@@ -4,8 +4,18 @@
 
 set -e
 
+# Helper to print section headers
+section() {
+  echo ""
+  echo "========================================"
+  echo "$1"
+  echo "========================================"
+}
+
 {{ if eq .chezmoi.os "darwin" -}}
 # macOS - Install Homebrew and packages
+
+section "Checking Homebrew"
 
 # Install Homebrew if not present
 if ! command -v brew &>/dev/null; then
@@ -18,9 +28,9 @@ if ! command -v brew &>/dev/null; then
   elif [ -x "/usr/local/bin/brew" ]; then
     eval "$(/usr/local/bin/brew shellenv)"
   fi
+else
+  echo "Homebrew is already installed"
 fi
-
-echo "Installing packages via Homebrew..."
 
 # Function to install a package if not already installed
 # Usage: brew_install <package> [command_name]
@@ -31,21 +41,21 @@ brew_install() {
 
   # Skip if command already exists (installed via other means)
   if command -v "$cmd" &>/dev/null; then
-    echo "$package is already available (command: $cmd)"
+    echo "  ✓ $package (already available)"
     return 0
   fi
 
   # Skip if already installed via brew
   if brew list "$package" &>/dev/null; then
-    echo "$package is already installed via brew"
+    echo "  ✓ $package (installed via brew)"
     return 0
   fi
 
-  echo "Installing $package..."
+  echo "  → Installing $package..."
   brew install "$package"
 }
 
-# Terminal utilities
+section "Terminal Utilities"
 brew_install fzf
 brew_install fd
 brew_install bat
@@ -54,16 +64,16 @@ brew_install zoxide
 brew_install tree
 brew_install ripgrep
 
-# Shell and prompt
+section "Shell & Prompt"
 brew_install zsh
 if ! command -v oh-my-posh &>/dev/null; then
-  echo "Installing oh-my-posh..."
+  echo "  → Installing oh-my-posh..."
   brew install --formula jandedobbeleer/oh-my-posh/oh-my-posh
 else
-  echo "oh-my-posh is already installed"
+  echo "  ✓ oh-my-posh (already installed)"
 fi
 
-# Development
+section "Development Tools"
 brew_install neovim nvim
 brew_install git
 brew_install go
@@ -72,14 +82,10 @@ brew_install shfmt
 brew_install git-ignore
 brew_install git-credential-manager git-credential-manager-core
 brew_install dotnet-sdk dotnet
-
-# PowerShell
 brew_install powershell pwsh
-
-# Dotfiles management
 brew_install chezmoi
 
-# QuickLook extensions
+section "QuickLook Extensions"
 brew_install syntax-highlight
 brew_install qlmarkdown
 
@@ -98,30 +104,30 @@ brew_cask_install() {
 
   # Check if app exists in /Applications or ~/Applications
   if [[ -d "/Applications/${app}.app" ]] || [[ -d "${HOME}/Applications/${app}.app" ]]; then
-    echo "$cask is already installed (found ${app}.app)"
+    echo "  ✓ $cask (found ${app}.app)"
     return 0
   fi
 
   # Skip if already installed via brew
   if brew list --cask "$cask" &>/dev/null; then
-    echo "$cask is already installed via brew"
+    echo "  ✓ $cask (installed via brew)"
     return 0
   fi
 
-  echo "Installing $cask..."
+  echo "  → Installing $cask..."
   brew install --cask "$cask"
 }
 
-# GUI apps (casks)
+section "GUI Applications"
 brew_cask_install visual-studio-code "Visual Studio Code"
 brew_cask_install warp "Warp"
 brew_cask_install alfred "Alfred 5"
 
-# Browsers
+section "Browsers"
 brew_cask_install firefox "Firefox"
 brew_cask_install google-chrome "Google Chrome"
 
-# Utilities
+section "Utilities"
 brew_cask_install 1password "1Password"
 brew_cask_install appcleaner "AppCleaner"
 brew_cask_install rectangle-pro "Rectangle Pro"
@@ -133,23 +139,30 @@ brew_cask_install logi-options-plus "Logi Options+"
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install
 
+section "Installing Packages"
+
 if command -v apt &>/dev/null; then
-  echo "Installing packages via apt..."
+  echo "Using apt..."
   sudo apt update
   sudo apt install -y fzf fd-find bat zoxide tree ripgrep zsh neovim git
 
   # eza might need a different source on some distros
   if ! command -v eza &>/dev/null; then
-    echo "eza not available in apt, skipping..."
+    echo "  ⚠ eza not available in apt, skipping..."
   fi
 elif command -v pacman &>/dev/null; then
-  echo "Installing packages via pacman..."
+  echo "Using pacman..."
   sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git
 elif command -v dnf &>/dev/null; then
-  echo "Installing packages via dnf..."
+  echo "Using dnf..."
   sudo dnf install -y fzf fd-find bat eza zoxide tree ripgrep zsh neovim git
 fi
 
 {{ end -}}
 
-echo "Package installation complete!"
+section "Installation Complete!"
+echo ""
+echo "Next steps:"
+echo "  1. Open a new terminal to load shell configuration"
+echo "  2. Run 'dotfiles-test' to verify installation"
+echo ""
