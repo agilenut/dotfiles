@@ -309,49 +309,6 @@ defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerVertSwi
 # Reset: defaults delete NSGlobalDomain AppleKeyboardUIMode
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
 
-# Keyboard shortcuts for Mission Control
-# Format: parameters = (ASCII/65535, keycode, modifiers)
-# Modifiers: 262144=Ctrl, 524288=Option, 1048576=Cmd, 131072=Shift
-# Key codes: D=2, 1=18, 2=19, 3=20, 4=21, 5=23, 6=22, 7=26, 8=28, 9=25
-# Shortcut IDs: 36=Show Desktop, 118-126=Switch to Desktop 1-9
-# Note: Desktops must exist before shortcuts work; create them in Mission Control first
-
-# Show Desktop: Ctrl+D (keycode 2)
-# Reset: defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 36 '<dict><key>enabled</key><false/></dict>'
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:value:parameters:0 65535" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:value:parameters:1 2" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-
-# Switch to Desktop 1-9: Ctrl+1 through Ctrl+9
-# Desktop 1 (ID 118): Ctrl+1 (keycode 18)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:118:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:118:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 2 (ID 119): Ctrl+2 (keycode 19)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:119:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:119:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 3 (ID 120): Ctrl+3 (keycode 20)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:120:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:120:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 4 (ID 121): Ctrl+4 (keycode 21)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:121:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:121:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 5 (ID 122): Ctrl+5 (keycode 23)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:122:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:122:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 6 (ID 123): Ctrl+6 (keycode 22)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:123:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:123:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 7 (ID 124): Ctrl+7 (keycode 26)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:124:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:124:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 8 (ID 125): Ctrl+8 (keycode 28)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:125:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:125:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-# Desktop 9 (ID 126): Ctrl+9 (keycode 25)
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:126:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:126:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
-
 # Ctrl+scroll to zoom
 # Values: true=Enabled, false=Disabled [DEFAULT]; Modifier: 262144=Ctrl, 524288=Option, 1048576=Cmd
 # Reset: defaults delete com.apple.universalaccess closeViewScrollWheelToggle; defaults delete com.apple.universalaccess HIDScrollZoomModifierMask; defaults delete com.apple.universalaccess closeViewZoomFollowsFocus
