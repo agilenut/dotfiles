@@ -109,9 +109,18 @@ test_macos_defaults() {
 
   section "macOS Safari"
 
-  # Show full URL
-  test_macos_default "com.apple.Safari" "ShowFullURLInSmartSearchField" "1" "Safari shows full URL"
+  # Safari is sandboxed, so preferences are in the container.
+  # Reading this requires Full Disk Access permission for the terminal app.
+  local safari_plist="$HOME/Library/Containers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari.plist"
 
-  # Developer menu enabled
-  test_macos_default "com.apple.Safari" "IncludeDevelopMenu" "1" "Safari developer menu enabled"
+  if [[ -r "$safari_plist" ]]; then
+    # Show full URL
+    test_macos_default "$safari_plist" "ShowFullURLInSmartSearchField" "1" "Safari shows full URL"
+
+    # Developer menu enabled
+    test_macos_default "$safari_plist" "IncludeDevelopMenu" "1" "Safari developer menu enabled"
+  else
+    skip "Safari shows full URL (requires Full Disk Access)"
+    skip "Safari developer menu enabled (requires Full Disk Access)"
+  fi
 }

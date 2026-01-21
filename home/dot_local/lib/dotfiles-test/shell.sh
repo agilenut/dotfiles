@@ -14,6 +14,9 @@ test_environment_variables() {
   test_env_exists "LS_COLORS"
   test_env_exists "LSCOLORS"
   test_env_exists "FZF_DEFAULT_OPTS"
+  test_env_exists "PYTHON_HISTORY"
+  test_env_exists "PYTHONPYCACHEPREFIX"
+  test_env_exists "PYTHONUSERBASE"
 
   # shellcheck disable=SC2016 # Single quotes intentional - passed to zsh
   if zsh_check '[[ "$CLICOLOR" == "1" ]]'; then
@@ -164,6 +167,12 @@ test_config_files() {
     pass "zshrc.d exists with $count modules"
   else
     fail "zshrc.d directory not found"
+  fi
+
+  if [[ -f "$config_home/pip/pip.conf" ]]; then
+    pass "pip config exists"
+  else
+    fail "pip config not found"
   fi
 }
 

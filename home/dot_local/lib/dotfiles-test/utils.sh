@@ -75,15 +75,18 @@ has_ansi_codes() {
 }
 
 # Run a command in interactive zsh and return its exit code
+# Uses env -i to start with minimal environment, preventing stale parent vars
+# from overriding what .zshenv would set
 zsh_check() {
-  zsh -i -c "$1" 2>/dev/null
+  env -i HOME="$HOME" USER="$USER" TERM="${TERM:-xterm-256color}" PATH="$PATH" \
+    zsh -i -c "$1" 2>/dev/null
 }
 
 # Test if an environment variable exists in zsh
 test_env_exists() {
   if zsh_check "[[ -n \"\$$1\" ]]"; then
     local value
-    value=$(zsh -i -c "echo \$$1" 2>/dev/null)
+    value=$(zsh_check "echo \$$1")
     pass "$1=$value"
   else
     fail "$1 not set"
