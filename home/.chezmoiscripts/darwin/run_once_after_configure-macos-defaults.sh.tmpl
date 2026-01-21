@@ -80,6 +80,15 @@ defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -in
 defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
 
 ###############################################################################
+# AirDrop                                                                     #
+###############################################################################
+
+# AirDrop discoverability
+# Values: "Off", "Contacts Only", "Everyone" [DEFAULT]
+# Reset: defaults delete com.apple.sharingd DiscoverableMode
+defaults write com.apple.sharingd DiscoverableMode -string "Contacts Only"
+
+###############################################################################
 # General UI/UX                                                               #
 ###############################################################################
 
@@ -820,11 +829,27 @@ defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool tr
 # Safari & WebKit                                                             #
 ###############################################################################
 
+# Default search engine
+# Values: Google [DEFAULT], Yahoo, Bing, DuckDuckGo, Ecosia
+# Reset: defaults delete com.apple.Safari SearchProviderShortName
+defaults write com.apple.Safari SearchProviderShortName -string "DuckDuckGo"
+
 # Send search queries to Apple
 # Values: UniversalSearchEnabled true=Send [DEFAULT], false=Don't send; SuppressSearchSuggestions true=Suppress
 # Reset: defaults delete com.apple.Safari UniversalSearchEnabled; defaults delete com.apple.Safari SuppressSearchSuggestions
 defaults write com.apple.Safari UniversalSearchEnabled -bool false
 defaults write com.apple.Safari SuppressSearchSuggestions -bool true
+
+# Prevent cross-site tracking (Intelligent Tracking Prevention)
+# Values: 2=Block cross-site tracking, 1=Allow, 0=Allow all
+# Reset: defaults delete com.apple.Safari BlockStoragePolicy
+defaults write com.apple.Safari BlockStoragePolicy -int 2
+defaults write com.apple.Safari "WebKitPreferences.storageBlockingPolicy" -int 1
+
+# Hide IP address from trackers (requires iCloud Private Relay or uses enhanced privacy mode)
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.Safari EnableEnhancedPrivacyInRegularBrowsing
+defaults write com.apple.Safari EnableEnhancedPrivacyInRegularBrowsing -bool true
 
 # Tab to highlight links on web pages
 # Values: true=Tab to links, false=Tab only to form fields [DEFAULT]
