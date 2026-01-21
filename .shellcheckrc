@@ -1,0 +1,7 @@
+# Enable following sourced files
+external-sources=true
+
+# Disable "not following" warning for sourced files
+# SC1091: Shellcheck can't follow non-constant or external sources
+# This is expected since chezmoi renames files (dot_local -> .local)
+disable=SC1091
