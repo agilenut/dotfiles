@@ -112,9 +112,19 @@ Example: `private_executable_dot_secret.sh.tmpl` → `~/.secret.sh` (mode 700, t
 - **Dry run**: `chezmoi apply -v --dry-run` for verbose simulation
 - **Tests**: Run `home/dot_local/bin/executable_dotfiles-test` to verify scripts work
 - **Shell scripts**: Pre-commit runs shellcheck automatically
+- **Before committing**: Always run tests and ensure they pass
+- **Commit often**: Make small, focused commits so changes are easy to review
+
+When adding new functionality (env vars, config files, macOS defaults, etc.), suggest adding corresponding tests to `dotfiles-test`.
+
+## Applying Changes
+
+- **Safe to auto-apply**: Simple env var changes, config file additions, test updates
+- **Ask before applying**: Scripts, macOS defaults, changes affecting multiple system components, or any change that could be difficult to reverse
 
 ## Gotchas
 
 - Always edit files in `home/`, never the target files directly
 - The `.tmpl` suffix is stripped from the target filename
 - `run_once_` scripts track execution by filename - rename to re-run
+- macOS sandboxed apps (Safari, etc.) store preferences in `~/Library/Containers/` - reading these requires Full Disk Access permission for the terminal app
