@@ -814,7 +814,7 @@ defaults write com.apple.Terminal ShowLineMarks -int 0
 # Default and startup Terminal profile
 # Values: Profile name string; Default "Basic"
 # Reset: defaults delete com.apple.Terminal "Default Window Settings"; defaults delete com.apple.Terminal "Startup Window Settings"
-# Note: Profile must exist in Terminal (Window Settings). Create custom profile first.
+# Note: Profile imported by run_once_before_import-terminal-profile.sh from ~/.config/terminal/
 defaults write com.apple.Terminal "Default Window Settings" -string "VS Code Dark Plus Custom"
 defaults write com.apple.Terminal "Startup Window Settings" -string "VS Code Dark Plus Custom"
 
