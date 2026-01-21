@@ -1,0 +1,65 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# Configure QuickLook extensions (syntax-highlight and qlmarkdown)
+# This copies custom themes and CSS after chezmoi deploys the config files
+
+SYNTAX_HIGHLIGHT_SRC="${HOME}/.config/syntax-highlight"
+SYNTAX_HIGHLIGHT_DEST="${HOME}/Library/Application Support/Syntax Highlight"
+
+QLMARKDOWN_SRC="${HOME}/.config/qlmarkdown"
+QLMARKDOWN_DEST="${HOME}/Library/Application Support/QLMarkdown"
+
+# Configure syntax-highlight
+if [[ -d "$SYNTAX_HIGHLIGHT_SRC" ]]; then
+  echo "Configuring syntax-highlight..."
+
+  # Create destination directories
+  mkdir -p "$SYNTAX_HIGHLIGHT_DEST/Themes"
+  mkdir -p "$SYNTAX_HIGHLIGHT_DEST/Styles"
+
+  # Copy theme files (.theme format for the app's theme selector)
+  if [[ -d "$SYNTAX_HIGHLIGHT_SRC/Themes" ]]; then
+    cp -f "$SYNTAX_HIGHLIGHT_SRC/Themes/"*.theme "$SYNTAX_HIGHLIGHT_DEST/Themes/" 2>/dev/null || true
+  fi
+
+  # Copy global style files (Styles/global.css is auto-applied)
+  if [[ -d "$SYNTAX_HIGHLIGHT_SRC/Styles" ]]; then
+    cp -f "$SYNTAX_HIGHLIGHT_SRC/Styles/"*.css "$SYNTAX_HIGHLIGHT_DEST/Styles/" 2>/dev/null || true
+  fi
+
+  # Copy custom.css (root level CSS with full theme colors)
+  if [[ -f "$SYNTAX_HIGHLIGHT_SRC/custom.css" ]]; then
+    cp -f "$SYNTAX_HIGHLIGHT_SRC/custom.css" "$SYNTAX_HIGHLIGHT_DEST/"
+  fi
+
+  echo "syntax-highlight configured"
+fi
+
+# Configure qlmarkdown
+if [[ -d "$QLMARKDOWN_SRC" ]]; then
+  echo "Configuring qlmarkdown..."
+
+  # Create destination directory
+  mkdir -p "$QLMARKDOWN_DEST"
+
+  # Copy custom CSS
+  if [[ -f "$QLMARKDOWN_SRC/custom.css" ]]; then
+    cp -f "$QLMARKDOWN_SRC/custom.css" "$QLMARKDOWN_DEST/"
+  fi
+
+  # Copy themes if any
+  if [[ -d "$QLMARKDOWN_SRC/themes" ]]; then
+    mkdir -p "$QLMARKDOWN_DEST/themes"
+    cp -f "$QLMARKDOWN_SRC/themes/"* "$QLMARKDOWN_DEST/themes/" 2>/dev/null || true
+  fi
+
+  echo "qlmarkdown configured"
+fi
+
+# Note: After first install, you need to open each app once to register
+# the QuickLook extension with macOS. The apps can then be closed.
+echo "QuickLook extensions configured. Open Syntax Highlight and QLMarkdown apps once to register extensions."
+{{ end }}
