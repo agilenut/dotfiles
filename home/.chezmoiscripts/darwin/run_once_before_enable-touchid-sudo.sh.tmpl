@@ -1,0 +1,32 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# Enable Touch ID for sudo authentication
+# This modifies /etc/pam.d/sudo_local to allow Touch ID for sudo commands
+# The template file exists on macOS Sonoma+ and provides a safe way to enable this
+
+TEMPLATE="/etc/pam.d/sudo_local.template"
+TARGET="/etc/pam.d/sudo_local"
+
+# Check if template exists (macOS Sonoma+)
+if [[ ! -f "$TEMPLATE" ]]; then
+  echo "Touch ID sudo template not found (requires macOS Sonoma+), skipping"
+  exit 0
+fi
+
+# Check if already configured
+if [[ -f "$TARGET" ]] && grep -q "^auth" "$TARGET" 2>/dev/null; then
+  echo "Touch ID for sudo already enabled"
+  exit 0
+fi
+
+echo "Enabling Touch ID for sudo..."
+
+# Uncomment the auth line from template and write to sudo_local
+# The template contains: #auth       sufficient     pam_tid.so
+sed "s/^#auth/auth/" "$TEMPLATE" | sudo tee "$TARGET" >/dev/null
+
+echo "Touch ID for sudo enabled successfully"
+{{ end }}

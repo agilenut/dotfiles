@@ -57,17 +57,46 @@ brew_install go
 brew_install shellcheck
 brew_install shfmt
 brew_install git-ignore
+brew_install git-credential-manager
+brew_install dotnet-sdk
+
+# PowerShell
+brew_install powershell
 
 # Dotfiles management
 brew_install chezmoi
 
+# QuickLook extensions
+brew_install syntax-highlight
+brew_install qlmarkdown
+
+# Function to install a cask if not already installed
+brew_cask_install() {
+  if ! brew list --cask "$1" &>/dev/null; then
+    echo "Installing $1..."
+    brew install --cask "$1"
+  else
+    echo "$1 is already installed"
+  fi
+}
+
 # GUI apps (casks)
-if ! brew list --cask visual-studio-code &>/dev/null; then
-  echo "Installing Visual Studio Code..."
-  brew install --cask visual-studio-code
-else
-  echo "visual-studio-code is already installed"
-fi
+brew_cask_install visual-studio-code
+brew_cask_install warp
+brew_cask_install alfred
+
+# Browsers
+brew_cask_install firefox
+brew_cask_install google-chrome
+
+# Utilities
+brew_cask_install 1password
+brew_cask_install appcleaner
+brew_cask_install rectangle-pro
+brew_cask_install logi-options-plus
+
+# Virtualization (optional - large download)
+# brew_cask_install vmware-fusion
 
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install

@@ -35,6 +35,51 @@ while true; do
 done 2>/dev/null &
 
 ###############################################################################
+# Security & Privacy                                                          #
+###############################################################################
+
+# Firewall
+# Values: on=Enabled, off=Disabled [DEFAULT]
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+
+# Firewall stealth mode (don't respond to ICMP ping or connection attempts)
+# Values: on=Stealth mode, off=Normal [DEFAULT]
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode off
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+
+# Firewall logging
+# Values: on=Enabled, off=Disabled [DEFAULT]
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setloggingmode off
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setloggingmode on
+
+# Allow signed apps automatically
+# Values: on=Allow signed [DEFAULT], off=Block all
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
+
+# Allow signed downloads automatically
+# Values: on=Allow signed downloads [DEFAULT], off=Block
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on
+
+# Disable analytics and diagnostics sharing
+# Values: See comments for each setting
+# Reset: Various - see Apple documentation
+
+# Share Mac Analytics (Share with Apple)
+# Values: Disable by modifying SystemConfiguration plist
+defaults write "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory" AutoSubmit -bool false 2>/dev/null || true
+
+# Disable Siri analytics
+defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -int 2
+
+# Disable personalized ads
+# Values: 0=Personalized ads off, 1=On [DEFAULT]
+# Reset: defaults delete com.apple.AdLib allowApplePersonalizedAdvertising
+defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
+
+###############################################################################
 # General UI/UX                                                               #
 ###############################################################################
 
@@ -144,6 +189,11 @@ defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
 # Reset: defaults delete com.apple.CrashReporter DialogType
 defaults write com.apple.CrashReporter DialogType -string "none"
 
+# Disable "Open" dialog on app launch (NSDocument-based apps like TextEdit)
+# Values: true=Show open dialog [DEFAULT], false=Create new untitled document
+# Reset: defaults delete NSGlobalDomain NSShowAppCentricOpenPanelInsteadOfUntitledFile
+defaults write NSGlobalDomain NSShowAppCentricOpenPanelInsteadOfUntitledFile -bool false
+
 # Help Viewer floating windows
 # Values: true=Non-floating, false=Floating [DEFAULT]
 # Reset: defaults delete com.apple.helpviewer DevMode
@@ -240,6 +290,49 @@ defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerVertSwi
 # Reset: defaults delete NSGlobalDomain AppleKeyboardUIMode
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
 
+# Keyboard shortcuts for Mission Control
+# Format: parameters = (ASCII/65535, keycode, modifiers)
+# Modifiers: 262144=Ctrl, 524288=Option, 1048576=Cmd, 131072=Shift
+# Key codes: D=2, 1=18, 2=19, 3=20, 4=21, 5=23, 6=22, 7=26, 8=28, 9=25
+# Shortcut IDs: 36=Show Desktop, 118-126=Switch to Desktop 1-9
+# Note: Desktops must exist before shortcuts work; create them in Mission Control first
+
+# Show Desktop: Ctrl+D (keycode 2)
+# Reset: defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 36 '<dict><key>enabled</key><false/></dict>'
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:value:parameters:0 65535" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:value:parameters:1 2" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:36:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+
+# Switch to Desktop 1-9: Ctrl+1 through Ctrl+9
+# Desktop 1 (ID 118): Ctrl+1 (keycode 18)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:118:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:118:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 2 (ID 119): Ctrl+2 (keycode 19)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:119:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:119:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 3 (ID 120): Ctrl+3 (keycode 20)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:120:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:120:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 4 (ID 121): Ctrl+4 (keycode 21)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:121:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:121:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 5 (ID 122): Ctrl+5 (keycode 23)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:122:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:122:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 6 (ID 123): Ctrl+6 (keycode 22)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:123:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:123:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 7 (ID 124): Ctrl+7 (keycode 26)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:124:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:124:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 8 (ID 125): Ctrl+8 (keycode 28)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:125:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:125:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+# Desktop 9 (ID 126): Ctrl+9 (keycode 25)
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:126:enabled true" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :AppleSymbolicHotKeys:126:value:parameters:2 262144" ~/Library/Preferences/com.apple.symbolichotkeys.plist 2>/dev/null || true
+
 # Ctrl+scroll to zoom
 # Values: true=Enabled, false=Disabled [DEFAULT]; Modifier: 262144=Ctrl, 524288=Option, 1048576=Cmd
 # Reset: defaults delete com.apple.universalaccess closeViewScrollWheelToggle; defaults delete com.apple.universalaccess HIDScrollZoomModifierMask; defaults delete com.apple.universalaccess closeViewZoomFollowsFocus
@@ -327,11 +420,16 @@ sudo pmset -b sleep 5
 # Screen                                                                      #
 ###############################################################################
 
+# Screen saver start time (minutes of inactivity)
+# Values: Integer minutes; 0=Never; Default 20
+# Reset: defaults -currentHost delete com.apple.screensaver idleTime
+defaults -currentHost write com.apple.screensaver idleTime -int 1200
+
 # Require password after sleep/screensaver
-# Values: askForPassword 1=Require, 0=Don't require [DEFAULT]; askForPasswordDelay seconds
+# Values: askForPassword 1=Require, 0=Don't require [DEFAULT]; askForPasswordDelay seconds (300=5 mins)
 # Reset: defaults delete com.apple.screensaver askForPassword; defaults delete com.apple.screensaver askForPasswordDelay
 defaults write com.apple.screensaver askForPassword -int 1
-defaults write com.apple.screensaver askForPasswordDelay -int 0
+defaults write com.apple.screensaver askForPasswordDelay -int 300
 
 # Screenshot location
 # Values: Any path; Default ~/Desktop
@@ -375,6 +473,22 @@ defaults write com.apple.menuextra.clock ShowAMPM -bool true
 defaults write com.apple.menuextra.clock ShowSeconds -bool false
 defaults write com.apple.menuextra.clock ShowDate -bool false
 
+# Spotlight menu bar visibility
+# Values: 0=Hidden, 8=Shown [DEFAULT]
+# Reset: defaults -currentHost delete com.apple.Spotlight MenuItemHidden
+defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
+
+# Siri menu bar visibility
+# Note: Modern macOS uses Control Center; this hides Siri from menu bar
+# Values: true/false varies by version
+# Reset: defaults delete com.apple.Siri StatusMenuVisible
+defaults write com.apple.Siri StatusMenuVisible -bool false
+
+# Time Machine menu bar visibility
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.systemuiserver "NSStatusItem Visible com.apple.TimeMachine"
+# Note: Time Machine menu extra must be added via System Preferences on fresh install
+
 ###############################################################################
 # Finder                                                                      #
 ###############################################################################
@@ -387,8 +501,8 @@ defaults write com.apple.finder QuitMenuItem -bool true
 # New Finder window location
 # Values: PfDe=Desktop, PfDo=Documents, PfHm=Home, PfLo=Custom path; Default PfHm
 # Reset: defaults delete com.apple.finder NewWindowTarget; defaults delete com.apple.finder NewWindowTargetPath
-defaults write com.apple.finder NewWindowTarget -string "PfDe"
-defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/"
+defaults write com.apple.finder NewWindowTarget -string "PfDo"
+defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/Documents/"
 
 # Desktop icons for drives/volumes
 # Values: true=Show, false=Hide [DEFAULT for all]
@@ -514,6 +628,11 @@ defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 # Values: true=Warn [DEFAULT], false=No warning
 # Reset: defaults delete com.apple.finder WarnOnEmptyTrash
 defaults write com.apple.finder WarnOnEmptyTrash -bool false
+
+# Auto-empty Trash after 30 days
+# Values: true=Auto-empty, false=Manual only [DEFAULT]
+# Reset: defaults delete com.apple.finder FXRemoveOldTrashItems
+defaults write com.apple.finder FXRemoveOldTrashItems -bool true
 
 # Show ~/Library folder
 # Values: nohidden=Visible, hidden=Hidden [DEFAULT]
@@ -651,6 +770,51 @@ defaults write com.apple.dock wvous-tl-corner -int 0
 defaults write com.apple.dock wvous-tr-corner -int 0
 defaults write com.apple.dock wvous-bl-corner -int 0
 defaults write com.apple.dock wvous-br-corner -int 0
+
+###############################################################################
+# Stage Manager and Desktop                                                   #
+###############################################################################
+
+# Stage Manager enabled
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager GloballyEnabled
+defaults write com.apple.WindowManager GloballyEnabled -bool true
+
+# Stage Manager: Show windows from application
+# Values: 0=One at a time, 1=All at once [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager AppWindowGroupingBehavior
+defaults write com.apple.WindowManager AppWindowGroupingBehavior -int 0
+
+# Stage Manager: Show recent apps in strip
+# Values: 1=Show [DEFAULT], 0=Hide
+# Reset: defaults delete com.apple.WindowManager AutoHide
+# Note: AutoHide=0 means show recent apps, AutoHide=1 means hide them
+defaults write com.apple.WindowManager AutoHide -bool false
+
+# Hide desktop icons (when not in Stage Manager)
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager StandardHideDesktopIcons
+defaults write com.apple.WindowManager StandardHideDesktopIcons -bool true
+
+# Hide desktop icons in Stage Manager
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager HideDesktop
+defaults write com.apple.WindowManager HideDesktop -bool true
+
+# Hide widgets on desktop
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager StandardHideWidgets
+defaults write com.apple.WindowManager StandardHideWidgets -bool true
+
+# Hide widgets in Stage Manager
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager StageManagerHideWidgets
+defaults write com.apple.WindowManager StageManagerHideWidgets -bool true
+
+# Click wallpaper to reveal desktop
+# Values: 1=Always [DEFAULT], 0=Only in Stage Manager
+# Reset: defaults delete com.apple.WindowManager EnableStandardClickToShowDesktop
+defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool true
 
 ###############################################################################
 # Safari & WebKit                                                             #
@@ -791,6 +955,32 @@ defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -stri
 # Reset: defaults delete com.apple.mail SpellCheckingBehavior
 # defaults write com.apple.mail SpellCheckingBehavior -string "NoSpellCheckingEnabled"
 
+# Message font (for reading/composing)
+# Values: Font name and size; Default system font
+# Reset: defaults delete com.apple.mail NSFont; defaults delete com.apple.mail NSFontSize
+defaults write com.apple.mail NSFont -string "Verdana"
+defaults write com.apple.mail NSFontSize -int 13
+
+# Message list font size
+# Values: Encoded font data; Requires special handling
+# Note: Message list font is stored as binary plist data, harder to set via defaults
+# The user can set this manually: Mail → Settings → Fonts & Colors → Message list font
+
+# Quoted text coloring enabled
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.mail ColorQuoterColorIncoming
+defaults write com.apple.mail ColorQuoterColorIncoming -int 1
+
+# Mail privacy: Hide IP address when loading remote content
+# Values: true=Hide IP, false=Don't hide [DEFAULT]
+# Reset: defaults delete com.apple.mail-shared HideRemoteImages (varies by version)
+# Note: These settings are version-dependent; manual configuration recommended for privacy settings
+
+# Mail privacy: Block all remote content
+# Values: true=Block, false=Allow [DEFAULT]
+# Reset: defaults delete com.apple.mail-shared BlockRemoteContent
+# Note: Modern Mail uses a different mechanism; configure in Mail → Settings → Privacy
+
 ###############################################################################
 # Terminal & iTerm 2                                                          #
 ###############################################################################
@@ -925,6 +1115,15 @@ defaults write com.apple.commerce AutoUpdate -bool true
 defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 
 ###############################################################################
+# Reminders                                                                   #
+###############################################################################
+
+# Include reminders due today in badge count
+# Values: true=Include today, false=Only overdue [DEFAULT]
+# Reset: defaults delete com.apple.remindd shouldIncludeRemindersDueTodayInBadgeCount
+defaults write com.apple.remindd shouldIncludeRemindersDueTodayInBadgeCount -bool true
+
+###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################
 
@@ -940,9 +1139,11 @@ for app in "Activity Monitor" \
   "Mail" \
   "Messages" \
   "Photos" \
+  "Reminders" \
   "Safari" \
   "SystemUIServer" \
-  "Terminal"; do
+  "Terminal" \
+  "WindowManager"; do
   killall "${app}" &>/dev/null
 done
 
