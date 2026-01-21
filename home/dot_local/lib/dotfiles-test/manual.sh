@@ -99,7 +99,7 @@ run_manual_tests() {
     "cd into a git repo - branch and status indicators should appear"
 
   manual_test "Error status indicator" \
-    "Run 'false' (exits with error) - prompt char should turn magenta"
+    "Run 'false' - the NEXT prompt's ❯ should be pink (not teal). Type something without running to see it."
 
   manual_test "Execution time" \
     "Run 'sleep 1' - execution time should appear on right side"
@@ -109,7 +109,7 @@ run_manual_tests() {
   echo -e "${BOLD}── ZOXIDE ──${RESET}"
 
   manual_test "Zoxide jump" \
-    "Type 'cd <partial-path>' (e.g., 'cd dot') - should jump to matching directory"
+    "Type 'cd' + partial path you've visited before (e.g., 'cd Dow' for Downloads) - should fuzzy-match and jump"
 
   manual_test "Zoxide interactive" \
     "Type 'cdi' - interactive directory selection should appear"

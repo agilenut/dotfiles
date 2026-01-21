@@ -38,8 +38,8 @@ auto_upgrade = false
     style = 'plain'
     template = '❯ '
     foreground_templates = [
-      '{{ if ne .Code 0 }}magenta{{ end }}',
-      '{{ if eq .Code 0 }}lightCyan{{ end }}',
+      '{{ if ne .Code 0 }}lightMagenta{{ end }}',
+      '{{ if eq .Code 0 }}cyan{{ end }}',
     ]
 
 [[blocks]]
@@ -62,8 +62,8 @@ auto_upgrade = false
       #[transient_prompt]
       #  newline = true
       #  foreground_templates = [
-      #    '{{ if ne .Code 0 }}magenta{{ end }}',
-      #    '{{ if eq .Code 0 }}lightCyan{{ end }}',
+      #    '{{ if ne .Code 0 }}lightMagenta{{ end }}',
+      #    '{{ if eq .Code 0 }}cyan{{ end }}',
       #  ]
       #  template = '❯ '
 

@@ -49,6 +49,24 @@ test_completion_system() {
   else
     fail "fzf-tab zstyles not found"
   fi
+
+  # Verify fzf-tab has color flags configured
+  if zsh_check 'zstyle -L ":fzf-tab:*" fzf-flags 2>/dev/null | grep -q "color"'; then
+    pass "fzf-tab color styles configured"
+  else
+    fail "fzf-tab color styles not found"
+  fi
+
+  # npm completion (loaded via nvm or npm itself)
+  if command -v npm &>/dev/null; then
+    if zsh_check 'type _npm &>/dev/null || type _npm_completion &>/dev/null'; then
+      pass "npm completion function loaded"
+    else
+      fail "npm completion function not found"
+    fi
+  else
+    skip "npm not installed"
+  fi
 }
 
 test_plugins_loaded() {
@@ -97,6 +115,26 @@ test_color_output() {
     fi
   else
     skip "eza not installed"
+  fi
+
+  # Test man page colors via less_termcap
+  if command -v man &>/dev/null; then
+    local man_output
+    # Use zsh to get the less_termcap settings, then run man
+    man_output=$(zsh_check 'MANPAGER="less" man -P "head -50" ls 2>/dev/null')
+    if has_ansi_codes "$man_output"; then
+      pass "man pages produce ANSI color codes"
+    else
+      # Check if less_termcap is configured
+      # shellcheck disable=SC2016 # Single quotes intentional - passed to zsh
+      if zsh_check '[[ -n "${less_termcap[md]}" ]]'; then
+        pass "less_termcap configured (colors may vary by terminal)"
+      else
+        fail "man page colors not configured"
+      fi
+    fi
+  else
+    skip "man not installed"
   fi
 
   if command -v bat &>/dev/null; then
