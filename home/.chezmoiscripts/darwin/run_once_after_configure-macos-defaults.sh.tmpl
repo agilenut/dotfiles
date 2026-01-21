@@ -6,19 +6,9 @@
 # macOS Defaults Configuration Script
 # Based on: https://github.com/mathiasbynens/dotfiles/blob/master/.macos
 #
-# ⚠️  WARNING: This script is DISABLED by default.
-# To enable, remove the 'exit 0' line below after reviewing each setting.
-#
-# Each setting shows:
-# - CURRENT: Your current value (as of script generation)
-# - RECOMMEND: Whether this change benefits a developer workflow
-# - REVERT: Command to restore your original setting
-#
-# Review each setting before enabling the script.
-
-echo "macOS defaults script is currently DISABLED for review."
-echo "Edit this file and remove the 'exit 0' line to enable."
-exit 0
+# This script includes an updated version of settings from mathias's original.
+# Several settings are specific to my preferences.
+# REVIEW CAREFULLY BEFORE RUNNING!
 
 # Close any open System Preferences panes, to prevent them from overriding
 # settings we're about to change
@@ -78,6 +68,26 @@ defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -in
 # Values: 0=Personalized ads off, 1=On [DEFAULT]
 # Reset: defaults delete com.apple.AdLib allowApplePersonalizedAdvertising
 defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
+
+# Disable SSH remote login
+# Values: on=Enabled, off=Disabled [DEFAULT]
+# Reset: sudo systemsetup -setremotelogin on
+sudo systemsetup -setremotelogin off 2>/dev/null
+
+# Disable automatic login (requires password at login)
+# Values: Delete key to disable auto-login
+# Reset: sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string "username"
+sudo defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null || true
+
+# Disable wake for network access (Wake-on-LAN)
+# Values: 0=Disabled, 1=Enabled [DEFAULT on desktop Macs]
+# Reset: sudo pmset -a womp 1
+sudo pmset -a womp 0
+
+# Disable Spotlight Siri Suggestions (prevents queries from being sent to Apple)
+# Values: false=Disabled, true=Enabled [DEFAULT]
+# Reset: defaults delete com.apple.Spotlight SiriSuggestionsEnabled
+defaults write com.apple.Spotlight SiriSuggestionsEnabled -bool false
 
 ###############################################################################
 # AirDrop                                                                     #
@@ -435,10 +445,10 @@ sudo pmset -b sleep 5
 defaults -currentHost write com.apple.screensaver idleTime -int 1200
 
 # Require password after sleep/screensaver
-# Values: askForPassword 1=Require, 0=Don't require [DEFAULT]; askForPasswordDelay seconds (300=5 mins)
+# Values: askForPassword 1=Require, 0=Don't require [DEFAULT]; askForPasswordDelay seconds (0=immediate)
 # Reset: defaults delete com.apple.screensaver askForPassword; defaults delete com.apple.screensaver askForPasswordDelay
 defaults write com.apple.screensaver askForPassword -int 1
-defaults write com.apple.screensaver askForPasswordDelay -int 300
+defaults write com.apple.screensaver askForPasswordDelay -int 0
 
 # Screenshot location
 # Values: Any path; Default ~/Desktop
@@ -1147,6 +1157,26 @@ defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 # Values: true=Include today, false=Only overdue [DEFAULT]
 # Reset: defaults delete com.apple.remindd shouldIncludeRemindersDueTodayInBadgeCount
 defaults write com.apple.remindd shouldIncludeRemindersDueTodayInBadgeCount -bool true
+
+###############################################################################
+# Privacy - Clear Recent Items                                                #
+###############################################################################
+
+# Clear recent applications (privacy)
+# Note: This clears the list; to limit the number kept, use NSRecentDocumentsLimit
+# Reset: N/A (data is regenerated on use)
+osascript -e 'tell application "System Events" to delete every recent application' 2>/dev/null || true
+
+# Clear recent documents (privacy)
+osascript -e 'tell application "System Events" to delete every recent document' 2>/dev/null || true
+
+# Clear recent servers (privacy)
+osascript -e 'tell application "System Events" to delete every recent server' 2>/dev/null || true
+
+# Limit number of recent items kept (optional - reduces exposure)
+# Values: Integer; Default 10
+# Reset: defaults delete NSGlobalDomain NSRecentDocumentsLimit
+# defaults write NSGlobalDomain NSRecentDocumentsLimit -int 5
 
 ###############################################################################
 # Kill affected applications                                                  #
