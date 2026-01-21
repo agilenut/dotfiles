@@ -102,6 +102,7 @@ main() {
   fi
 
   print_summary
+  print_followups
 
   if [[ "$auto_only" == false ]]; then
     run_manual_tests

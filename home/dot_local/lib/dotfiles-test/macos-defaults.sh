@@ -56,10 +56,10 @@ test_macos_defaults() {
       fail "Automatic login enabled"
     fi
   else
-    skip "Firewall enabled (requires sudo)"
-    skip "Stealth mode enabled (requires sudo)"
-    skip "Signed apps allowed (requires sudo)"
-    skip "Automatic login disabled (requires sudo)"
+    skip_with_followup "Firewall enabled" "Run tests interactively to enable sudo-required security checks"
+    skip_with_followup "Stealth mode enabled" "Run tests interactively to enable sudo-required security checks"
+    skip_with_followup "Signed apps allowed" "Run tests interactively to enable sudo-required security checks"
+    skip_with_followup "Automatic login disabled" "Run tests interactively to enable sudo-required security checks"
   fi
 
   # Personalized ads disabled
@@ -120,7 +120,7 @@ test_macos_defaults() {
     # Developer menu enabled
     test_macos_default "$safari_plist" "IncludeDevelopMenu" "1" "Safari developer menu enabled"
   else
-    skip "Safari shows full URL (requires Full Disk Access)"
-    skip "Safari developer menu enabled (requires Full Disk Access)"
+    skip_with_followup "Safari shows full URL" "Grant Full Disk Access to terminal in System Settings > Privacy & Security"
+    skip_with_followup "Safari developer menu enabled" "Grant Full Disk Access to terminal in System Settings > Privacy & Security"
   fi
 }

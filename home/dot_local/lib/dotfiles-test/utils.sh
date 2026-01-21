@@ -15,6 +15,9 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_SKIPPED=0
 
+# Follow-up actions to display at end
+FOLLOW_UPS=()
+
 pass() {
   ((TESTS_RUN++))
   ((TESTS_PASSED++))
@@ -32,9 +35,38 @@ skip() {
   echo -e "  ${YELLOW}○${RESET} $1 (skipped)"
 }
 
+# Skip with a follow-up action to display at end
+skip_with_followup() {
+  local description="$1"
+  local followup="$2"
+  skip "$description"
+  # Only add unique follow-ups
+  local found=false
+  for existing in "${FOLLOW_UPS[@]+"${FOLLOW_UPS[@]}"}"; do
+    if [[ "$existing" == "$followup" ]]; then
+      found=true
+      break
+    fi
+  done
+  if [[ "$found" == false ]]; then
+    FOLLOW_UPS+=("$followup")
+  fi
+}
+
 section() {
   echo ""
+  echo ""
   echo -e "${BOLD}[$1]${RESET}"
+}
+
+print_followups() {
+  if [[ ${#FOLLOW_UPS[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${BOLD}Follow-up Actions:${RESET}"
+    for followup in "${FOLLOW_UPS[@]}"; do
+      echo -e "  ${YELLOW}→${RESET} $followup"
+    done
+  fi
 }
 
 header() {
