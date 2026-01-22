@@ -68,6 +68,7 @@ Before considering development tasks complete:
 
 - Avoid data loss. Confirm before destructive operations.
 - Prefer soft deletes or backups where appropriate.
+- **Files outside current repo** (not under source control): Show proposed diff and get approval before editing.
 
 ## Debugging
 
