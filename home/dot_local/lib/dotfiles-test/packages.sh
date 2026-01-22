@@ -21,6 +21,7 @@ test_commands_installed() {
     "rg"
     "shellcheck"
     "shfmt"
+    "tmux"
     "tree"
     "zoxide"
     "zsh"

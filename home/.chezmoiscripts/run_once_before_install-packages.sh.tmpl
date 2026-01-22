@@ -63,9 +63,11 @@ brew_install eza
 brew_install zoxide
 brew_install tree
 brew_install ripgrep
+brew_install tmux
 
 section "Shell & Prompt"
 brew_install zsh
+brew_install pam-reattach # Touch ID in tmux
 if ! command -v oh-my-posh &>/dev/null; then
   echo "  → Installing oh-my-posh..."
   brew install --formula jandedobbeleer/oh-my-posh/oh-my-posh
@@ -144,7 +146,7 @@ section "Installing Packages"
 if command -v apt &>/dev/null; then
   echo "Using apt..."
   sudo apt update
-  sudo apt install -y fzf fd-find bat zoxide tree ripgrep zsh neovim git
+  sudo apt install -y fzf fd-find bat zoxide tree ripgrep zsh neovim git tmux
 
   # eza might need a different source on some distros
   if ! command -v eza &>/dev/null; then
@@ -152,10 +154,10 @@ if command -v apt &>/dev/null; then
   fi
 elif command -v pacman &>/dev/null; then
   echo "Using pacman..."
-  sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git
+  sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git tmux
 elif command -v dnf &>/dev/null; then
   echo "Using dnf..."
-  sudo dnf install -y fzf fd-find bat eza zoxide tree ripgrep zsh neovim git
+  sudo dnf install -y fzf fd-find bat eza zoxide tree ripgrep zsh neovim git tmux
 fi
 
 {{ end -}}

@@ -21,6 +21,7 @@ dotfiles/
 │   ├── dot_zshenv             # → ~/.zshenv
 │   ├── dot_config/            # → ~/.config/
 │   │   ├── zsh/               # Shell config
+│   │   ├── tmux/              # Tmux config with TPM
 │   │   ├── git/               # Git config (templated)
 │   │   └── ...
 │   ├── dot_local/bin/         # → ~/.local/bin/ (scripts)
@@ -98,3 +99,5 @@ chezmoi update
 - macOS sandboxed apps (Safari) store prefs in `~/Library/Containers/` - requires Full Disk Access
 - Some dotfiles-test checks require sudo (firewall tests) or Full Disk Access (Safari)
 - `dotfiles-test` runs from installed location (`~/.local/bin`); to test source changes before `chezmoi apply`, run `./home/dot_local/bin/executable_dotfiles-test` or use VS Code's "Run Test Task"
+- Tmux plugins (resurrect, sensible) require first-run install: start tmux, press `C-a I` (Ctrl-a, then Shift-i)
+- Manual tests work best in tmux (inline testing); without tmux, falls back to subshell mode

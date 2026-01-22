@@ -28,6 +28,7 @@ On first run, you'll be prompted for git user name and email.
 
 ### Terminal Utilities
 
+- **tmux** - terminal multiplexer with TPM plugin manager
 - **fzf** - fuzzy finder with custom keybindings (Ctrl-T, Ctrl-R, Alt-C)
 - **fd** - fast file finder
 - **bat** - cat with syntax highlighting
@@ -83,7 +84,8 @@ chezmoi add ~/.config/newapp/config
 # Run automated tests (installed version)
 dotfiles-test --auto-only
 
-# Run with manual tests (interactive)
+# Run with manual tests (interactive, best in tmux)
+tmux new-session
 dotfiles-test
 ```
 
