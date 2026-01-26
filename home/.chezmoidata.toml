@@ -1,0 +1,20 @@
+# Profile configurations for chezmoi
+# These are automatically merged with template data
+
+[profiles.personal.github]
+  username   = "agilenut"
+  email      = "705864+agilenut@users.noreply.github.com"
+  signingkey = "~/.ssh/1Password/SHA256_komh+fO2Z_PSDFal72v5Ry0bLzDwR5pBViPf5Ibl3+s.pub"
+
+[profiles.personal.apps]
+  casks = [
+    "1password",
+    "alfred",
+    "warp",
+    "visual-studio-code",
+    "firefox",
+    "google-chrome",
+    "appcleaner",
+    "rectangle-pro",
+    "logi-options-plus",
+  ]

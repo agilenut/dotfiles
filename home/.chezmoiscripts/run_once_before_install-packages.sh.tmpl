@@ -143,6 +143,8 @@ brew_cask_install logi-options-plus "Logi Options+"
 
 section "Installing Packages"
 
+GCM_VERSION="2.6.1"
+
 if command -v apt &>/dev/null; then
   echo "Using apt..."
   sudo apt update
@@ -152,12 +154,41 @@ if command -v apt &>/dev/null; then
   if ! command -v eza &>/dev/null; then
     echo "  ⚠ eza not available in apt, skipping..."
   fi
-elif command -v pacman &>/dev/null; then
-  echo "Using pacman..."
-  sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git tmux
+
+  # Git Credential Manager (.deb)
+  if ! command -v git-credential-manager &>/dev/null; then
+    echo "  → Installing Git Credential Manager..."
+    curl -fsSL "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.deb" -o /tmp/gcm.deb
+    sudo dpkg -i /tmp/gcm.deb
+    rm /tmp/gcm.deb
+    git-credential-manager configure
+  fi
+
 elif command -v dnf &>/dev/null; then
   echo "Using dnf..."
   sudo dnf install -y fzf fd-find bat eza zoxide tree ripgrep zsh neovim git tmux
+
+  # Git Credential Manager (.rpm)
+  if ! command -v git-credential-manager &>/dev/null; then
+    echo "  → Installing Git Credential Manager..."
+    sudo dnf install -y "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.rpm"
+    git-credential-manager configure
+  fi
+
+elif command -v pacman &>/dev/null; then
+  echo "Using pacman..."
+  sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git tmux
+
+  # Git Credential Manager (AUR)
+  if ! command -v git-credential-manager &>/dev/null; then
+    if command -v yay &>/dev/null; then
+      echo "  → Installing Git Credential Manager..."
+      yay -S --noconfirm git-credential-manager-bin
+      git-credential-manager configure
+    else
+      echo "  ⚠ Install git-credential-manager-bin from AUR manually"
+    fi
+  fi
 fi
 
 {{ end -}}

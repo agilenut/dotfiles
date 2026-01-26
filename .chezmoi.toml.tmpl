@@ -1,9 +1,27 @@
 {{- /* Chezmoi configuration template */ -}}
 {{- /* Prompts user for personalization on first run */ -}}
 
-{{- $name := promptStringOnce . "name" "Git user name" -}}
-{{- $email := promptStringOnce . "email" "Git email" -}}
+{{- /* Profile selection - "personal" uses predefined values, "custom" prompts for all */ -}}
+{{- $profile := promptChoiceOnce . "profile" "Select profile" (list "personal" "custom") -}}
+
+{{- /* For custom profile, prompt for values */ -}}
+{{- $username := "" -}}
+{{- $email := "" -}}
+{{- $signingkey := "" -}}
+
+{{- if eq $profile "custom" -}}
+{{-   $username = promptStringOnce . "github.username" "GitHub username" -}}
+{{-   $email = promptStringOnce . "github.email" "Git email" -}}
+{{-   $signingkey = promptStringOnce . "github.signingkey" "SSH signing key path (leave empty to disable signing)" -}}
+{{- end -}}
 
 [data]
-    name = {{ $name | quote }}
-    email = {{ $email | quote }}
+    profile = {{ $profile | quote }}
+{{- if eq $profile "custom" }}
+    [data.github]
+        username = {{ $username | quote }}
+        email = {{ $email | quote }}
+{{- if $signingkey }}
+        signingkey = {{ $signingkey | quote }}
+{{- end }}
+{{- end }}
