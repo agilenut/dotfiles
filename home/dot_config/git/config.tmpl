@@ -56,3 +56,7 @@
 [commit]
 	gpgsign = true
 {{- end }}
+{{- if and (hasKey . "github") (hasKey .github "sc") }}
+[includeIf "gitdir:~/repos/sc/"]
+	path = ~/.config/git/config-sc
+{{- end }}

@@ -13,6 +13,11 @@
 {{ end }}
 
 
+# Secondary git identity - ignore if not configured
+{{ if not (and (hasKey . "github") (hasKey .github "sc")) }}
+.config/git/config-sc
+{{ end }}
+
 # Windows-specific ignores
 {{ if eq .chezmoi.os "windows" }}
 # No native zsh
