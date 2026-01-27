@@ -18,6 +18,7 @@ Source files in `home/` are transformed and installed to target locations:
 ```text
 dotfiles/
 ├── home/                      # Chezmoi source directory
+│   ├── .chezmoidata.toml      # Package definitions and profiles
 │   ├── dot_zshenv             # → ~/.zshenv
 │   ├── dot_config/            # → ~/.config/
 │   │   ├── zsh/               # Shell config
@@ -26,9 +27,25 @@ dotfiles/
 │   │   └── ...
 │   ├── dot_local/bin/         # → ~/.local/bin/ (scripts)
 │   └── dot_local/lib/         # Test library
-├── .chezmoi.toml.tmpl         # User config (name, email)
+├── .chezmoi.toml.tmpl         # Profile selection and custom prompts
 └── .claude/                   # Claude Code config
 ```
+
+### Profile System
+
+Profiles control which packages and configuration to install:
+
+- **Core tools** (global): Installed for all profiles - fzf, bat, git, neovim, tmux, etc.
+- **Dev tools** (profile-specific): go, dotnet-sdk, shellcheck, etc.
+- **Apps** (profile-specific): GUI applications like 1Password, VS Code
+- **Git config** (profile-specific): username, email, signing key
+
+Profile data is defined in `home/.chezmoidata.toml`. The install script (`run_once_before_install-packages.sh.tmpl`) iterates over this data.
+
+### Git Authentication
+
+- **HTTPS with GCM**: Git Credential Manager handles authentication for GitHub, Azure DevOps, etc.
+- **SSH signing** (optional): Commits can be signed via 1Password's `op-ssh-sign` if `signingkey` is set in the profile
 
 ### Platform Support
 

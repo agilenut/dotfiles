@@ -1,6 +1,7 @@
 #!/bin/bash
 # Install system packages
 # This script runs once per machine before dotfiles are applied
+# Package lists are defined in .chezmoidata.toml
 
 set -e
 
@@ -14,6 +15,7 @@ section() {
 
 {{ if eq .chezmoi.os "darwin" -}}
 # macOS - Install Homebrew and packages
+{{- $profile := index .profiles .profile }}
 
 section "Checking Homebrew"
 
@@ -55,54 +57,11 @@ brew_install() {
   brew install "$package"
 }
 
-section "Terminal Utilities"
-brew_install fzf
-brew_install fd
-brew_install bat
-brew_install eza
-brew_install zoxide
-brew_install tree
-brew_install ripgrep
-brew_install tmux
-
-section "Shell & Prompt"
-brew_install zsh
-brew_install pam-reattach # Touch ID in tmux
-if ! command -v oh-my-posh &>/dev/null; then
-  echo "  → Installing oh-my-posh..."
-  brew install --formula jandedobbeleer/oh-my-posh/oh-my-posh
-else
-  echo "  ✓ oh-my-posh (already installed)"
-fi
-
-section "Development Tools"
-brew_install neovim nvim
-brew_install git
-brew_install go
-brew_install shellcheck
-brew_install shfmt
-brew_install git-ignore
-brew_install git-credential-manager git-credential-manager-core
-brew_install dotnet-sdk dotnet
-brew_install powershell pwsh
-brew_install chezmoi
-
-section "QuickLook Extensions"
-brew_install syntax-highlight
-brew_install qlmarkdown
-
 # Function to install a cask if not already installed
-# Usage: brew_cask_install <cask> [app_name]
-# If app_name is provided, checks for that app instead of deriving from cask name
+# Usage: brew_cask_install <cask> <app_name>
 brew_cask_install() {
   local cask="$1"
-  local app="${2:-}"
-
-  # If no app name provided, try common patterns
-  if [[ -z "$app" ]]; then
-    # Convert cask name to likely app name (e.g., visual-studio-code -> Visual Studio Code)
-    app=$(echo "$cask" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
-  fi
+  local app="$2"
 
   # Check if app exists in /Applications or ~/Applications
   if [[ -d "/Applications/${app}.app" ]] || [[ -d "${HOME}/Applications/${app}.app" ]]; then
@@ -120,75 +79,102 @@ brew_cask_install() {
   brew install --cask "$cask"
 }
 
+section "Core Tools"
+{{- range .packages.darwin.core }}
+brew_install "{{ . }}"
+{{- end }}
+
+section "Shell & Prompt"
+# oh-my-posh needs tap install
+if ! command -v oh-my-posh &>/dev/null; then
+  echo "  → Installing oh-my-posh..."
+  brew install --formula jandedobbeleer/oh-my-posh/oh-my-posh
+else
+  echo "  ✓ oh-my-posh (already installed)"
+fi
+
+{{- if $profile.packages }}
+{{- if $profile.packages.darwin }}
+{{- if $profile.packages.darwin.dev }}
+
+section "Development Tools"
+{{- range $profile.packages.darwin.dev }}
+brew_install "{{ . }}"
+{{- end }}
+{{- end }}
+{{- if $profile.packages.darwin.quicklook }}
+
+section "QuickLook Extensions"
+{{- range $profile.packages.darwin.quicklook }}
+brew_install "{{ . }}"
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if $profile.apps }}
+{{- if $profile.apps.casks }}
+
 section "GUI Applications"
-brew_cask_install visual-studio-code "Visual Studio Code"
-brew_cask_install warp "Warp"
-brew_cask_install alfred "Alfred 5"
-
-section "Browsers"
-brew_cask_install firefox "Firefox"
-brew_cask_install google-chrome "Google Chrome"
-
-section "Utilities"
-brew_cask_install 1password "1Password"
-brew_cask_install appcleaner "AppCleaner"
-brew_cask_install rectangle-pro "Rectangle Pro"
-brew_cask_install logi-options-plus "Logi Options+"
-
-# Virtualization (optional - large download)
-# brew_cask_install vmware-fusion
+{{- range $profile.apps.casks }}
+brew_cask_install "{{ .name }}" "{{ .app }}"
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install
 
 section "Installing Packages"
 
-GCM_VERSION="2.6.1"
-
 if command -v apt &>/dev/null; then
   echo "Using apt..."
   sudo apt update
-  sudo apt install -y fzf fd-find bat zoxide tree ripgrep zsh neovim git tmux
+  sudo apt install -y {{ .packages.linux.apt.core | join " " }}
 
   # eza might need a different source on some distros
   if ! command -v eza &>/dev/null; then
     echo "  ⚠ eza not available in apt, skipping..."
   fi
 
-  # Git Credential Manager (.deb)
-  if ! command -v git-credential-manager &>/dev/null; then
-    echo "  → Installing Git Credential Manager..."
-    curl -fsSL "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.deb" -o /tmp/gcm.deb
-    sudo dpkg -i /tmp/gcm.deb
-    rm /tmp/gcm.deb
-    git-credential-manager configure
-  fi
-
 elif command -v dnf &>/dev/null; then
   echo "Using dnf..."
-  sudo dnf install -y fzf fd-find bat eza zoxide tree ripgrep zsh neovim git tmux
-
-  # Git Credential Manager (.rpm)
-  if ! command -v git-credential-manager &>/dev/null; then
-    echo "  → Installing Git Credential Manager..."
-    sudo dnf install -y "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.rpm"
-    git-credential-manager configure
-  fi
+  sudo dnf install -y {{ .packages.linux.dnf.core | join " " }}
 
 elif command -v pacman &>/dev/null; then
   echo "Using pacman..."
-  sudo pacman -S --noconfirm fzf fd bat eza zoxide tree ripgrep zsh neovim git tmux
+  sudo pacman -S --noconfirm {{ .packages.linux.pacman.core | join " " }}
+fi
 
-  # Git Credential Manager (AUR)
-  if ! command -v git-credential-manager &>/dev/null; then
-    if command -v yay &>/dev/null; then
-      echo "  → Installing Git Credential Manager..."
-      yay -S --noconfirm git-credential-manager-bin
-      git-credential-manager configure
+# GCM installation - prefer dotnet tool, fallback to package download
+section "Git Credential Manager"
+if ! command -v git-credential-manager &>/dev/null; then
+  GCM_INSTALLED=false
+  if command -v dotnet &>/dev/null; then
+    echo "  → Installing via dotnet tool..."
+    dotnet tool install -g git-credential-manager && GCM_INSTALLED=true
+  else
+    echo "  → Installing from GitHub releases..."
+    GCM_VERSION=$(curl -s https://api.github.com/repos/git-ecosystem/git-credential-manager/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+    if [[ -z "$GCM_VERSION" ]]; then
+      echo "  ⚠ Could not fetch GCM version from GitHub API"
+    elif command -v apt &>/dev/null; then
+      curl -fsSL "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.deb" -o /tmp/gcm.deb
+      sudo dpkg -i /tmp/gcm.deb && GCM_INSTALLED=true
+      rm -f /tmp/gcm.deb
+    elif command -v dnf &>/dev/null; then
+      sudo dnf install -y "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.rpm" && GCM_INSTALLED=true
+    elif command -v pacman &>/dev/null && command -v yay &>/dev/null; then
+      yay -S --noconfirm git-credential-manager-bin && GCM_INSTALLED=true
     else
-      echo "  ⚠ Install git-credential-manager-bin from AUR manually"
+      echo "  ⚠ Install git-credential-manager manually"
     fi
   fi
+  if $GCM_INSTALLED; then
+    git-credential-manager configure
+  fi
+else
+  echo "  ✓ git-credential-manager (already installed)"
 fi
 
 {{ end -}}

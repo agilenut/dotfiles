@@ -15,7 +15,38 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply agilenut
 chezmoi init --apply agilenut
 ```
 
-On first run, you'll be prompted for git user name and email.
+On first run, you'll be prompted to select a profile:
+
+- **personal** - Predefined settings for personal use (default)
+- **custom** - Prompts for GitHub username, email, and signing key
+
+## Profiles
+
+Packages and configuration are organized into profiles defined in `.chezmoidata.toml`:
+
+| Category       | Scope              | Example                          |
+| -------------- | ------------------ | -------------------------------- |
+| **Core tools** | Global (all users) | fzf, bat, git, neovim, tmux, zsh |
+| **Dev tools**  | Profile-specific   | go, dotnet-sdk, shellcheck       |
+| **GUI apps**   | Profile-specific   | 1Password, VS Code, Warp         |
+| **Git config** | Profile-specific   | username, email, signing key     |
+
+To create a work profile, add to `.chezmoidata.toml`:
+
+```toml
+[profiles.work.github]
+  username = "work-username"
+  email = "you@company.com"
+
+[profiles.work.packages.darwin]
+  dev = ["terraform", "kubectl", "azure-cli"]
+
+[[profiles.work.apps.casks]]
+  name = "slack"
+  app = "Slack"
+```
+
+Then set `profile = "work"` in `~/.config/chezmoi/chezmoi.toml`.
 
 ## What's Included
 
@@ -26,7 +57,7 @@ On first run, you'll be prompted for git user name and email.
 - **Alacritty** terminal (macOS)
 - Plugins: fzf-tab, fast-syntax-highlighting, zsh-autosuggestions
 
-### Terminal Utilities
+### Core Tools (all profiles)
 
 - **tmux** - terminal multiplexer with TPM plugin manager
 - **fzf** - fuzzy finder with custom keybindings (Ctrl-T, Ctrl-R, Alt-C)
@@ -36,11 +67,11 @@ On first run, you'll be prompted for git user name and email.
 - **zoxide** - smart cd
 - **ripgrep** - fast grep
 - **tree** - directory tree viewer
-
-### Development Tools
-
 - **neovim** - editor
-- **git** with git-credential-manager
+- **git** with git-credential-manager (HTTPS auth)
+
+### Development Tools (personal profile)
+
 - **go** - Go programming language
 - **dotnet-sdk** - .NET development
 - **powershell** - cross-platform shell
