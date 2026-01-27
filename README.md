@@ -18,7 +18,7 @@ chezmoi init --apply agilenut
 On first run, you'll be prompted to select a profile:
 
 - **personal** - Predefined settings for personal use (default)
-- **custom** - Prompts for GitHub username, email, and signing key
+- **custom** - Prompts for git name, email, and signing key
 
 ## Profiles
 
@@ -29,13 +29,13 @@ Packages and configuration are organized into profiles defined in `.chezmoidata.
 | **Core tools** | Global (all users) | fzf, bat, git, neovim, tmux, zsh |
 | **Dev tools**  | Profile-specific   | go, dotnet-sdk, shellcheck       |
 | **GUI apps**   | Profile-specific   | 1Password, VS Code, Warp         |
-| **Git config** | Profile-specific   | username, email, signing key     |
+| **Git config** | Profile-specific   | name, email, signing key         |
 
 To create a work profile, add to `.chezmoidata.toml`:
 
 ```toml
 [profiles.work.github]
-  username = "work-username"
+  name = "Your Name"
   email = "you@company.com"
 
 [profiles.work.packages.darwin]
@@ -47,6 +47,18 @@ To create a work profile, add to `.chezmoidata.toml`:
 ```
 
 Then set `profile = "work"` in `~/.config/chezmoi/chezmoi.toml`.
+
+### Secondary Git Identity
+
+For repos in a specific directory (e.g., `~/repos/sc/`) that need a different git identity, add to `~/.config/chezmoi/chezmoi.toml`:
+
+```toml
+[data.github.sc]
+  name = "Work Name"
+  email = "work@company.com"
+```
+
+This generates `~/.config/git/config-sc` and adds an `includeIf` directive to auto-apply it for repos under `~/repos/sc/`. Values are stored locally, not in the dotfiles repo.
 
 ## What's Included
 

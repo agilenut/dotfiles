@@ -50,7 +50,7 @@
   # =============================================================================
 
 [profiles.personal.github]
-  username   = "agilenut"
+  name       = "agilenut"
   email      = "705864+agilenut@users.noreply.github.com"
   signingkey = "~/.ssh/1Password/SHA256_komh+fO2Z_PSDFal72v5Ry0bLzDwR5pBViPf5Ibl3+s.pub"
 
@@ -96,7 +96,7 @@
 
   # Example work profile (for reference)
   # [profiles.work.github]
-  #   username = "..."
+  #   name = "..."
   #   email = "..."
   #
   # [profiles.work.packages.darwin]

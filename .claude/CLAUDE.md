@@ -38,7 +38,7 @@ Profiles control which packages and configuration to install:
 - **Core tools** (global): Installed for all profiles - fzf, bat, git, neovim, tmux, etc.
 - **Dev tools** (profile-specific): go, dotnet-sdk, shellcheck, etc.
 - **Apps** (profile-specific): GUI applications like 1Password, VS Code
-- **Git config** (profile-specific): username, email, signing key
+- **Git config** (profile-specific): name, email, signing key
 
 Profile data is defined in `home/.chezmoidata.toml`. The install script (`run_once_before_install-packages.sh.tmpl`) iterates over this data.
 
@@ -46,6 +46,7 @@ Profile data is defined in `home/.chezmoidata.toml`. The install script (`run_on
 
 - **HTTPS with GCM**: Git Credential Manager handles authentication for GitHub, Azure DevOps, etc.
 - **SSH signing** (optional): Commits can be signed via 1Password's `op-ssh-sign` if `signingkey` is set in the profile
+- **Secondary identity** (optional): For repos under `~/repos/sc/`, set `github.sc.name` and `github.sc.email` in local chezmoi.toml to auto-apply a different git identity via `includeIf`
 
 ### Platform Support
 

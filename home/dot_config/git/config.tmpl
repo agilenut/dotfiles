@@ -1,17 +1,17 @@
 {{- /* Resolve profile data - either from named profile or custom values */ -}}
-{{- $username := "" -}}
+{{- $name := "" -}}
 {{- $email := "" -}}
 {{- $signingkey := "" -}}
 
 {{- if eq .profile "custom" -}}
-{{-   $username = .github.username -}}
+{{-   $name = .github.name -}}
 {{-   $email = .github.email -}}
 {{-   if hasKey .github "signingkey" -}}
 {{-     $signingkey = .github.signingkey -}}
 {{-   end -}}
 {{- else -}}
 {{-   $p := index .profiles .profile -}}
-{{-   $username = $p.github.username -}}
+{{-   $name = $p.github.name -}}
 {{-   $email = $p.github.email -}}
 {{-   if hasKey $p.github "signingkey" -}}
 {{-     $signingkey = $p.github.signingkey -}}
@@ -19,7 +19,7 @@
 {{- end -}}
 
 [user]
-	name = {{ $username }}
+	name = {{ $name }}
 	email = {{ $email }}
 {{- if $signingkey }}
 	signingkey = {{ $signingkey }}

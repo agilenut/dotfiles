@@ -5,12 +5,12 @@
 {{- $profile := promptChoiceOnce . "profile" "Select profile" (list "personal" "custom") -}}
 
 {{- /* For custom profile, prompt for values */ -}}
-{{- $username := "" -}}
+{{- $name := "" -}}
 {{- $email := "" -}}
 {{- $signingkey := "" -}}
 
 {{- if eq $profile "custom" -}}
-{{-   $username = promptStringOnce . "github.username" "GitHub username" -}}
+{{-   $name = promptStringOnce . "github.name" "Git name (for commits)" -}}
 {{-   $email = promptStringOnce . "github.email" "Git email" -}}
 {{-   $signingkey = promptStringOnce . "github.signingkey" "SSH signing key path (leave empty to disable signing)" -}}
 {{- end -}}
@@ -26,7 +26,7 @@
     profile = {{ $profile | quote }}
 {{- if eq $profile "custom" }}
     [data.github]
-        username = {{ $username | quote }}
+        name = {{ $name | quote }}
         email = {{ $email | quote }}
 {{- if $signingkey }}
         signingkey = {{ $signingkey | quote }}
