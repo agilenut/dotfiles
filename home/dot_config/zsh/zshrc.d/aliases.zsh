@@ -17,12 +17,12 @@ alias -- -='cd -'         # previous dir
 
 # Shortcuts
 # -----------------------------------------------------------------------------
-alias home='cd ~'                                   # user home
-alias dt='cd ~/Desktop'                             # desktop
-alias dev='cd ~/Developer'                          # dev repos
-alias docs='cd ~/Documents'                         # documents
-alias dl='cd ~/Downloads'                           # downloads
-alias dot='cd ~/Developer/github/agilenut/dotfiles' # dotfiles repo
+alias home='cd ~'               # user home
+alias dt='cd ~/Desktop'         # desktop
+alias repos='cd ~/repos'        # repos
+alias docs='cd ~/Documents'     # documents
+alias dl='cd ~/Downloads'       # downloads
+alias dot='cd ~/repos/dotfiles' # dotfiles repo
 
 # LS
 # -----------------------------------------------------------------------------
