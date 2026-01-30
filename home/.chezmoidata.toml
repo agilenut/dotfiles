@@ -9,6 +9,7 @@
   core = [
     "bat",
     "chezmoi",
+    "duti",
     "eza",
     "fd",
     "fzf",
