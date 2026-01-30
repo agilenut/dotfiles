@@ -93,6 +93,7 @@ repos:
     hooks:
       - id: markdownlint
         types: [markdown]
+        exclude: ^\.github/ISSUE_TEMPLATE/
 
   # Prettier for general formatting (json, yaml, markdown, css)
   # Uses .editorconfig for settings (indent_size, end_of_line, etc.)
