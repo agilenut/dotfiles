@@ -3,7 +3,7 @@
 # This script runs once per machine before dotfiles are applied
 # Package lists are defined in .chezmoidata.toml
 
-set -e
+set -euo pipefail
 
 # Helper to print section headers
 section() {

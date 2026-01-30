@@ -45,7 +45,7 @@ jobs:
       - name: Apply dotfiles
         run: |
           ./bin/chezmoi init --apply --source=${{ github.workspace }} \
-            --override-data '{"name":"CI Bot","email":"ci@example.com"}'
+            --override-data '{"profile":"personal"}'
 
       - name: Run tests
         shell: zsh -i {0}
