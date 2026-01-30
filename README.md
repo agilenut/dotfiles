@@ -48,18 +48,6 @@ To create a work profile, add to `.chezmoidata.toml`:
 
 Then set `profile = "work"` in `~/.config/chezmoi/chezmoi.toml`.
 
-### Secondary Git Identity
-
-For repos in a specific directory (e.g., `~/repos/sc/`) that need a different git identity, add to `~/.config/chezmoi/chezmoi.toml`:
-
-```toml
-[data.github.sc]
-  name = "Work Name"
-  email = "work@company.com"
-```
-
-This generates `~/.config/git/config-sc` and adds an `includeIf` directive to auto-apply it for repos under `~/repos/sc/`. Values are stored locally, not in the dotfiles repo.
-
 ## What's Included
 
 ### Shell & Terminal

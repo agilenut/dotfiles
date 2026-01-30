@@ -15,13 +15,6 @@
 {{-   $signingkey = promptStringOnce . "github.signingkey" "SSH signing key path (leave empty to disable signing)" -}}
 {{- end -}}
 
-{{- /* Secondary git identity (optional, any profile) - for work repos in ~/repos/sc/ */ -}}
-{{- $scName := promptStringOnce . "github.sc.name" "Secondary git name for ~/repos/sc/ (leave empty to skip)" -}}
-{{- $scEmail := "" -}}
-{{- if $scName -}}
-{{-   $scEmail = promptStringOnce . "github.sc.email" "Secondary git email for ~/repos/sc/" -}}
-{{- end -}}
-
 [data]
     profile = {{ $profile | quote }}
 {{- if eq $profile "custom" }}
@@ -31,9 +24,4 @@
 {{- if $signingkey }}
         signingkey = {{ $signingkey | quote }}
 {{- end }}
-{{- end }}
-{{- if and $scName $scEmail }}
-    [data.github.sc]
-        name = {{ $scName | quote }}
-        email = {{ $scEmail | quote }}
 {{- end }}

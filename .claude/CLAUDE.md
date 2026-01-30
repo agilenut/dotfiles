@@ -46,7 +46,6 @@ Profile data is defined in `home/.chezmoidata.toml`. The install script (`run_on
 
 - **HTTPS with GCM**: Git Credential Manager handles authentication for GitHub, Azure DevOps, etc.
 - **SSH signing** (optional): Commits can be signed via 1Password's `op-ssh-sign` if `signingkey` is set in the profile
-- **Secondary identity** (optional): For repos under `~/repos/sc/`, set `github.sc.name` and `github.sc.email` in local chezmoi.toml to auto-apply a different git identity via `includeIf`
 
 ### Platform Support
 
