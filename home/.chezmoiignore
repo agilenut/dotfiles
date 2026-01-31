@@ -1,0 +1,30 @@
+# Chezmoi ignore file
+# See https://www.chezmoi.io/reference/special-files-and-directories/chezmoiignore/
+
+# macOS-specific files - ignore on non-macOS
+{{ if ne .chezmoi.os "darwin" }}
+.claude/
+.config/alacritty/
+.config/karabiner/
+.config/qlmarkdown/
+.config/syntax-highlight/
+.config/zsh/zshrc.d/macos.zsh
+.hushlogin
+{{ end }}
+
+
+# Secondary git identity - ignore if not configured
+{{ if not (and (hasKey . "github") (hasKey .github "sc")) }}
+.config/git/config-sc
+{{ end }}
+
+# Windows-specific ignores
+{{ if eq .chezmoi.os "windows" }}
+# No native zsh
+.zshenv
+.config/zsh/
+.local/bin/fzf-preview
+.local/bin/is-completion-fzf
+.local/bin/is-completion-zsh
+.local/bin/is-macos
+{{ end }}

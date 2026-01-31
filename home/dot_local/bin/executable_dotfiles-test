@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# dotfiles-test
+# =============================================================================
+# Validates dotfiles installation by running automated checks and providing
+# a manual verification checklist for visual/interactive tests.
+
+set -euo pipefail
+
+# Resolve library directory relative to script location
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/../lib/dotfiles-test"
+
+# Source library files
+source "$LIB_DIR/utils.sh"
+source "$LIB_DIR/packages.sh"
+source "$LIB_DIR/shell.sh"
+source "$LIB_DIR/manual.sh"
+
+# Source macOS-specific tests on Darwin
+if [[ "$(uname)" == "Darwin" ]]; then
+  source "$LIB_DIR/macos-defaults.sh"
+fi
+
+# =============================================================================
+# Main
+# =============================================================================
+
+print_summary() {
+  echo ""
+  echo "================================================================================"
+  if [[ $TESTS_FAILED -eq 0 ]]; then
+    echo -e "${GREEN}${BOLD}RESULTS: $TESTS_PASSED/$TESTS_RUN passed${RESET}"
+  else
+    echo -e "${RED}${BOLD}RESULTS: $TESTS_PASSED/$TESTS_RUN passed ($TESTS_FAILED failed)${RESET}"
+  fi
+  if [[ $TESTS_SKIPPED -gt 0 ]]; then
+    echo -e "${YELLOW}($TESTS_SKIPPED tests skipped)${RESET}"
+  fi
+  echo "================================================================================"
+}
+
+show_help() {
+  echo "Usage: dotfiles-test [OPTIONS]"
+  echo ""
+  echo "Validate dotfiles installation."
+  echo ""
+  echo "Options:"
+  echo "  --auto-only    Run automated tests only (skip manual checklist)"
+  echo "  --help         Show this help message"
+  echo ""
+}
+
+main() {
+  local auto_only=false
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --auto-only)
+        auto_only=true
+        shift
+        ;;
+      --help | -h)
+        show_help
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $1"
+        show_help
+        exit 1
+        ;;
+    esac
+  done
+
+  header
+  clear_zcompdump
+
+  # Package tests
+  test_commands_installed
+  test_casks_installed
+
+  # Shell tests
+  test_environment_variables
+  test_completion_system
+  test_plugins_loaded
+  test_prompt_configured
+  test_color_output
+  test_config_files
+  test_fzf_keybindings
+  test_aliases_defined
+
+  # macOS-specific tests
+  if [[ "$(uname)" == "Darwin" ]]; then
+    test_macos_defaults
+  fi
+
+  print_summary
+  print_followups
+
+  if [[ "$auto_only" == false ]]; then
+    run_manual_tests
+  fi
+
+  # Exit with appropriate code
+  if [[ $TESTS_FAILED -gt 0 ]]; then
+    exit 1
+  elif [[ $TESTS_SKIPPED -gt 0 ]]; then
+    exit 2
+  else
+    exit 0
+  fi
+}
+
+main "$@"

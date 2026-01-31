@@ -1,0 +1,32 @@
+[general]
+
+  # allow external commands to create new windows
+  ipc_socket = true
+
+  #import = ["~/.config/alacritty/themes/visual_studio_dark_plus.toml"]
+  import = [ "~/.config/alacritty/themes/vscode_dark_modern.toml" ]
+
+[env]
+  TERM = "xterm-256color"
+
+[window]
+
+  # same dimentions as rectangle centered view
+  #dimensions.columns = 147
+  #dimensions.lines = 43
+  #position.x = 175
+  #position.y = 175
+
+  padding.x = 10
+  padding.y = 10
+
+  decorations = "Buttonless"
+
+  #opacity = 0.8
+  blur = true
+
+  option_as_alt = "Both"
+
+[font]
+  normal.family = "MesloLGS Nerd Font Mono"
+  size          = 18

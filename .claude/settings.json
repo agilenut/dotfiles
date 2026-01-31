@@ -1,0 +1,85 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./home/dot_local/bin/executable_dotfiles-test:*)",
+      "Bash(/usr/libexec/PlistBuddy:*)",
+      "Bash(brew list:*)",
+      "Bash(cat:*)",
+      "Bash(chezmoi cat:*)",
+      "Bash(chezmoi data:*)",
+      "Bash(chezmoi diff:*)",
+      "Bash(chezmoi execute-template:*)",
+      "Bash(chezmoi list:*)",
+      "Bash(chezmoi managed:*)",
+      "Bash(chezmoi source-path:*)",
+      "Bash(chezmoi status:*)",
+      "Bash(chezmoi target-state:*)",
+      "Bash(code:*)",
+      "Bash(command -v:*)",
+      "Bash(defaults:*)",
+      "Bash(echo:*)",
+      "Bash(editorconfig:*)",
+      "Bash(env:*)",
+      "Bash(find:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh release list:*)",
+      "Bash(gh release view:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh workflow list:*)",
+      "Bash(gh workflow view:*)",
+      "Bash(git -C:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(ls:*)",
+      "Bash(md5:*)",
+      "Bash(pip3 list:*)",
+      "Bash(pipx list:*)",
+      "Bash(plutil:*)",
+      "Bash(pmset:*)",
+      "Bash(pre-commit:*)",
+      "Bash(pwd:*)",
+      "Bash(shellcheck:*)",
+      "Bash(shfmt:*)",
+      "Bash(tail:*)",
+      "Bash(taplo:*)",
+      "Bash(tmux:*)",
+      "Bash(tree:*)",
+      "Bash(unset:*)",
+      "Bash(zsh:*)",
+      "Bash(~/.local/bin/dotfiles-test:*)",
+      "Edit",
+      "Write",
+      "WebFetch",
+      "WebSearch",
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pre-commit run --files \"$(jq -r '.tool_input.file_path')\""
+          }
+        ]
+      }
+    ]
+  }
+}

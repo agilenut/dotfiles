@@ -1,0 +1,113 @@
+# Chezmoi data - packages and profile configurations
+# These are automatically merged with template data
+
+# =============================================================================
+# CORE PACKAGES - OS-specific, installed for ALL profiles (alphabetized)
+# =============================================================================
+
+[packages.darwin]
+  core = [
+    "bat",
+    "chezmoi",
+    "duti",
+    "eza",
+    "fd",
+    "fzf",
+    "gh",
+    "git",
+    "git-credential-manager",
+    "neovim",
+    "pam-reattach",
+    "ripgrep",
+    "tmux",
+    "tree",
+    "zoxide",
+    "zsh",
+  ]
+
+[packages.linux.apt]
+  # Note: eza not in standard apt repos; GCM installed separately
+  core = [ "bat", "fd-find", "fzf", "git", "neovim", "ripgrep", "tmux", "tree", "zoxide", "zsh" ]
+
+[packages.linux.dnf]
+  core = [
+    "bat",
+    "eza",
+    "fd-find",
+    "fzf",
+    "git",
+    "neovim",
+    "ripgrep",
+    "tmux",
+    "tree",
+    "zoxide",
+    "zsh",
+  ]
+
+[packages.linux.pacman]
+  core = [ "bat", "eza", "fd", "fzf", "git", "neovim", "ripgrep", "tmux", "tree", "zoxide", "zsh" ]
+
+  # =============================================================================
+  # PROFILES - Dev tools and apps are profile-specific (alphabetized)
+  # =============================================================================
+
+[profiles.personal.github]
+  name       = "agilenut"
+  email      = "705864+agilenut@users.noreply.github.com"
+  signingkey = "~/.ssh/1Password/SHA256_komh+fO2Z_PSDFal72v5Ry0bLzDwR5pBViPf5Ibl3+s.pub"
+
+[profiles.personal.packages.darwin]
+  dev       = [ "dotnet-sdk", "git-ignore", "go", "powershell", "shellcheck", "shfmt" ]
+  quicklook = [ "qlmarkdown", "syntax-highlight" ]
+
+[[profiles.personal.apps.casks]]
+  name = "1password"
+  app  = "1Password"
+
+[[profiles.personal.apps.casks]]
+  name = "alfred"
+  app  = "Alfred 5"
+
+[[profiles.personal.apps.casks]]
+  name = "appcleaner"
+  app  = "AppCleaner"
+
+[[profiles.personal.apps.casks]]
+  name = "firefox"
+  app  = "Firefox"
+
+[[profiles.personal.apps.casks]]
+  name = "google-chrome"
+  app  = "Google Chrome"
+
+[[profiles.personal.apps.casks]]
+  name = "logi-options-plus"
+  app  = "Logi Options+"
+
+[[profiles.personal.apps.casks]]
+  name = "rectangle-pro"
+  app  = "Rectangle Pro"
+
+[[profiles.personal.apps.casks]]
+  name = "visual-studio-code"
+  app  = "Visual Studio Code"
+
+[[profiles.personal.apps.casks]]
+  name = "warp"
+  app  = "Warp"
+
+  # Example work profile (for reference)
+  # [profiles.work.github]
+  #   name = "..."
+  #   email = "..."
+  #
+  # [profiles.work.packages.darwin]
+  #   dev = ["azure-cli", "kubectl", "terraform"]
+  #
+  # [[profiles.work.apps.casks]]
+  #   name = "microsoft-teams"
+  #   app = "Microsoft Teams"
+  #
+  # [[profiles.work.apps.casks]]
+  #   name = "slack"
+  #   app = "Slack"

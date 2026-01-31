@@ -1,0 +1,34 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# Import custom Terminal.app profile
+# This runs before the defaults script so the profile exists when we set it as default
+
+PROFILE_NAME="VS Code Dark Plus Custom"
+PROFILE_FILE="${HOME}/.config/terminal/VS_Code_Dark_Plus_Custom.terminal"
+
+# Check if profile file exists
+if [[ ! -f "$PROFILE_FILE" ]]; then
+  echo "Terminal profile not found at $PROFILE_FILE, skipping import"
+  exit 0
+fi
+
+# Check if profile already exists in Terminal
+if defaults read com.apple.Terminal "Window Settings" 2>/dev/null | grep -q "\"${PROFILE_NAME}\""; then
+  echo "Terminal profile '${PROFILE_NAME}' already exists, skipping import"
+  exit 0
+fi
+
+echo "Importing Terminal profile: ${PROFILE_NAME}"
+
+# Import by opening the .terminal file (this adds it to Terminal's profiles)
+# The 'open' command with -g runs it in background without bringing Terminal to front
+open -g "$PROFILE_FILE"
+
+# Give Terminal a moment to import the profile
+sleep 2
+
+echo "Terminal profile imported successfully"
+{{ end }}

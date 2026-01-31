@@ -1,0 +1,28 @@
+# Colors (VSCode Dark Modern)
+
+[colors.primary]
+  background = '#1f1f1f'
+  foreground = '#cccccc'
+
+# NOTE: These are the actual VS Code Dark Modern terminal ANSI colors.
+# Previously, magenta/cyan were swapped to match VS Code syntax highlighting
+# semantics, but that broke standard terminal color expectations.
+[colors.normal]
+  black   = '#1f1f1f'
+  red     = '#F44747'
+  green   = '#6A9955'
+  yellow  = '#CE9178'
+  blue    = '#569CD6'
+  magenta = '#646695'
+  cyan    = '#4EC9B0'
+  white   = '#cccccc'
+
+[colors.bright]
+  black   = '#666666'
+  red     = '#F44747'
+  green   = '#A4C98B'
+  yellow  = '#E0BC9F'
+  blue    = '#8CBCEB'
+  magenta = '#C586C0'
+  cyan    = '#4EC9B0'
+  white   = '#ffffff'

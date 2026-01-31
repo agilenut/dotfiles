@@ -1,0 +1,82 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# Configure default file associations for development files
+# Uses duti to set VS Code as the default editor
+
+VSCODE_BUNDLE_ID="com.microsoft.VSCode"
+VSCODE_APP="/Applications/Visual Studio Code.app"
+
+# Exit if VS Code is not installed
+if [[ ! -d "$VSCODE_APP" ]]; then
+  echo "VS Code not installed, skipping file associations"
+  exit 0
+fi
+
+# Exit if duti is not available
+if ! command -v duti &>/dev/null; then
+  echo "duti not installed, skipping file associations"
+  exit 0
+fi
+
+echo "Configuring file associations for VS Code..."
+
+# Development file extensions to associate with VS Code
+extensions=(
+  # Markdown & docs
+  md
+
+  # Data formats
+  json
+  jsonc
+  yml
+  yaml
+  xml
+  toml
+
+  # Config files
+  editorconfig
+  config
+  ini
+
+  # Shell scripts
+  sh
+  bash
+  zsh
+  ps1
+
+  # Git
+  gitignore
+
+  # .NET
+  cs
+  csproj
+  sln
+
+  # Web
+  js
+  ts
+  tsx
+  css
+  scss
+  html
+
+  # Database
+  sql
+
+  # Build files
+  dockerfile
+  makefile
+
+  # Plain text
+  txt
+)
+
+for ext in "${extensions[@]}"; do
+  duti -s "$VSCODE_BUNDLE_ID" ".$ext" all 2>/dev/null
+done
+
+echo "File associations configured for VS Code"
+{{ end }}

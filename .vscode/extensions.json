@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    // Shell
+    "mkhl.shfmt",
+    "timonwong.shellcheck",
+
+    // TOML
+    "tamasfe.even-better-toml",
+
+    // Markdown
+    "davidanson.vscode-markdownlint",
+
+    // General
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig"
+  ]
+}
