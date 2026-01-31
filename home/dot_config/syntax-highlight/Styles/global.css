@@ -1,0 +1,3 @@
+body > :last-child {
+  display: none !important;
+}

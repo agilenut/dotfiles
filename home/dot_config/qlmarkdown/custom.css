@@ -1,0 +1,4 @@
+/* Hide the donation footer */
+body > :last-child > :last-child {
+  display: none !important;
+}

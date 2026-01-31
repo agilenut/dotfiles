@@ -1,0 +1,17 @@
+# External dependencies managed by chezmoi
+# See https://www.chezmoi.io/reference/special-files-and-directories/chezmoiexternal-format/
+
+# Antidote - zsh plugin manager
+# Previously cloned dynamically in .zshrc, now managed by chezmoi
+[".local/share/antidote"]
+  type       = "git-repo"
+  url        = "https://github.com/mattmc3/antidote.git"
+  clone.args = [ "--depth", "1" ]
+  pull.args  = [ "--ff-only" ]
+
+# TPM - tmux plugin manager
+[".config/tmux/plugins/tpm"]
+  type       = "git-repo"
+  url        = "https://github.com/tmux-plugins/tpm.git"
+  clone.args = [ "--depth", "1" ]
+  pull.args  = [ "--ff-only" ]

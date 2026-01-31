@@ -1,0 +1,52 @@
+# .zplugins
+# =============================================================================
+# Contains ordered list of plugins to load.
+
+
+# Oh My Zsh
+# -----------------------------------------------------------------------------
+
+# If you use Oh-My-Zsh with antidote, load this plugin FIRST.
+getantidote/use-omz
+
+# Use Oh My Zsh's lib directory.
+ohmyzsh/ohmyzsh path:lib
+
+# Add Oh My Zsh plugins.
+ohmyzsh/ohmyzsh path:plugins/colored-man-pages
+
+# Binary only plugins
+# -----------------------------------------------------------------------------
+romkatv/zsh-bench kind:path
+
+# Core shell configuration
+# -----------------------------------------------------------------------------
+
+"$ZDOTDIR/zshrc.d/colors.zsh"
+"$ZDOTDIR/zshrc.d/editor.zsh"
+"$ZDOTDIR/zshrc.d/macos.zsh" conditional:is-macos
+"$ZDOTDIR/zshrc.d/prompt.zsh"
+"$ZDOTDIR/zshrc.d/nvm.zsh"
+
+# Completions
+# -----------------------------------------------------------------------------
+
+#TODO: How do I add git sub commmand completions like git-ignore?
+
+"zsh-users/zsh-completions" path:src kind:fpath
+"$ZDOTDIR/zshrc.d/dotnet.zsh"
+"$ZDOTDIR/zshrc.d/fzf.zsh" conditional:is-completion-fzf
+"$ZDOTDIR/zshrc.d/zoxide.zsh"
+
+# User customization
+# -----------------------------------------------------------------------------
+
+"$ZDOTDIR/zshrc.d/hooks.zsh"
+"$ZDOTDIR/zshrc.d/aliases.zsh"
+
+# External plugins
+# -----------------------------------------------------------------------------
+
+aloxaf/fzf-tab conditional:is-completion-fzf
+zdharma-continuum/fast-syntax-highlighting
+zsh-users/zsh-autosuggestions

@@ -1,0 +1,132 @@
+# Pre-commit hooks for linting and formatting
+# Install: brew install pre-commit && pre-commit install && pre-commit install --hook-type pre-push
+# Run manually: pre-commit run --all-files
+
+# NOTE: Format and style rules should:
+# - Be defined in a single source of truth config file and checked into this repo (use .editorconfig where possible).
+# - Use the same underlying tooling across pre-commit hooks,
+#   vscode extensions defined in .vscode/extensions.json,
+#   and CI tests defined in .github/workflows/test.yml in order to ensure consistency.
+# - Lint processes should have a way to run in verbose mode to see which files are being changed (useful for debugging).
+
+repos:
+  # Shell formatting (shfmt)
+  # Uses .editorconfig for settings (indent_size, binary_next_line, etc.)
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-1
+    hooks:
+      - id: shfmt
+        # Verbose wrapper that:
+        # - Prints "Checking: <file>" for each file
+        # - Prints "  Modified: <file>" when a file is reformatted
+        # - Lets errors pass through to stderr naturally
+        # - Uses --filename with .zsh suffix for extensionless files (dot_zshenv, etc.)
+        # - Empty shfmt output means file was ignored via editorconfig
+        entry: |
+          bash -c '
+            rc=0
+            for f; do
+              echo "Checking: $f"
+              fn="$f"
+              [[ ! "$f" =~ \.(sh|bash|zsh)$ ]] && fn="${f}.zsh"
+              before=$(cksum "$f")
+              if formatted=$(shfmt --apply-ignore --filename "$fn" < "$f" 2>&1); then
+                if [[ -n "$formatted" ]]; then
+                  echo "$formatted" > "$f"
+                  after=$(cksum "$f")
+                  if [[ "$before" != "$after" ]]; then
+                    echo "  Modified: $f"
+                  fi
+                fi
+              else
+                echo "$formatted" >&2
+                rc=1
+              fi
+            done
+            exit $rc
+          ' _
+        args: [] # Override default -w arg
+        #verbose: true # Uncomment this if you want verbose logging.
+        # Match shell files by extension or executable_ prefix
+        types: [text] # Accept any file type
+        exclude_types: [] # Override upstream exclusion of zsh
+        files: (\.(sh|bash|zsh)$|\.(sh|bash|zsh)\.tmpl$|executable_|zshrc|zshenv|zprofile|zlogin|zlogout)
+
+  # Shell linting (shellcheck) - for bash/sh files only
+  # Shellcheck doesn't support zsh, so we exclude zsh-specific files
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        # Wrapper prints "Checking: <file>" for each file, then runs shellcheck
+        entry: |
+          bash -c '
+            rc=0
+            for f; do
+              echo "Checking: $f"
+              shellcheck --severity=warning "$f" || rc=1
+            done
+            exit $rc
+          ' _
+        args: []
+        types: [shell]
+        exclude: (\.zsh$)
+        #verbose: true # Uncomment to see files checked
+
+  # TOML formatting and linting (taplo)
+  # Settings in .taplo.toml (indent_tables, align_entries, etc.)
+  - repo: https://github.com/ComPWA/mirrors-taplo
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+        types: [text]
+        files: \.toml(\.tmpl)?$
+      - id: taplo-lint
+        # Schema validation disabled in .taplo.toml; this checks syntax only
+        types: [text]
+        files: \.toml(\.tmpl)?$
+
+  # Markdown linting (markdownlint-cli) - lint only, prettier handles formatting
+  # Settings in .markdownlint.yaml
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        types: [markdown]
+        exclude: ^\.github/ISSUE_TEMPLATE/
+
+  # Prettier for general formatting (json, yaml, markdown, css)
+  # Uses .editorconfig for settings (indent_size, end_of_line, etc.)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        # Override default entry to remove --list-different (which suppresses unchanged files)
+        entry: prettier --write --ignore-unknown
+        exclude: \.tmpl$
+  # Basic file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+        exclude: ^\.vscode/ # VS Code uses JSONC (JSON with comments)
+      - id: check-added-large-files
+
+  # Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Branch protection (pre-push)
+  - repo: local
+    hooks:
+      - id: protect-main
+        name: protect main branch
+        entry: bash -c 'branch=$(git symbolic-ref HEAD 2>/dev/null | sed "s,.*/,,"); [ "$branch" = "main" ] && echo "Direct push to main blocked. Use a PR." && exit 1 || exit 0'
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false

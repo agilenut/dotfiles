@@ -1,0 +1,58 @@
+{{- /* Resolve profile data - either from named profile or custom values */ -}}
+{{- $name := "" -}}
+{{- $email := "" -}}
+{{- $signingkey := "" -}}
+
+{{- if eq .profile "custom" -}}
+{{-   $name = .github.name -}}
+{{-   $email = .github.email -}}
+{{-   if hasKey .github "signingkey" -}}
+{{-     $signingkey = .github.signingkey -}}
+{{-   end -}}
+{{- else -}}
+{{-   $p := index .profiles .profile -}}
+{{-   $name = $p.github.name -}}
+{{-   $email = $p.github.email -}}
+{{-   if hasKey $p.github "signingkey" -}}
+{{-     $signingkey = $p.github.signingkey -}}
+{{-   end -}}
+{{- end -}}
+
+[user]
+	name = {{ $name }}
+	email = {{ $email }}
+{{- if $signingkey }}
+	signingkey = {{ $signingkey }}
+{{- end }}
+[core]
+{{- if eq .chezmoi.os "windows" }}
+	autocrlf = true
+{{- else }}
+	autocrlf = input
+{{- end }}
+	editor = code
+[init]
+	defaultBranch = main
+[status]
+	short = true
+[pull]
+	rebase = false
+[credential]
+	helper =
+	helper = manager
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+{{- if $signingkey }}
+[gpg]
+	format = ssh
+[gpg "ssh"]
+{{- if eq .chezmoi.os "darwin" }}
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+{{- else if eq .chezmoi.os "windows" }}
+	program = {{ .chezmoi.homeDir }}/AppData/Local/1Password/app/8/op-ssh-sign.exe
+{{- else }}
+	program = /opt/1Password/op-ssh-sign
+{{- end }}
+[commit]
+	gpgsign = true
+{{- end }}

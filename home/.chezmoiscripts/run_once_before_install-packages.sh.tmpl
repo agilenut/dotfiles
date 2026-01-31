@@ -1,0 +1,187 @@
+#!/bin/bash
+# Install system packages
+# This script runs once per machine before dotfiles are applied
+# Package lists are defined in .chezmoidata.toml
+
+set -euo pipefail
+
+# Helper to print section headers
+section() {
+  echo ""
+  echo "========================================"
+  echo "$1"
+  echo "========================================"
+}
+
+{{ if eq .chezmoi.os "darwin" -}}
+# macOS - Install Homebrew and packages
+{{- $profile := index .profiles .profile }}
+
+section "Checking Homebrew"
+
+# Install Homebrew if not present
+if ! command -v brew &>/dev/null; then
+  echo "Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  # Add Homebrew to PATH for this script
+  if [ -x "/opt/homebrew/bin/brew" ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [ -x "/usr/local/bin/brew" ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+else
+  echo "Homebrew is already installed"
+fi
+
+# Function to install a package if not already installed
+# Usage: brew_install <package> [command_name]
+# If command_name is provided, checks for that command instead of package name
+brew_install() {
+  local package="$1"
+  local cmd="${2:-$1}"
+
+  # Skip if command already exists (installed via other means)
+  if command -v "$cmd" &>/dev/null; then
+    echo "  ✓ $package (already available)"
+    return 0
+  fi
+
+  # Skip if already installed via brew
+  if brew list "$package" &>/dev/null; then
+    echo "  ✓ $package (installed via brew)"
+    return 0
+  fi
+
+  echo "  → Installing $package..."
+  brew install "$package"
+}
+
+# Function to install a cask if not already installed
+# Usage: brew_cask_install <cask> <app_name>
+brew_cask_install() {
+  local cask="$1"
+  local app="$2"
+
+  # Check if app exists in /Applications or ~/Applications
+  if [[ -d "/Applications/${app}.app" ]] || [[ -d "${HOME}/Applications/${app}.app" ]]; then
+    echo "  ✓ $cask (found ${app}.app)"
+    return 0
+  fi
+
+  # Skip if already installed via brew
+  if brew list --cask "$cask" &>/dev/null; then
+    echo "  ✓ $cask (installed via brew)"
+    return 0
+  fi
+
+  echo "  → Installing $cask..."
+  brew install --cask "$cask"
+}
+
+section "Core Tools"
+{{- range .packages.darwin.core }}
+brew_install "{{ . }}"
+{{- end }}
+
+section "Shell & Prompt"
+# oh-my-posh needs tap install
+if ! command -v oh-my-posh &>/dev/null; then
+  echo "  → Installing oh-my-posh..."
+  brew install --formula jandedobbeleer/oh-my-posh/oh-my-posh
+else
+  echo "  ✓ oh-my-posh (already installed)"
+fi
+
+{{- if $profile.packages }}
+{{- if $profile.packages.darwin }}
+{{- if $profile.packages.darwin.dev }}
+
+section "Development Tools"
+{{- range $profile.packages.darwin.dev }}
+brew_install "{{ . }}"
+{{- end }}
+{{- end }}
+{{- if $profile.packages.darwin.quicklook }}
+
+section "QuickLook Extensions"
+{{- range $profile.packages.darwin.quicklook }}
+brew_install "{{ . }}"
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if $profile.apps }}
+{{- if $profile.apps.casks }}
+
+section "GUI Applications"
+{{- range $profile.apps.casks }}
+brew_cask_install "{{ .name }}" "{{ .app }}"
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{ else if eq .chezmoi.os "linux" -}}
+# Linux - Detect package manager and install
+
+section "Installing Packages"
+
+if command -v apt &>/dev/null; then
+  echo "Using apt..."
+  sudo apt update
+  sudo apt install -y {{ .packages.linux.apt.core | join " " }}
+
+  # eza might need a different source on some distros
+  if ! command -v eza &>/dev/null; then
+    echo "  ⚠ eza not available in apt, skipping..."
+  fi
+
+elif command -v dnf &>/dev/null; then
+  echo "Using dnf..."
+  sudo dnf install -y {{ .packages.linux.dnf.core | join " " }}
+
+elif command -v pacman &>/dev/null; then
+  echo "Using pacman..."
+  sudo pacman -S --noconfirm {{ .packages.linux.pacman.core | join " " }}
+fi
+
+# GCM installation - prefer dotnet tool, fallback to package download
+section "Git Credential Manager"
+if ! command -v git-credential-manager &>/dev/null; then
+  GCM_INSTALLED=false
+  if command -v dotnet &>/dev/null; then
+    echo "  → Installing via dotnet tool..."
+    dotnet tool install -g git-credential-manager && GCM_INSTALLED=true
+  else
+    echo "  → Installing from GitHub releases..."
+    GCM_VERSION=$(curl -s https://api.github.com/repos/git-ecosystem/git-credential-manager/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+    if [[ -z "$GCM_VERSION" ]]; then
+      echo "  ⚠ Could not fetch GCM version from GitHub API"
+    elif command -v apt &>/dev/null; then
+      curl -fsSL "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.deb" -o /tmp/gcm.deb
+      sudo dpkg -i /tmp/gcm.deb && GCM_INSTALLED=true
+      rm -f /tmp/gcm.deb
+    elif command -v dnf &>/dev/null; then
+      sudo dnf install -y "https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VERSION}/gcm-linux_amd64.${GCM_VERSION}.rpm" && GCM_INSTALLED=true
+    elif command -v pacman &>/dev/null && command -v yay &>/dev/null; then
+      yay -S --noconfirm git-credential-manager-bin && GCM_INSTALLED=true
+    else
+      echo "  ⚠ Install git-credential-manager manually"
+    fi
+  fi
+  if $GCM_INSTALLED; then
+    git-credential-manager configure
+  fi
+else
+  echo "  ✓ git-credential-manager (already installed)"
+fi
+
+{{ end -}}
+
+section "Installation Complete!"
+echo ""
+echo "Next steps:"
+echo "  1. Open a new terminal to load shell configuration"
+echo "  2. Run 'dotfiles-test' to verify installation"
+echo ""

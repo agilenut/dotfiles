@@ -1,0 +1,1168 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# macOS Defaults Configuration Script
+# Based on: https://github.com/mathiasbynens/dotfiles/blob/master/.macos
+#
+# This script includes an updated version of settings from mathias's original.
+# Several settings are specific to my preferences.
+# REVIEW CAREFULLY BEFORE RUNNING!
+
+# Close any open System Preferences panes, to prevent them from overriding
+# settings we're about to change
+osascript -e 'tell application "System Preferences" to quit'
+
+# Ask for the administrator password upfront
+sudo -v
+
+# Keep-alive: update existing `sudo` time stamp until script has finished
+while true; do
+  sudo -n true
+  sleep 60
+  kill -0 "$$" || exit
+done 2>/dev/null &
+
+###############################################################################
+# Security & Privacy                                                          #
+###############################################################################
+
+# Firewall
+# Values: on=Enabled, off=Disabled [DEFAULT]
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+
+# Firewall stealth mode (don't respond to ICMP ping or connection attempts)
+# Values: on=Stealth mode, off=Normal [DEFAULT]
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode off
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+
+# Allow signed apps automatically
+# Values: on=Allow signed [DEFAULT], off=Block all
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsigned on
+
+# Allow signed downloads automatically
+# Values: on=Allow signed downloads [DEFAULT], off=Block
+# Reset: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setallowsignedapp on
+
+# Disable analytics and diagnostics sharing
+# Values: See comments for each setting
+# Reset: Various - see Apple documentation
+
+# Share Mac Analytics (Share with Apple)
+# Values: Disable by modifying SystemConfiguration plist
+sudo defaults write "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory" AutoSubmit -bool false 2>/dev/null || true
+
+# Disable Siri analytics
+defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -int 2
+
+# Disable personalized ads
+# Values: 0=Personalized ads off, 1=On [DEFAULT]
+# Reset: defaults delete com.apple.AdLib allowApplePersonalizedAdvertising
+defaults write com.apple.AdLib allowApplePersonalizedAdvertising -bool false
+
+# Disable SSH remote login
+# Values: on=Enabled, off=Disabled [DEFAULT]
+# Reset: sudo systemsetup -setremotelogin on
+# Note: systemsetup throws Error:-99 if value already set; check first
+if sudo systemsetup -getremotelogin 2>/dev/null | grep -q "On"; then
+  echo "yes" | sudo systemsetup -setremotelogin off 2>/dev/null
+fi
+
+# Disable automatic login (requires password at login)
+# Values: Delete key to disable auto-login
+# Reset: sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string "username"
+sudo defaults delete /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null || true
+
+# Disable wake for network access (Wake-on-LAN)
+# Values: 0=Disabled, 1=Enabled [DEFAULT on desktop Macs]
+# Reset: sudo pmset -a womp 1
+sudo pmset -a womp 0
+
+# Disable Spotlight Siri Suggestions (prevents queries from being sent to Apple)
+# Values: false=Disabled, true=Enabled [DEFAULT]
+# Reset: defaults delete com.apple.Spotlight SiriSuggestionsEnabled
+defaults write com.apple.Spotlight SiriSuggestionsEnabled -bool false
+
+###############################################################################
+# AirDrop                                                                     #
+###############################################################################
+
+# AirDrop discoverability
+# Values: "Off", "Contacts Only", "Everyone" [DEFAULT]
+# Reset: defaults delete com.apple.sharingd DiscoverableMode
+defaults write com.apple.sharingd DiscoverableMode -string "Contacts Only"
+
+###############################################################################
+# General UI/UX                                                               #
+###############################################################################
+
+# Computer name (as done via System Preferences → Sharing)
+# Values: Any string
+# Reset: sudo scutil --set ComputerName "Your Mac"; sudo scutil --set HostName "your-mac"; sudo scutil --set LocalHostName "your-mac"
+# TODO: Maybe parameterize and allow skipping. Would be good to have them all match.
+#sudo scutil --set ComputerName "0x6D746873"
+#sudo scutil --set HostName "0x6D746873"
+#sudo scutil --set LocalHostName "0x6D746873"
+#sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "0x6D746873"
+
+# Startup sound
+# Values: %01=Muted, %00=Sound [DEFAULT]
+# Reset: sudo nvram StartupMute=%00
+sudo nvram StartupMute=%01
+
+# Dark mode
+# Values: Dark=Dark mode, not set=Light mode [DEFAULT]
+# Reset: defaults delete NSGlobalDomain AppleInterfaceStyle
+defaults write NSGlobalDomain AppleInterfaceStyle -string "Dark"
+
+# Menu bar transparency (effects transparency elsewhere too)
+# Values: true=Reduced transparency, false=Transparent [DEFAULT]
+# Reset: defaults delete com.apple.universalaccess reduceTransparency
+# defaults write com.apple.universalaccess reduceTransparency -bool true
+
+# Highlight color
+# Values: RGB string (e.g., "0.764700 0.976500 0.568600" for green); Default is blue
+# Reset: defaults delete NSGlobalDomain AppleHighlightColor
+# defaults write NSGlobalDomain AppleHighlightColor -string "0.764700 0.976500 0.568600"
+
+# Sidebar icon size
+# Values: 1=Small, 2=Medium [DEFAULT], 3=Large
+# Reset: defaults delete NSGlobalDomain NSTableViewDefaultSizeMode
+# defaults write NSGlobalDomain NSTableViewDefaultSizeMode -int 2
+
+# Scrollbar visibility
+# Values: WhenScrolling, Automatic [DEFAULT], Always
+# Reset: defaults delete NSGlobalDomain AppleShowScrollBars
+# defaults write NSGlobalDomain AppleShowScrollBars -string "Always"
+
+# Focus ring animation - shown when moving focus to a new field
+# Values: true=Animated [DEFAULT], false=No animation
+# Reset: defaults delete NSGlobalDomain NSUseAnimatedFocusRing
+# defaults write NSGlobalDomain NSUseAnimatedFocusRing -bool false
+
+# Smooth scrolling
+# Values: true=Smooth [DEFAULT], false=Instant
+# Reset: defaults delete NSGlobalDomain NSScrollAnimationEnabled
+# defaults write NSGlobalDomain NSScrollAnimationEnabled -bool false
+
+# Window resize speed
+# Values: Float in seconds; Default ~0.2
+# Reset: defaults delete NSGlobalDomain NSWindowResizeTime
+defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
+
+# Window tabbing mode (prefer tabs when opening documents)
+# Values: manual [DEFAULT], fullscreen, always
+# Reset: defaults delete NSGlobalDomain AppleWindowTabbingMode
+defaults write NSGlobalDomain AppleWindowTabbingMode -string "always"
+
+# Save panel expanded by default
+# Values: true=Expanded, false=Collapsed [DEFAULT]
+# Reset: defaults delete NSGlobalDomain NSNavPanelExpandedStateForSaveMode; defaults delete NSGlobalDomain NSNavPanelExpandedStateForSaveMode2
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
+
+# Print panel expanded by default
+# Values: true=Expanded, false=Collapsed [DEFAULT]
+# Reset: defaults delete NSGlobalDomain PMPrintingExpandedStateForPrint; defaults delete NSGlobalDomain PMPrintingExpandedStateForPrint2
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
+
+# Default save location
+# Values: true=iCloud [DEFAULT], false=Local disk
+# Reset: defaults delete NSGlobalDomain NSDocumentSaveNewDocumentsToCloud
+defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+
+# Quit printer app when jobs complete
+# Values: true=Auto-quit, false=Stay open [DEFAULT]
+# Reset: defaults delete com.apple.print.PrintingPrefs "Quit When Finished"
+defaults write com.apple.print.PrintingPrefs "Quit When Finished" -bool true
+
+# Gatekeeper "open application" dialog
+# Values: true=Show dialog [DEFAULT], false=Disable quarantine
+# Reset: defaults delete com.apple.LaunchServices LSQuarantine
+# defaults write com.apple.LaunchServices LSQuarantine -bool false
+
+# Show ASCII control characters in text views
+# Values: true=Show as caret notation, false=Hidden [DEFAULT]
+# Reset: defaults delete NSGlobalDomain NSTextShowsControlCharacters
+# defaults write NSGlobalDomain NSTextShowsControlCharacters -bool true
+
+# Resume (reopen windows on app restart)
+# Values: true=Resume [DEFAULT], false=Fresh start
+# Reset: defaults delete com.apple.systempreferences NSQuitAlwaysKeepsWindows
+# defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
+
+# Automatic termination of inactive apps
+# Values: true=Disable auto-termination, false=Allow [DEFAULT]
+# Reset: defaults delete NSGlobalDomain NSDisableAutomaticTermination
+# defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
+
+# Crash reporter dialog
+# Values: "crashreport"=Show dialog [DEFAULT], "none"=Disable, "server"=Send silently
+# Reset: defaults delete com.apple.CrashReporter DialogType
+defaults write com.apple.CrashReporter DialogType -string "none"
+
+# Disable "Open" dialog on app launch (NSDocument-based apps like TextEdit)
+# Values: true=Show open dialog [DEFAULT], false=Create new untitled document
+# Reset: defaults delete NSGlobalDomain NSShowAppCentricOpenPanelInsteadOfUntitledFile
+defaults write NSGlobalDomain NSShowAppCentricOpenPanelInsteadOfUntitledFile -bool false
+
+# Help Viewer floating windows
+# Values: true=Non-floating, false=Floating [DEFAULT]
+# Reset: defaults delete com.apple.helpviewer DevMode
+# defaults write com.apple.helpviewer DevMode -bool true
+
+# Show system info on login window clock click
+# Values: HostName=Show info, not set=Hidden [DEFAULT]
+# Reset: sudo defaults delete /Library/Preferences/com.apple.loginwindow AdminHostInfo
+# sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
+
+# Automatic capitalization
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete NSGlobalDomain NSAutomaticCapitalizationEnabled
+defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool false
+
+# Smart dashes (-- to em dash)
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete NSGlobalDomain NSAutomaticDashSubstitutionEnabled
+defaults write NSGlobalDomain NSAutomaticDashSubstitutionEnabled -bool false
+
+# Automatic period substitution (double-space to period)
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled
+defaults write NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled -bool false
+
+# Smart quotes (curly quotes)
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled
+defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
+
+# Auto-correct
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete NSGlobalDomain NSAutomaticSpellingCorrectionEnabled
+defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
+
+###############################################################################
+# Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
+###############################################################################
+
+# Trackpad tap to click
+# Values: true=Tap to click, false=Physical click only [DEFAULT]
+# Reset: defaults delete com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking; defaults -currentHost delete NSGlobalDomain com.apple.mouse.tapBehavior
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
+
+# Natural scrolling direction
+# Values: true=Natural (content follows finger) [DEFAULT], false=Traditional
+# Reset: defaults delete NSGlobalDomain com.apple.swipescrolldirection
+# defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
+
+# Trackpad tracking speed
+# Values: 0-3 (higher=faster); Default 1
+# Reset: defaults delete NSGlobalDomain com.apple.trackpad.scaling
+defaults write NSGlobalDomain com.apple.trackpad.scaling -float 2
+
+# Three-finger drag (Accessibility feature)
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag; defaults delete com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag; defaults -currentHost delete NSGlobalDomain com.apple.trackpad.threeFingerDragGesture
+defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag -bool true
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -bool true
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerDragGesture -bool true
+
+# Four-finger horizontal swipe (Spaces/full-screen apps)
+# Values: 0=Disabled, 2=Swipe with 4 fingers [DEFAULT]
+# Reset: defaults delete com.apple.AppleMultitouchTrackpad TrackpadFourFingerHorizSwipeGesture; defaults -currentHost delete NSGlobalDomain com.apple.trackpad.fourFingerHorizSwipeGesture
+defaults write com.apple.AppleMultitouchTrackpad TrackpadFourFingerHorizSwipeGesture -int 2
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadFourFingerHorizSwipeGesture -int 2
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.fourFingerHorizSwipeGesture -int 2
+
+# Four-finger vertical swipe (Mission Control/App Exposé)
+# Values: 0=Disabled, 2=Swipe with 4 fingers [DEFAULT]
+# Reset: defaults delete com.apple.AppleMultitouchTrackpad TrackpadFourFingerVertSwipeGesture; defaults -currentHost delete NSGlobalDomain com.apple.trackpad.fourFingerVertSwipeGesture
+defaults write com.apple.AppleMultitouchTrackpad TrackpadFourFingerVertSwipeGesture -int 2
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadFourFingerVertSwipeGesture -int 2
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.fourFingerVertSwipeGesture -int 2
+
+# Three-finger horizontal swipe (disabled when using 4-finger or 3-finger drag)
+# Values: 0=Disabled, 1=Swipe between pages, 2=Swipe between spaces [DEFAULT varies]
+# Reset: defaults delete com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture; defaults -currentHost delete NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture
+defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 0
+
+# Three-finger vertical swipe (disabled when using 4-finger gestures)
+# Values: 0=Disabled, 2=Mission Control/App Exposé [DEFAULT varies]
+# Reset: defaults delete com.apple.AppleMultitouchTrackpad TrackpadThreeFingerVertSwipeGesture; defaults -currentHost delete NSGlobalDomain com.apple.trackpad.threeFingerVertSwipeGesture
+defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerVertSwipeGesture -int 0
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerVertSwipeGesture -int 0
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerVertSwipeGesture -int 0
+
+# Full keyboard access (Tab through UI controls)
+# Values: 0=Text boxes only, 1=Text boxes and lists [DEFAULT], 2=All controls, 3=All controls (alternate)
+# Reset: defaults delete NSGlobalDomain AppleKeyboardUIMode
+defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
+
+# Ctrl+scroll to zoom
+# Values: true=Enabled, false=Disabled [DEFAULT]; Modifier: 262144=Ctrl, 524288=Option, 1048576=Cmd
+# Reset: defaults delete com.apple.universalaccess closeViewScrollWheelToggle; defaults delete com.apple.universalaccess HIDScrollZoomModifierMask; defaults delete com.apple.universalaccess closeViewZoomFollowsFocus
+defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
+defaults write com.apple.universalaccess HIDScrollZoomModifierMask -int 262144
+defaults write com.apple.universalaccess closeViewZoomFollowsFocus -bool true
+
+# Press-and-hold for accents vs key repeat
+# Values: true=Accent popup [DEFAULT], false=Key repeat
+# Reset: defaults delete NSGlobalDomain ApplePressAndHoldEnabled
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+
+# Keyboard repeat rate
+# Values: KeyRepeat 1-15 (lower=faster), InitialKeyRepeat 10-120 (lower=shorter delay); Defaults ~6 and ~25
+# Reset: defaults delete NSGlobalDomain KeyRepeat; defaults delete NSGlobalDomain InitialKeyRepeat
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+
+# Language and locale
+# Values: Any valid locale; Default varies by region
+# Reset: defaults delete NSGlobalDomain AppleLanguages; defaults delete NSGlobalDomain AppleLocale
+defaults write NSGlobalDomain AppleLanguages -array "en-US"
+defaults write NSGlobalDomain AppleLocale -string "en_US"
+
+# Language menu on boot screen
+# Values: true=Show, false=Hidden [DEFAULT]
+# Reset: sudo defaults delete /Library/Preferences/com.apple.loginwindow showInputMenu
+# sudo defaults write /Library/Preferences/com.apple.loginwindow showInputMenu -bool true
+
+# Timezone
+# Values: See `sudo systemsetup -listtimezones`
+# Reset: sudo systemsetup -settimezone "America/Los_Angeles"
+# Note: systemsetup throws Error:-99 if value already set; check first
+if ! sudo systemsetup -gettimezone 2>/dev/null | grep -q "America/New_York"; then
+  sudo systemsetup -settimezone "America/New_York" 2>/dev/null
+fi
+
+###############################################################################
+# Energy saving                                                               #
+###############################################################################
+
+# Lid wakeup
+# Values: 1=Wake on lid open [DEFAULT], 0=Stay asleep
+# Reset: sudo pmset -a lidwake 1
+# sudo pmset -a lidwake 1
+
+# Restart on power loss
+# Values: 1=Auto-restart, 0=Stay off [DEFAULT]
+# Reset: sudo pmset -a autorestart 0
+# sudo pmset -a autorestart 1
+
+# Restart on freeze
+# Values: on=Auto-restart, off=Manual recovery [DEFAULT]
+# Reset: sudo systemsetup -setrestartfreeze off
+# Note: systemsetup throws Error:-99 if value already set; check first
+if ! sudo systemsetup -getrestartfreeze 2>/dev/null | grep -q "On"; then
+  sudo systemsetup -setrestartfreeze on 2>/dev/null
+fi
+
+# Display sleep timeout (minutes)
+# Values: Integer minutes; Default varies by power source
+# Note: Display sleep should be <= system sleep to avoid warnings
+# Reset: sudo pmset -b displaysleep 2; sudo pmset -c displaysleep 10
+sudo pmset -b displaysleep 10
+sudo pmset -c displaysleep 30
+
+# Machine sleep while charging (minutes)
+# Values: Integer minutes (0=Never); Default ~10
+# Reset: sudo pmset -c sleep 10
+sudo pmset -c sleep 45
+
+# Machine sleep on battery (minutes)
+# Values: Integer minutes; Default ~1-2
+# Reset: sudo pmset -b sleep 5
+sudo pmset -b sleep 15
+
+# Standby delay (seconds before hibernating from sleep)
+# Values: Integer seconds; Default ~10800 (3 hours)
+# Reset: sudo pmset -a standbydelay 10800
+# sudo pmset -a standbydelay 86400
+
+# Computer sleep mode
+# Values: Integer minutes, Off=Never; Default varies
+# Reset: sudo systemsetup -setcomputersleep 1
+# sudo systemsetup -setcomputersleep Off > /dev/null
+
+# Hibernation mode
+# Values: 0=No hibernation (fast sleep), 3=Safe sleep (RAM+disk) [DEFAULT], 25=Full hibernation
+# Reset: sudo pmset -a hibernatemode 3
+# sudo pmset -a hibernatemode 0
+
+###############################################################################
+# Screen                                                                      #
+###############################################################################
+
+# Screen saver start time (minutes of inactivity)
+# Values: Integer minutes; 0=Never; Default 20
+# Reset: defaults -currentHost delete com.apple.screensaver idleTime
+defaults -currentHost write com.apple.screensaver idleTime -int 20
+
+# Require password after sleep/screensaver
+# Values: askForPassword 1=Require, 0=Don't require [DEFAULT]; askForPasswordDelay seconds (0=immediate)
+# Reset: defaults delete com.apple.screensaver askForPassword; defaults delete com.apple.screensaver askForPasswordDelay
+defaults write com.apple.screensaver askForPassword -int 1
+defaults write com.apple.screensaver askForPasswordDelay -int 0
+
+# Screenshot location
+# Values: Any path; Default ~/Desktop
+# Reset: defaults delete com.apple.screencapture location
+defaults write com.apple.screencapture location -string "${HOME}/Screenshots"
+
+# Screenshot format
+# Values: png [DEFAULT], jpg, gif, pdf, tiff, bmp
+# Reset: defaults delete com.apple.screencapture type
+# defaults write com.apple.screencapture type -string "png"
+
+# Screenshot window shadow
+# Values: true=No shadow, false=Include shadow [DEFAULT]
+# Reset: defaults delete com.apple.screencapture disable-shadow
+defaults write com.apple.screencapture disable-shadow -bool true
+
+###############################################################################
+# Sound                                                                       #
+###############################################################################
+
+# System alert sound
+# Values: Path to .aiff file; Default "/System/Library/Sounds/Funk.aiff"
+# Reset: defaults delete NSGlobalDomain com.apple.sound.beep.sound
+# Available: Basso, Blow, Bottle, Frog, Funk, Glass, Hero, Morse, Ping, Pop, Purr, Sosumi, Submarine, Tink
+defaults write NSGlobalDomain com.apple.sound.beep.sound -string "/System/Library/Sounds/Tink.aiff"
+
+###############################################################################
+# Menu bar                                                                    #
+###############################################################################
+
+# Show battery percentage
+# Values: true=Show percentage, false=Hide [DEFAULT]
+# Reset: defaults -currentHost delete com.apple.controlcenter BatteryShowPercentage
+defaults -currentHost write com.apple.controlcenter BatteryShowPercentage -bool true
+
+# Menu bar clock format
+# Values: ShowDayOfWeek, ShowAMPM, ShowSeconds, ShowDate (all bools)
+# Reset: defaults delete com.apple.menuextra.clock ShowDayOfWeek; etc.
+defaults write com.apple.menuextra.clock ShowDayOfWeek -bool true
+defaults write com.apple.menuextra.clock ShowAMPM -bool true
+defaults write com.apple.menuextra.clock ShowSeconds -bool false
+defaults write com.apple.menuextra.clock ShowDate -bool false
+
+# Spotlight menu bar visibility
+# Values: 0=Hidden, 8=Shown [DEFAULT]
+# Reset: defaults -currentHost delete com.apple.Spotlight MenuItemHidden
+defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
+
+# Siri menu bar visibility
+# Note: Modern macOS uses Control Center; this hides Siri from menu bar
+# Values: true/false varies by version
+# Reset: defaults delete com.apple.Siri StatusMenuVisible
+defaults write com.apple.Siri StatusMenuVisible -bool false
+
+# Time Machine menu bar visibility
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.systemuiserver "NSStatusItem Visible com.apple.TimeMachine"
+# Note: Time Machine menu extra must be added via System Preferences on fresh install
+
+###############################################################################
+# Finder                                                                      #
+###############################################################################
+
+# Allow quitting Finder (⌘+Q)
+# Values: true=Allow quit (hides desktop icons), false=No quit [DEFAULT]
+# Reset: defaults delete com.apple.finder QuitMenuItem
+defaults write com.apple.finder QuitMenuItem -bool true
+
+# New Finder window location
+# Values: PfDe=Desktop, PfDo=Documents, PfHm=Home, PfLo=Custom path; Default PfHm
+# Reset: defaults delete com.apple.finder NewWindowTarget; defaults delete com.apple.finder NewWindowTargetPath
+defaults write com.apple.finder NewWindowTarget -string "PfDo"
+defaults write com.apple.finder NewWindowTargetPath -string "file://${HOME}/Documents/"
+
+# Desktop icons for drives/volumes
+# Values: true=Show, false=Hide [DEFAULT for all]
+# Reset: defaults delete com.apple.finder ShowExternalHardDrivesOnDesktop; etc.
+defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool false
+defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
+defaults write com.apple.finder ShowMountedServersOnDesktop -bool false
+defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool false
+
+# Show hidden files
+# Values: true=Show dotfiles, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.finder AppleShowAllFiles
+# defaults write com.apple.finder AppleShowAllFiles -bool true
+
+# Show all filename extensions
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete NSGlobalDomain AppleShowAllExtensions
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+
+# Show status bar
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.finder ShowStatusBar
+defaults write com.apple.finder ShowStatusBar -bool true
+
+# Show path bar
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.finder ShowPathbar
+defaults write com.apple.finder ShowPathbar -bool true
+
+# Full POSIX path in window title
+# Values: true=Full path, false=Folder name only [DEFAULT]
+# Reset: defaults delete com.apple.finder _FXShowPosixPathInTitle
+# defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
+
+# Keep folders on top when sorting
+# Values: true=Folders first, false=Mixed with files [DEFAULT]
+# Reset: defaults delete com.apple.finder _FXSortFoldersFirst
+defaults write com.apple.finder _FXSortFoldersFirst -bool true
+
+# Default search scope
+# Values: SCcf=Current folder, SCsp=Previous scope, SCev=This Mac [DEFAULT]
+# Reset: defaults delete com.apple.finder FXDefaultSearchScope
+defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
+
+# Warning when changing file extension
+# Values: true=Warn [DEFAULT], false=No warning
+# Reset: defaults delete com.apple.finder FXEnableExtensionChangeWarning
+defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+
+# Spring loading for directories (hover to open)
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete NSGlobalDomain com.apple.springing.enabled
+# defaults write NSGlobalDomain com.apple.springing.enabled -bool true
+
+# Spring loading delay
+# Values: Float seconds; Default 0.5
+# Reset: defaults delete NSGlobalDomain com.apple.springing.delay
+defaults write NSGlobalDomain com.apple.springing.delay -float 0
+
+# .DS_Store files on network/USB volumes
+# Values: true=Don't create, false=Create [DEFAULT]
+# Reset: defaults delete com.apple.desktopservices DSDontWriteNetworkStores; defaults delete com.apple.desktopservices DSDontWriteUSBStores
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+
+# Disk image verification
+# Values: true=Skip verification, false=Verify [DEFAULT]
+# Reset: defaults delete com.apple.frameworks.diskimages skip-verify; etc.
+# defaults write com.apple.frameworks.diskimages skip-verify -bool true
+# defaults write com.apple.frameworks.diskimages skip-verify-locked -bool true
+# defaults write com.apple.frameworks.diskimages skip-verify-remote -bool true
+
+# Auto-open Finder window when volume is mounted
+# Values: true=Auto-open, false=Don't open [DEFAULT]
+# Reset: defaults delete com.apple.frameworks.diskimages auto-open-ro-root; etc.
+# defaults write com.apple.frameworks.diskimages auto-open-ro-root -bool true
+# defaults write com.apple.frameworks.diskimages auto-open-rw-root -bool true
+# defaults write com.apple.finder OpenWindowForNewRemovableDisk -bool true
+
+# Show item info near icons
+# Values: true=Show size/count, false=Hide [DEFAULT]
+# Reset: PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo false" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+
+# Item info label position
+# Values: true=Below icon [DEFAULT], false=Right of icon
+# Reset: PlistBuddy -c "Set DesktopViewSettings:IconViewSettings:labelOnBottom true" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set DesktopViewSettings:IconViewSettings:labelOnBottom false" ~/Library/Preferences/com.apple.finder.plist
+
+# Desktop icon arrangement
+# Values: none=Free placement [DEFAULT], grid=Snap to grid, name/dateModified/dateCreated/dateLastOpened/dateAdded/kind=Sort by
+# Reset: PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy none" ~/Library/Preferences/com.apple.finder.plist
+/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy dateAdded" ~/Library/Preferences/com.apple.finder.plist
+
+# Icon arrangement in Finder icon views
+# Values: grid=Snap to grid, name/dateModified/etc=Sort, none=Free placement [DEFAULT]
+# Reset: PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy none" ~/Library/Preferences/com.apple.finder.plist
+/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+
+# Icon grid spacing
+# Values: Integer pixels; Default 54
+# Reset: PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:gridSpacing 54" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:gridSpacing 100" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:gridSpacing 100" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:gridSpacing 100" ~/Library/Preferences/com.apple.finder.plist
+
+# Icon size
+# Values: Integer pixels; Default 64
+# Reset: PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:iconSize 64" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:iconSize 80" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:iconSize 80" ~/Library/Preferences/com.apple.finder.plist
+# /usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:iconSize 80" ~/Library/Preferences/com.apple.finder.plist
+
+# Default Finder view style
+# Values: icnv=Icon [DEFAULT], Nlsv=List, clmv=Column, glyv=Gallery
+# Reset: defaults delete com.apple.finder FXPreferredViewStyle
+defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
+
+# Warning before emptying Trash
+# Values: true=Warn [DEFAULT], false=No warning
+# Reset: defaults delete com.apple.finder WarnOnEmptyTrash
+defaults write com.apple.finder WarnOnEmptyTrash -bool false
+
+# Auto-empty Trash after 30 days
+# Values: true=Auto-empty, false=Manual only [DEFAULT]
+# Reset: defaults delete com.apple.finder FXRemoveOldTrashItems
+defaults write com.apple.finder FXRemoveOldTrashItems -bool true
+
+# Show ~/Library folder
+# Values: nohidden=Visible, hidden=Hidden [DEFAULT]
+# Reset: chflags hidden ~/Library
+chflags nohidden ~/Library && xattr -d com.apple.FinderInfo ~/Library 2>/dev/null
+
+# Show /Volumes folder
+# Values: nohidden=Visible, hidden=Hidden [DEFAULT]
+# Reset: sudo chflags hidden /Volumes
+sudo chflags nohidden /Volumes
+
+# Expanded File Info panes
+# Values: Dict of pane names to bools; Default all collapsed
+# Reset: defaults delete com.apple.finder FXInfoPanesExpanded
+defaults write com.apple.finder FXInfoPanesExpanded -dict \
+  General -bool true \
+  OpenWith -bool true \
+  Privileges -bool true
+
+###############################################################################
+# Dock and hot corners                                                        #
+###############################################################################
+
+# Dock position on screen
+# Values: bottom [DEFAULT], left, right
+# Reset: defaults delete com.apple.dock orientation
+defaults write com.apple.dock orientation -string "right"
+
+# Dock icon size (pixels)
+# Values: Integer 16-128; Default 48
+# Reset: defaults delete com.apple.dock tilesize
+defaults write com.apple.dock tilesize -int 48
+
+# Dock magnification (icons grow on hover)
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.dock magnification; defaults delete com.apple.dock largesize
+defaults write com.apple.dock magnification -bool true
+defaults write com.apple.dock largesize -int 50
+
+# Window minimize effect
+# Values: genie [DEFAULT], scale, suck
+# Reset: defaults delete com.apple.dock mineffect
+defaults write com.apple.dock mineffect -string "scale"
+
+# Minimize windows into application icon
+# Values: true=Into app icon, false=Into Dock section [DEFAULT]
+# Reset: defaults delete com.apple.dock minimize-to-application
+defaults write com.apple.dock minimize-to-application -bool true
+
+# Spring loading for Dock items (drag files onto apps)
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.dock enable-spring-load-actions-on-all-items
+defaults write com.apple.dock enable-spring-load-actions-on-all-items -bool true
+
+# Indicator dots for open applications
+# Values: true=Show dots [DEFAULT], false=Hide dots
+# Reset: defaults delete com.apple.dock show-process-indicators
+# defaults write com.apple.dock show-process-indicators -bool true
+
+# Clear all persistent apps from Dock
+# Values: Empty array clears; Default has apps
+# Reset: N/A - would need to manually re-add apps
+# defaults write com.apple.dock persistent-apps -array
+
+# TODO: Set specific apps in Dock.
+
+# Show only open applications (no persistent icons)
+# Values: true=Only open apps, false=Show persistent [DEFAULT]
+# Reset: defaults delete com.apple.dock static-only
+# defaults write com.apple.dock static-only -bool true
+
+# Bounce animation when launching apps
+# Values: true=Bounce [DEFAULT], false=No bounce
+# Reset: defaults delete com.apple.dock launchanim
+# defaults write com.apple.dock launchanim -bool false
+
+# Mission Control animation speed
+# Values: Float seconds; Default ~0.2
+# Reset: defaults delete com.apple.dock expose-animation-duration
+defaults write com.apple.dock expose-animation-duration -float 0.1
+
+# Group windows by application in Mission Control
+# Values: true=Grouped [DEFAULT], false=All windows separate
+# Reset: defaults delete com.apple.dock expose-group-by-app
+# defaults write com.apple.dock expose-group-by-app -bool false
+
+# Auto-rearrange Spaces based on recent use
+# Values: true=Rearrange [DEFAULT], false=Keep order stable
+# Reset: defaults delete com.apple.dock mru-spaces
+defaults write com.apple.dock mru-spaces -bool false
+
+# Dock auto-hide delay (seconds before showing)
+# Values: Float seconds; Default ~0.5
+# Reset: defaults delete com.apple.dock autohide-delay
+defaults write com.apple.dock autohide-delay -float 0
+
+# Dock show/hide animation speed
+# Values: Float seconds; Default ~0.5
+# Reset: defaults delete com.apple.dock autohide-time-modifier
+defaults write com.apple.dock autohide-time-modifier -float 0.1
+
+# Auto-hide Dock
+# Values: true=Auto-hide, false=Always visible [DEFAULT]
+# Reset: defaults delete com.apple.dock autohide
+defaults write com.apple.dock autohide -bool true
+
+# Translucent icons for hidden apps
+# Values: true=Translucent, false=Opaque [DEFAULT]
+# Reset: defaults delete com.apple.dock showhidden
+defaults write com.apple.dock showhidden -bool true
+
+# Show recent applications in Dock
+# Values: true=Show recents [DEFAULT], false=Hide recents
+# Reset: defaults delete com.apple.dock show-recents
+defaults write com.apple.dock show-recents -bool false
+
+# Launchpad gesture (pinch with thumb and three fingers)
+# Values: 1=Enabled [DEFAULT], 0=Disabled
+# Reset: defaults delete com.apple.dock showLaunchpadGestureEnabled
+# defaults write com.apple.dock showLaunchpadGestureEnabled -int 0
+
+# App Exposé gesture (swipe down with 3/4 fingers)
+# Values: 1=Enabled [DEFAULT], 0=Disabled
+# Reset: defaults delete com.apple.dock showAppExposeGestureEnabled
+defaults write com.apple.dock showAppExposeGestureEnabled -int 0
+
+# Hot corners
+# Values: 0=No action, 2=Mission Control, 3=App Windows, 4=Desktop, 5=Screen Saver,
+#         6=Disable Screen Saver, 10=Sleep Display, 11=Launchpad, 12=Notification Center,
+#         13=Lock Screen, 14=Quick Note [DEFAULT for bottom-right]
+# Modifier: 0=None, 131072=Shift, 262144=Ctrl, 524288=Option, 1048576=Cmd
+# Reset: defaults delete com.apple.dock wvous-tl-corner; etc.
+defaults write com.apple.dock wvous-tl-corner -int 0
+defaults write com.apple.dock wvous-tr-corner -int 0
+defaults write com.apple.dock wvous-bl-corner -int 0
+defaults write com.apple.dock wvous-br-corner -int 0
+
+###############################################################################
+# Stage Manager and Desktop                                                   #
+###############################################################################
+
+# Stage Manager enabled
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager GloballyEnabled
+defaults write com.apple.WindowManager GloballyEnabled -bool true
+
+# Stage Manager: Show windows from application
+# Values: 0=One at a time, 1=All at once [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager AppWindowGroupingBehavior
+defaults write com.apple.WindowManager AppWindowGroupingBehavior -int 0
+
+# Stage Manager: Show recent apps in strip
+# Values: 1=Show [DEFAULT], 0=Hide
+# Reset: defaults delete com.apple.WindowManager AutoHide
+# Note: AutoHide=0 means show recent apps, AutoHide=1 means hide them
+defaults write com.apple.WindowManager AutoHide -bool false
+
+# Hide desktop icons (when not in Stage Manager)
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager StandardHideDesktopIcons
+defaults write com.apple.WindowManager StandardHideDesktopIcons -bool true
+
+# Hide desktop icons in Stage Manager
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager HideDesktop
+defaults write com.apple.WindowManager HideDesktop -bool true
+
+# Hide widgets on desktop
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager StandardHideWidgets
+defaults write com.apple.WindowManager StandardHideWidgets -bool true
+
+# Hide widgets in Stage Manager
+# Values: 1=Hidden, 0=Shown [DEFAULT]
+# Reset: defaults delete com.apple.WindowManager StageManagerHideWidgets
+defaults write com.apple.WindowManager StageManagerHideWidgets -bool true
+
+# Click wallpaper to reveal desktop
+# Values: 1=Always [DEFAULT], 0=Only in Stage Manager
+# Reset: defaults delete com.apple.WindowManager EnableStandardClickToShowDesktop
+defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool true
+
+###############################################################################
+# Safari & WebKit                                                             #
+###############################################################################
+
+# Default search engine
+# Values: Google [DEFAULT], Yahoo, Bing, DuckDuckGo, Ecosia
+# Reset: defaults delete com.apple.Safari SearchProviderShortName
+defaults write com.apple.Safari SearchProviderShortName -string "DuckDuckGo"
+
+# Send search queries to Apple
+# Values: UniversalSearchEnabled true=Send [DEFAULT], false=Don't send; SuppressSearchSuggestions true=Suppress
+# Reset: defaults delete com.apple.Safari UniversalSearchEnabled; defaults delete com.apple.Safari SuppressSearchSuggestions
+defaults write com.apple.Safari UniversalSearchEnabled -bool false
+defaults write com.apple.Safari SuppressSearchSuggestions -bool true
+
+# Prevent cross-site tracking (Intelligent Tracking Prevention)
+# Values: 2=Block cross-site tracking, 1=Allow, 0=Allow all
+# Reset: defaults delete com.apple.Safari BlockStoragePolicy
+defaults write com.apple.Safari BlockStoragePolicy -int 2
+defaults write com.apple.Safari "WebKitPreferences.storageBlockingPolicy" -int 1
+
+# Hide IP address from trackers (requires iCloud Private Relay or uses enhanced privacy mode)
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.Safari EnableEnhancedPrivacyInRegularBrowsing
+defaults write com.apple.Safari EnableEnhancedPrivacyInRegularBrowsing -bool true
+
+# Tab to highlight links on web pages
+# Values: true=Tab to links, false=Tab only to form fields [DEFAULT]
+# Reset: defaults delete com.apple.Safari WebKitTabToLinksPreferenceKey; defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2TabsToLinks
+# defaults write com.apple.Safari WebKitTabToLinksPreferenceKey -bool true
+# defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2TabsToLinks -bool true
+
+# Show full URL in address bar
+# Values: true=Full URL (still hides scheme), false=Domain only [DEFAULT]
+# Reset: defaults delete com.apple.Safari ShowFullURLInSmartSearchField
+defaults write com.apple.Safari ShowFullURLInSmartSearchField -bool true
+
+# Home page
+# Values: Any URL or "about:blank"; Default empty string (Favorites)
+# Reset: defaults delete com.apple.Safari HomePage
+# defaults write com.apple.Safari HomePage -string "about:blank"
+
+# Auto-open "safe" downloads (PDFs, images, etc.)
+# Values: true=Auto-open [DEFAULT], false=Don't auto-open
+# Reset: defaults delete com.apple.Safari AutoOpenSafeDownloads
+defaults write com.apple.Safari AutoOpenSafeDownloads -bool false
+
+# Backspace to go back in history
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2BackspaceKeyNavigationEnabled
+# defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2BackspaceKeyNavigationEnabled -bool true
+
+# Bookmarks/Favorites bar
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.Safari ShowFavoritesBar
+# defaults write com.apple.Safari ShowFavoritesBar -bool false
+
+# Debug menu
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.Safari IncludeInternalDebugMenu
+defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
+
+# Find on page matching
+# Values: true=Starts with, false=Contains [DEFAULT]
+# Reset: defaults delete com.apple.Safari FindOnPageMatchesWordStartsOnly
+# defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
+
+# Develop menu and Web Inspector
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.Safari IncludeDevelopMenu; defaults delete com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey
+defaults write com.apple.Safari IncludeDevelopMenu -bool true
+defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
+
+# Web Inspector in context menu (all WebKit views)
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete NSGlobalDomain WebKitDeveloperExtras
+defaults write NSGlobalDomain WebKitDeveloperExtras -bool true
+
+# Continuous spell checking
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.Safari WebContinuousSpellCheckingEnabled
+defaults write com.apple.Safari WebContinuousSpellCheckingEnabled -bool true
+
+# Auto-correct in Safari
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete com.apple.Safari WebAutomaticSpellingCorrectionEnabled
+defaults write com.apple.Safari WebAutomaticSpellingCorrectionEnabled -bool false
+
+# AutoFill
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: defaults delete com.apple.Safari AutoFillFromAddressBook; etc.
+defaults write com.apple.Safari AutoFillFromAddressBook -bool false
+defaults write com.apple.Safari AutoFillPasswords -bool false
+defaults write com.apple.Safari AutoFillCreditCardData -bool false
+defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
+
+# Fraudulent website warning
+# Values: true=Warn [DEFAULT], false=Don't warn
+# Reset: defaults delete com.apple.Safari WarnAboutFraudulentWebsites
+# defaults write com.apple.Safari WarnAboutFraudulentWebsites -bool true
+
+# Block pop-up windows
+# Values: true=Allow popups [DEFAULT], false=Block popups
+# Reset: defaults delete com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically; etc.
+defaults write com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptCanOpenWindowsAutomatically -bool false
+
+# Do Not Track header
+# Values: true=Send DNT, false=Don't send [DEFAULT]
+# Reset: defaults delete com.apple.Safari SendDoNotTrackHTTPHeader
+#defaults write com.apple.Safari SendDoNotTrackHTTPHeader -bool true
+
+# Auto-update extensions
+# Values: true=Auto-update, false=Manual [DEFAULT]
+# Reset: defaults delete com.apple.Safari InstallExtensionUpdatesAutomatically
+defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
+
+###############################################################################
+# Mail                                                                        #
+###############################################################################
+
+# Send/reply animations
+# Values: true=Disable animation, false=Animate [DEFAULT]
+# Reset: defaults delete com.apple.mail DisableReplyAnimations; defaults delete com.apple.mail DisableSendAnimations
+# defaults write com.apple.mail DisableReplyAnimations -bool true
+# defaults write com.apple.mail DisableSendAnimations -bool true
+
+# Copy email address format
+# Values: true=Include name "Name <email>" [DEFAULT], false=Email only
+# Reset: defaults delete com.apple.mail AddressesIncludeNameOnPasteboard
+defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+
+# ⌘+Enter to send email
+# Values: "@\U21a9"=⌘+Enter; Default no shortcut
+# Reset: defaults delete com.apple.mail NSUserKeyEquivalents
+defaults write com.apple.mail NSUserKeyEquivalents -dict-add "Send" "@\U21a9"
+
+# Drafts viewer settings
+# Values: DisplayInThreadedMode yes/no, SortedDescending yes/no, SortOrder received-date/etc.
+# Reset: defaults delete com.apple.mail DraftsViewerAttributes
+defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
+defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
+defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortOrder" -string "received-date"
+
+# Inline attachment viewing
+# Values: true=Show icons only, false=Show inline preview [DEFAULT]
+# Reset: defaults delete com.apple.mail DisableInlineAttachmentViewing
+# defaults write com.apple.mail DisableInlineAttachmentViewing -bool true
+
+# Spell checking behavior
+# Values: InlineSpellCheckingEnabled [DEFAULT], NoSpellCheckingEnabled
+# Reset: defaults delete com.apple.mail SpellCheckingBehavior
+# defaults write com.apple.mail SpellCheckingBehavior -string "NoSpellCheckingEnabled"
+
+# Message font (for reading/composing)
+# Values: Font name and size; Default system font
+# Reset: defaults delete com.apple.mail NSFont; defaults delete com.apple.mail NSFontSize
+defaults write com.apple.mail NSFont -string "Verdana"
+defaults write com.apple.mail NSFontSize -int 13
+
+# Message list font size
+# Values: Encoded font data; Requires special handling
+# Note: Message list font is stored as binary plist data, harder to set via defaults
+# The user can set this manually: Mail → Settings → Fonts & Colors → Message list font
+
+# Quoted text coloring enabled
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.mail ColorQuoterColorIncoming
+defaults write com.apple.mail ColorQuoterColorIncoming -int 1
+
+# Mail privacy: Hide IP address when loading remote content
+# Values: true=Hide IP, false=Don't hide [DEFAULT]
+# Reset: defaults delete com.apple.mail-shared HideRemoteImages (varies by version)
+# Note: These settings are version-dependent; manual configuration recommended for privacy settings
+
+# Mail privacy: Block all remote content
+# Values: true=Block, false=Allow [DEFAULT]
+# Reset: defaults delete com.apple.mail-shared BlockRemoteContent
+# Note: Modern Mail uses a different mechanism; configure in Mail → Settings → Privacy
+
+###############################################################################
+# Terminal & iTerm 2                                                          #
+###############################################################################
+
+# Text encoding
+# Values: 4=UTF-8; Default varies (may include legacy encodings)
+# Reset: defaults delete com.apple.terminal StringEncodings
+defaults write com.apple.terminal StringEncodings -array 4
+
+# Secure keyboard entry (prevents other apps from intercepting keystrokes)
+# Values: true=Secure, false=Normal [DEFAULT]
+# Reset: defaults delete com.apple.terminal SecureKeyboardEntry
+# See: https://security.stackexchange.com/a/47786/8918
+defaults write com.apple.terminal SecureKeyboardEntry -bool true
+
+# Line marks (visual markers at command prompts)
+# Values: 0=Hidden, 1=Shown [DEFAULT]
+# Reset: defaults delete com.apple.Terminal ShowLineMarks
+defaults write com.apple.Terminal ShowLineMarks -int 0
+
+# Default and startup Terminal profile
+# Values: Profile name string; Default "Basic"
+# Reset: defaults delete com.apple.Terminal "Default Window Settings"; defaults delete com.apple.Terminal "Startup Window Settings"
+# Note: Profile imported by run_once_before_import-terminal-profile.sh from ~/.config/terminal/
+defaults write com.apple.Terminal "Default Window Settings" -string "VS Code Dark Plus Custom"
+defaults write com.apple.Terminal "Startup Window Settings" -string "VS Code Dark Plus Custom"
+
+###############################################################################
+# Time Machine                                                                #
+###############################################################################
+
+# Prompt to use new drives for backup
+# Values: true=Don't prompt, false=Prompt [DEFAULT]
+# Reset: defaults delete com.apple.TimeMachine DoNotOfferNewDisksForBackup
+defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
+
+###############################################################################
+# Login window                                                                #
+###############################################################################
+
+# Hide user avatar and name on login window
+# Values: true=Hidden, false=Show [DEFAULT]
+# Reset: sudo defaults delete /Library/Preferences/com.apple.loginwindow HideUserAvatarAndName
+sudo defaults write /Library/Preferences/com.apple.loginwindow HideUserAvatarAndName -bool true
+
+# Disable guest account
+# Values: true=Enabled [DEFAULT], false=Disabled
+# Reset: sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool true
+sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
+
+###############################################################################
+# Activity Monitor                                                            #
+###############################################################################
+
+###############################################################################
+# TextEdit and Disk Utility                                                   #
+###############################################################################
+
+# TextEdit default format
+# Values: 0=Plain text, 1=Rich text [DEFAULT]
+# Reset: defaults delete com.apple.TextEdit RichText
+defaults write com.apple.TextEdit RichText -int 0
+
+# TextEdit text encoding
+# Values: 4=UTF-8; Default varies
+# Reset: defaults delete com.apple.TextEdit PlainTextEncoding; defaults delete com.apple.TextEdit PlainTextEncodingForWrite
+defaults write com.apple.TextEdit PlainTextEncoding -int 4
+defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+# Disk Utility debug menu
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.DiskUtility DUDebugMenuEnabled; defaults delete com.apple.DiskUtility advanced-image-options
+# defaults write com.apple.DiskUtility DUDebugMenuEnabled -bool true
+# defaults write com.apple.DiskUtility advanced-image-options -bool true
+
+###############################################################################
+# Mac App Store                                                               #
+###############################################################################
+
+# App Store WebKit Developer Tools
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.appstore WebKitDeveloperExtras
+# defaults write com.apple.appstore WebKitDeveloperExtras -bool true
+
+# App Store Debug Menu
+# Values: true=Show, false=Hide [DEFAULT]
+# Reset: defaults delete com.apple.appstore ShowDebugMenu
+# defaults write com.apple.appstore ShowDebugMenu -bool true
+
+# Automatic update check
+# Values: true=Check [DEFAULT], false=Don't check
+# Reset: defaults delete com.apple.SoftwareUpdate AutomaticCheckEnabled
+# defaults write com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+
+# Update check frequency
+# Values: 1=Daily, 7=Weekly [DEFAULT]
+# Reset: defaults delete com.apple.SoftwareUpdate ScheduleFrequency
+# defaults write com.apple.SoftwareUpdate ScheduleFrequency -int 1
+
+# Background download of updates
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.SoftwareUpdate AutomaticDownload
+defaults write com.apple.SoftwareUpdate AutomaticDownload -int 1
+
+# Auto-install security updates
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.SoftwareUpdate CriticalUpdateInstall
+defaults write com.apple.SoftwareUpdate CriticalUpdateInstall -int 1
+
+# Auto-download apps purchased on other Macs
+# Values: 1=Enabled, 0=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.SoftwareUpdate ConfigDataInstall
+# defaults write com.apple.SoftwareUpdate ConfigDataInstall -int 1
+
+# App auto-update
+# Values: true=Enabled, false=Disabled [DEFAULT]
+# Reset: defaults delete com.apple.commerce AutoUpdate
+defaults write com.apple.commerce AutoUpdate -bool true
+
+# Allow reboot for macOS updates
+# Values: true=Allow, false=Require manual [DEFAULT]
+# Reset: defaults delete com.apple.commerce AutoUpdateRestartRequired
+# defaults write com.apple.commerce AutoUpdateRestartRequired -bool true
+
+###############################################################################
+# Photos                                                                      #
+###############################################################################
+
+# Auto-open Photos when devices are connected
+# Values: true=Disable auto-open, false=Auto-open [DEFAULT]
+# Reset: defaults -currentHost delete com.apple.ImageCapture disableHotPlug
+defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
+
+###############################################################################
+# Reminders                                                                   #
+###############################################################################
+
+# Include reminders due today in badge count
+# Values: true=Include today, false=Only overdue [DEFAULT]
+# Reset: defaults delete com.apple.remindd shouldIncludeRemindersDueTodayInBadgeCount
+defaults write com.apple.remindd shouldIncludeRemindersDueTodayInBadgeCount -bool true
+
+###############################################################################
+# Privacy - Clear Recent Items                                                #
+###############################################################################
+
+# Clear recent applications (privacy)
+# Note: This clears the list; to limit the number kept, use NSRecentDocumentsLimit
+# Reset: N/A (data is regenerated on use)
+osascript -e 'tell application "System Events" to delete every recent application' 2>/dev/null || true
+
+# Clear recent documents (privacy)
+osascript -e 'tell application "System Events" to delete every recent document' 2>/dev/null || true
+
+# Clear recent servers (privacy)
+osascript -e 'tell application "System Events" to delete every recent server' 2>/dev/null || true
+
+# Limit number of recent items kept (optional - reduces exposure)
+# Values: Integer; Default 10
+# Reset: defaults delete NSGlobalDomain NSRecentDocumentsLimit
+# defaults write NSGlobalDomain NSRecentDocumentsLimit -int 5
+
+###############################################################################
+# Kill affected applications                                                  #
+###############################################################################
+
+# Note: Uncomment this section when you enable the script
+# This will restart the affected applications to apply changes
+
+for app in "Activity Monitor" \
+  "Calendar" \
+  "Contacts" \
+  "ControlCenter" \
+  "Dock" \
+  "Finder" \
+  "Mail" \
+  "Messages" \
+  "Photos" \
+  "Reminders" \
+  "Safari" \
+  "SystemUIServer" \
+  "Terminal" \
+  "WindowManager"; do
+  killall "${app}" &>/dev/null
+done
+
+echo "Done. Note that some of these changes require a logout/restart to take effect."
+{{ end }}

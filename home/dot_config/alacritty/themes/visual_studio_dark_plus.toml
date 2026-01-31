@@ -1,0 +1,31 @@
+# Colors (Visual Studio Dark Plus)
+
+# Default colors
+[colors.primary]
+  #background = '#1F1F1F' # lighter editor
+  background = '#181818' # darker left nav
+  foreground = '#C8C8C8'
+
+# Normal colors
+[colors.normal]
+  black   = '#0F0F0F'
+  red     = '#d75a4e'
+  green   = '#8cab77'
+  yellow  = '#cd9f89'
+  blue    = '#679ad1'
+  magenta = '#BC89BD'
+  cyan    = '#97c1de'
+  white   = '#717f85'
+
+  # Not tested below
+
+# Bright colors
+[colors.bright]
+  black   = '#5c5c5c'
+  red     = '#e48f87'
+  green   = '#aec4a0'
+  yellow  = '#dcdcaf'
+  blue    = '#98bae0'
+  magenta = '#d1afd2'
+  cyan    = '#b8d5e9'
+  white   = '#9ea8ad'
