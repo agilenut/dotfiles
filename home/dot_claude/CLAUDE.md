@@ -91,6 +91,7 @@ Before considering development tasks complete:
 ### Rules
 
 - No co-authoring attribution.
+- No "Generated with Claude Code" or similar footers in PRs.
 - Never modify history unless explicitly instructed.
 
 ### Commit Format
@@ -100,6 +101,19 @@ Brief summary of change
 
 One to two short paragraphs with context, reasoning, or details. Prefer bullets.
 ```
+
+### Gitignore Management
+
+Project .gitignore files must be **explicit and self-contained**. Don't rely on global gitignore - other devs won't have it.
+
+When creating project .gitignore files:
+
+- .NET: Use `dotnet new gitignore` (built into SDK)
+- Other languages: Use `npx gitignore <language>` (node, python, etc.) - github/gitignore is maintained
+- Prune legacy patterns: VS6 artifacts, Vista thumbnails, Cygwin stackdumps, AFP shares
+- Include OS patterns (macOS: `.DS_Store`, `._*`; Windows: `Thumbs.db`, `Desktop.ini`)
+- Always include secrets: `*.pem`, `*.key`, `*_rsa`, `*.p12`, `*.pfx`, `*.jks`, `credentials.json`, `secrets.json`, `service-account*.json`, `.env`, `.env.*`, `!.env.example`
+- Add `.idea/` for JetBrains, `.claude/settings.local.json` for Claude Code
 
 ## Languages
 
