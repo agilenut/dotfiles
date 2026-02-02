@@ -119,7 +119,7 @@ When creating project .gitignore files:
 
 1. **Language/Framework** - build artifacts, dependencies (alphabetical if multi-language)
 2. **Testing** - coverage, test results
-3. **IDEs/Editors** - .idea/, .vscode/, .claude/, \*.swp
+3. **IDEs/Editors** - .idea/, .claude/, \*.swp
 4. **Secrets/Credentials** - .env, \*.pem, keys (easy to audit)
 5. **OS Files** - Linux, macOS, Windows (alphabetical)
 
