@@ -115,6 +115,14 @@ When creating project .gitignore files:
 - Always include secrets: `*.pem`, `*.key`, `*_rsa`, `*.p12`, `*.pfx`, `*.jks`, `credentials.json`, `secrets.json`, `service-account*.json`, `.env`, `.env.*`, `!.env.example`
 - Add `.idea/` for JetBrains, `.claude/settings.local.json` for Claude Code
 
+**Section ordering** (most specific → most generic):
+
+1. **Language/Framework** - build artifacts, dependencies (alphabetical if multi-language)
+2. **Testing** - coverage, test results
+3. **IDEs/Editors** - .idea/, .vscode/, .claude/, \*.swp
+4. **Secrets/Credentials** - .env, \*.pem, keys (easy to audit)
+5. **OS Files** - Linux, macOS, Windows (alphabetical)
+
 ## Languages
 
 Primary: C#, React, TypeScript, zsh, PowerShell
