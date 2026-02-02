@@ -1,29 +1,40 @@
 # -*- mode: gitignore -*- vim:ft=gitignore
+#
+# Global gitignore - safety net for new repos before they have their own .gitignore
+# Project .gitignore files should be self-contained and not rely on this file.
 
-# ignore
 # =============================================================================
-# OS level folders and files to be ignored globally.
+# IDEs/Editors
+# =============================================================================
 
-# Misc
-# -----------------------------------------------------------------------------
+# JetBrains
+.idea/
 
-# vim swap files
+# Claude Code
+.claude/settings.local.json
+
+# Vim
 .*.swp
+*.swp
+*.swo
 
-# mac OS
-# -----------------------------------------------------------------------------
-# https://github.com/github/gitignore/raw/refs/heads/main/Global/macOS.gitignore
+# =============================================================================
+# OS Files (alphabetical)
+# =============================================================================
 
-# General
+# Linux
+# https://github.com/github/gitignore/blob/main/Global/Linux.gitignore
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# macOS
+# https://github.com/github/gitignore/blob/main/Global/macOS.gitignore
 .DS_Store
-
-# Icon must end with two \r
 Icon?
-
-# Thumbnails
 ._*
-
-# Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
 .Spotlight-V100
@@ -31,51 +42,13 @@ Icon?
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-
-# iCloud generated files
 *.icloud
 
 # Windows
-# -----------------------------------------------------------------------------
-# https://github.com/github/gitignore/raw/refs/heads/main/Global/Windows.gitignore
-
-# Windows thumbnail cache files
+# https://github.com/github/gitignore/blob/main/Global/Windows.gitignore
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
-
-# Folder config file
 [Dd]esktop.ini
-
-# Recycle Bin used on file shares
 $RECYCLE.BIN/
-
-# Windows shortcuts
 *.lnk
-
-# Linux
-# -----------------------------------------------------------------------------
-# https://github.com/github/gitignore/raw/refs/heads/main/Global/Linux.gitignore
-
-*~
-
-# temporary files which can be created if a process still has a handle open of a deleted file
-.fuse_hidden*
-
-# KDE directory preferences
-.directory
-
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
-
-# .nfs files are created when an open file is removed but is still being accessed
-.nfs*
-
-# IDEs
-# -----------------------------------------------------------------------------
-
-# JetBrains
-.idea/
-
-# Claude Code local settings
-.claude/settings.local.json
