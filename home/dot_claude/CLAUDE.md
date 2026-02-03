@@ -160,9 +160,3 @@ In project `.claude/settings.json`:
 
 - `0` = Allow Claude to proceed
 - `2` = Block Claude and show stderr as the reason
-
-## GitHub File Access
-
-- For reading specific files: use `raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}` directly - skip the HTML github.com pages.
-- For listing/finding files in a repo: use `gh api repos/{owner}/{repo}/contents/{path}`
-- Only suggest cloning if exploring extensively or contributing.
