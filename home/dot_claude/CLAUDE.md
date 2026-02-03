@@ -47,22 +47,17 @@ Before considering development tasks complete:
 - Match surrounding code style even if it differs from standard guides. Consistency within a file trumps external standards.
 - If no enforced conventions exist, suggest enforcing them (e.g., .editorconfig or linting).
 
+### Linting & Static Analysis
+
+- Never disable, suppress, or modify EditorConfig, StyleCop, ESLint, or analyzer rules without asking first.
+- If a build fails due to linting errors, fix the code—don't suppress the warning.
+- Approved suppressions (apply without asking):
+  - Markdown: MD013 (line length)
+
 ### Comments
 
 - Explain _why_, not _what_.
 - Never reference previous versions ("was X, now Y").
-
-### Testing
-
-- Write tests for non-trivial code. Aim for high code coverage.
-- Never delete tests without asking first and explaining why.
-
-## Security
-
-- Treat security issues as urgent. Fix immediately.
-- Never embed secrets in plain text. Use env vars, secret managers, or encrypted config.
-- Never expose PII.
-- Flag potential vulnerabilities during review.
 
 ## Data Safety
 
@@ -74,58 +69,97 @@ Before considering development tasks complete:
 
 - Find the root cause. Never fix symptoms or add workarounds.
 
-## Git
+## New Project Setup
 
-### Workflow
+When creating a new repository:
 
-- **New projects**: Suggest a repo name (allow override), init with language-appropriate .gitignore.
-- **Existing folders without git**: Suggest initializing before making changes.
-- **Protected branches** (main, master, develop, dev): Never commit directly. Create a feature branch first.
-- **Branch naming**: Use prefixes (feature/, fix/, refactor/, etc.) and suggest a name for approval.
-- **On a feature branch**:
-  - Related work: continue on current branch.
-  - Unrelated work: suggest committing current changes, then create a new branch.
-- **Uncommitted changes before switching**: Suggest commit first.
-- **Atomic progress**: When work is tested and functional, suggest committing to the feature branch. **NEVER execute git commit without explicit user approval** - always present the proposed commit message and wait for confirmation.
+1. Initialize git with language-appropriate .gitignore
+2. Create `.editorconfig` with common rules (see below) + language-specific rules
+3. Create `.vscode/extensions.json` and `.vscode/settings.json` with formatters configured
+4. Set up linting (ESLint, StyleCop, shellcheck as appropriate)
+5. Set up formatting (Prettier, CSharpier, shfmt as appropriate)
+6. Create `.pre-commit-config.yaml` (use pre-commit, not Husky)
+7. Create `.markdownlint.yaml` with `MD013: false`
 
-### Rules
+See language-specific archetypes in `~/.claude/rules/` for details.
 
-- No co-authoring attribution.
-- No "Generated with Claude Code" or similar footers in PRs.
-- Never modify history unless explicitly instructed.
+### Common EditorConfig Rules (all projects)
 
-### Commit Format
+```ini
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
 
-```text
-Brief summary of change
-
-One to two short paragraphs with context, reasoning, or details. Prefer bullets.
+[*.md]
+trim_trailing_whitespace = false
 ```
 
-### Gitignore Management
+- Default indent: 2-space (except C# = 4-space)
+- Never add `[Makefile]` section unless a Makefile exists
+- Only add sections for file types that actually exist in the project
 
-Project .gitignore files must be **explicit and self-contained**. Don't rely on global gitignore - other devs won't have it.
+### Common VS Code Settings (all projects)
 
-When creating project .gitignore files:
+Always configure in `.vscode/settings.json`:
 
-- .NET: Use `dotnet new gitignore` (built into SDK)
-- Other languages: Use `npx gitignore <language>` (node, python, etc.) - github/gitignore is maintained
-- Prune legacy patterns: VS6 artifacts, Vista thumbnails, Cygwin stackdumps, AFP shares
-- Include OS patterns (macOS: `.DS_Store`, `._*`; Windows: `Thumbs.db`, `Desktop.ini`)
-- Always include secrets: `*.pem`, `*.key`, `*_rsa`, `*.p12`, `*.pfx`, `*.jks`, `credentials.json`, `secrets.json`, `service-account*.json`, `.env`, `.env.*`, `!.env.example`
-- Add `.idea/` for JetBrains, `.claude/settings.local.json` for Claude Code
+- `editor.formatOnSave: true`
+- `editor.defaultFormatter` for each language
+- Prettier as default for markdown, JSON, YAML
 
-**Section ordering** (most specific → most generic):
+### Common Pre-commit Hooks (all projects)
 
-1. **Language/Framework** - build artifacts, dependencies (alphabetical if multi-language)
-2. **Testing** - coverage, test results
-3. **IDEs/Editors** - .idea/, .claude/, \*.swp
-4. **Secrets/Credentials** - .env, \*.pem, keys (easy to audit)
-5. **OS Files** - Linux, macOS, Windows (alphabetical)
+- prettier (for markdown, JSON, YAML)
+- markdownlint
+- gitleaks
 
-## Languages
+### Claude Code Hooks
 
-Primary: C#, React, TypeScript, zsh, PowerShell
+Configure a **Stop hook** to enforce pre-commit before Claude can finish. This blocks Claude from completing until all checks pass.
+
+In project `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "changed=$(git diff --name-only HEAD; git ls-files --others --exclude-standard); [ -z \"$changed\" ] && exit 0; output=$(echo \"$changed\" | xargs pre-commit run --files 2>&1); status=$?; [ $status -ne 0 ] && echo \"$output\" >&2 && exit 2; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**How it works:**
+
+1. Gets changed files (modified + untracked)
+2. If no changes: allows Claude to finish
+3. Runs pre-commit only on changed files (uses `files:` patterns to skip irrelevant hooks)
+4. If pre-commit fails: blocks Claude with full error output
+5. If pre-commit passes: allows Claude to finish
+
+**Pre-commit config tip:** Use `pass_filenames: false` for build/test hooks so they run once (not per-file) when any matching file changes:
+
+```yaml
+- id: dotnet-test
+  files: \.(cs|csproj|sln)$
+  entry: dotnet test
+  pass_filenames: false # Runs once if ANY .cs file changed, skipped otherwise
+```
+
+**Exit codes:**
+
+- `0` = Allow Claude to proceed
+- `2` = Block Claude and show stderr as the reason
 
 ## GitHub File Access
 
