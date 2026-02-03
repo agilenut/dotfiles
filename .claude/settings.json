@@ -1,4 +1,16 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "changed=$(git diff --name-only HEAD; git ls-files --others --exclude-standard); [ -z \"$changed\" ] && exit 0; output=$(echo \"$changed\" | xargs pre-commit run --files 2>&1); status=$?; [ $status -ne 0 ] && echo \"$output\" >&2 && exit 2; exit 0"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(./home/dot_local/bin/executable_dotfiles-test:*)",
@@ -67,19 +79,6 @@
       "WebSearch",
       "mcp__context7__query-docs",
       "mcp__context7__resolve-library-id"
-    ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pre-commit run --files \"$(jq -r '.tool_input.file_path')\""
-          }
-        ]
-      }
     ]
   }
 }

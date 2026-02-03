@@ -89,9 +89,14 @@ pre-commit run --all-files
 
 ### Committing
 
-1. Run tests and ensure they pass
-2. Make small, focused commits
-3. When adding new functionality, suggest corresponding tests
+Before committing changes to this repo:
+
+1. `chezmoi diff` - preview what will change
+2. `chezmoi apply -v` - apply and verify files land correctly
+3. `dotfiles-test --auto-only` - run automated tests
+4. `pre-commit run --all-files` - run linting/formatting
+
+Then make small, focused commits. When adding new functionality, suggest corresponding tests.
 
 ## Common Tasks
 
