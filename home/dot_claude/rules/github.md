@@ -4,11 +4,12 @@
 
 ### Test Plan
 
-Before submitting a PR, attempt to execute each test step yourself:
+The PR test plan documents verifications already performed during commits:
 
-- Mark completed items with `[x]`
-- Leave unchecked `[ ]` only for steps requiring manual interaction, GUI verification, or user-specific context
-- If a test step fails, fix the issue before submitting
+- Identify test steps based on what changed (build, tests, config apply, scripts, etc.)
+- Execute verifiable steps before committing (per git.md pre-commit verification)
+- In PR description: mark completed items `[x]`, leave `[ ]` only for manual/GUI/user-specific verification
+- If a test fails, fix before committing - don't document failures in the PR
 
 ### Merging
 
