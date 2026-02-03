@@ -10,7 +10,8 @@
   - Related work: continue on current branch.
   - Unrelated work: suggest committing current changes, then create a new branch.
 - **Uncommitted changes before switching**: Suggest commit first.
-- **Atomic progress**: When work is tested and functional, suggest committing to the feature branch. **NEVER execute git commit without explicit user approval** - always present the proposed commit message and wait for confirmation.
+- **Atomic progress**: When work is tested and functional, suggest committing to the feature branch.
+- **Commit approval flow**: Always display the proposed commit message in chat and wait for explicit approval (e.g., "yes", "approve", "go") before running `git commit`. Never rely on the permission popup for review - it's hard to read.
 
 ## Rules
 
