@@ -1,0 +1,28 @@
+- repo: local
+  hooks:
+    - id: eslint
+      name: eslint
+      entry: npx eslint --fix
+      language: system
+      files: \.(ts|tsx|js|jsx)$
+
+    - id: tsc
+      name: TypeScript type check
+      entry: npx tsc --noEmit
+      language: system
+      files: \.(ts|tsx)$
+      pass_filenames: false
+
+    - id: npm-build
+      name: npm build
+      entry: npm run build
+      language: system
+      files: \.(ts|tsx|js|jsx|json)$
+      pass_filenames: false
+
+    - id: npm-test
+      name: npm test
+      entry: npm test
+      language: system
+      files: \.(ts|tsx|js|jsx)$
+      pass_filenames: false
