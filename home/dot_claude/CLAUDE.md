@@ -73,34 +73,13 @@ Before considering development tasks complete:
 
 When creating a new repository:
 
-1. Initialize git with language-appropriate .gitignore
-2. Create `.editorconfig` with common rules (see below) + language-specific rules
-3. Create `.vscode/extensions.json` and `.vscode/settings.json` with formatters configured
+1. Initialize git with language-appropriate .gitignore (`/gitignore` skill)
+2. Create `.editorconfig` (`/editorconfig` skill)
+3. Create `.vscode/extensions.json` and `.vscode/settings.json` (`/vscode` skill)
 4. Set up linting (ESLint, StyleCop, shellcheck as appropriate)
 5. Set up formatting (Prettier, CSharpier, shfmt as appropriate)
-6. Create `.pre-commit-config.yaml` (use pre-commit, not Husky)
+6. Create `.pre-commit-config.yaml` (`/pre-commit` skill)
 7. Create `.markdownlint.yaml` with `MD013: false`
-
-See language-specific archetypes in `~/.claude/rules/` for details.
-
-### Common EditorConfig Rules (all projects)
-
-```ini
-[*]
-indent_style = space
-indent_size = 2
-end_of_line = lf
-charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = true
-
-[*.md]
-trim_trailing_whitespace = false
-```
-
-- Default indent: 2-space (except C# = 4-space)
-- Never add `[Makefile]` section unless a Makefile exists
-- Only add sections for file types that actually exist in the project
 
 ### Common VS Code Settings (all projects)
 

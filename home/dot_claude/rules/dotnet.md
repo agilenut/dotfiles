@@ -42,16 +42,6 @@ When creating a new .NET project, always set up:
 
 This ensures VS Code and pre-commit both use CSharpier for consistent formatting.
 
-## EditorConfig
-
-Base rules:
-
-- `[*.cs]`: 4-space indent
-- `csharp_style_namespace_declarations = file_scoped:error`
-- `csharp_style_var_for_built_in_types = true:suggestion`
-- StyleCop rules with `severity = error` (specific rules TBD)
-- Only add sections for file types that actually exist in the project
-
 ## Formatting & Linting
 
 - Formatter: CSharpier (zero config, opinionated)

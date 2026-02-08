@@ -37,11 +37,6 @@ Suggest if relevant:
 - bradlc.vscode-tailwindcss (if using Tailwind)
 - prisma.prisma (if using Prisma)
 
-## EditorConfig
-
-- 2-space indent for all files
-- See common rules in main CLAUDE.md (including `[*.md]` settings)
-
 ## VS Code Settings
 
 ```json

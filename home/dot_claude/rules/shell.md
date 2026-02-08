@@ -37,11 +37,6 @@ When creating a shell-focused project:
 }
 ```
 
-## EditorConfig
-
-- 2-space indent
-- shfmt: Google style
-
 ## Pre-commit Hooks
 
 - prettier (markdown, JSON, YAML)
