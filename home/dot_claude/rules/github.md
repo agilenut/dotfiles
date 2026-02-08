@@ -2,6 +2,10 @@
 
 ## Pull Requests
 
+### Formatting
+
+- No "Generated with Claude Code" or similar footers
+
 ### Test Plan
 
 The PR test plan documents verifications already performed during commits:

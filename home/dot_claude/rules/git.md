@@ -1,32 +1,13 @@
 # Git Rules
 
+## Project Setup
+
+- **New projects**: Suggest repo name, init with language-appropriate .gitignore
+- **Existing folders without git**: Suggest initializing before making changes
+
 ## Workflow
 
-- **New projects**: Suggest a repo name (allow override), init with language-appropriate .gitignore.
-- **Existing folders without git**: Suggest initializing before making changes.
-- **Protected branches** (main, master, develop, dev): Never commit directly. Create a feature branch first.
-- **Branch naming**: Use prefixes (feature/, fix/, refactor/, etc.) and suggest a name for approval.
-- **On a feature branch**:
-  - Related work: continue on current branch.
-  - Unrelated work: suggest committing current changes, then create a new branch.
-- **Uncommitted changes before switching**: Suggest commit first.
-- **Atomic progress**: When work is tested and functional, suggest committing to the feature branch.
-- **Pre-commit verification**: Before proposing a commit, identify what needs testing based on changes made (build? tests? apply config? run script?) and execute those verifications.
-- **Commit approval flow**: Display the proposed commit message in chat and wait for explicit approval before running `git commit`. Never rely on the permission popup - it's hard to read.
-
-## Rules
-
-- No co-authoring attribution.
-- No "Generated with Claude Code" or similar footers in PRs.
-- Never modify history unless explicitly instructed.
-
-## Commit Format
-
-```text
-Brief summary of change
-
-One to two short paragraphs with context, reasoning, or details. Prefer bullets.
-```
+- Before suggesting commit, verify work is functional (build/test/lint/scripts as needed)
 
 ## Gitignore Management
 
