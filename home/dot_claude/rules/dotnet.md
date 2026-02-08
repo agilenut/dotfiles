@@ -27,15 +27,6 @@ When creating a new .NET project, always set up:
 - Run via: `dotnet format` (integrates both)
 - Never disable, suppress, or modify StyleCop or analyzer rules without asking first
 
-## Pre-commit Hooks
-
-- prettier (markdown, JSON, YAML)
-- dotnet-format
-- dotnet-build
-- dotnet-test (if test projects exist)
-- markdownlint
-- gitleaks
-
 ## Testing
 
 Test projects (`*.Tests`) - relaxed rules:

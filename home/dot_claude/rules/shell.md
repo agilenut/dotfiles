@@ -17,14 +17,6 @@ When creating a shell-focused project:
 - `.markdownlint.yaml` (MD013: false)
 - `.gitignore` (per gitignore management rules)
 
-## Pre-commit Hooks
-
-- prettier (markdown, JSON, YAML)
-- shfmt
-- shellcheck (bash/sh only - exclude zsh: SC1071, SC2148)
-- markdownlint
-- gitleaks
-
 ## Linting Notes
 
 - shellcheck does not fully support zsh

@@ -27,18 +27,6 @@ When creating a new TS/JS project, always set up:
 - Formatter: Prettier
 - Linter: ESLint (v9+ flat config)
 
-## Pre-commit Hooks
-
-Use pre-commit (Python), not Husky:
-
-- prettier
-- eslint
-- tsc --noEmit (type check)
-- npm run build (if build script exists)
-- npm run test (if test script exists)
-- markdownlint
-- gitleaks
-
 ## Testing
 
 - Use Vitest or Jest
