@@ -22,34 +22,6 @@ When creating a new TS/JS project, always set up:
 - `.pre-commit-config.yaml` (NOT Husky)
 - `.gitignore` (per gitignore management rules)
 
-## VS Code Extensions
-
-Core (always include):
-
-- esbenp.prettier-vscode
-- dbaeumer.vscode-eslint
-- davidanson.vscode-markdownlint
-- editorconfig.editorconfig
-
-Suggest if relevant:
-
-- yoavbls.pretty-ts-errors (better TS error display)
-- bradlc.vscode-tailwindcss (if using Tailwind)
-- prisma.prisma (if using Prisma)
-
-## VS Code Settings
-
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "explicit"
-  }
-}
-```
-
 ## Formatting & Linting
 
 - Formatter: Prettier

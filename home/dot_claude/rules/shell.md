@@ -17,26 +17,6 @@ When creating a shell-focused project:
 - `.markdownlint.yaml` (MD013: false)
 - `.gitignore` (per gitignore management rules)
 
-## VS Code Extensions
-
-- foxundermoon.shell-format
-- timonwong.shellcheck
-- esbenp.prettier-vscode
-- davidanson.vscode-markdownlint
-- editorconfig.editorconfig
-
-## VS Code Settings
-
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "[shellscript]": {
-    "editor.defaultFormatter": "foxundermoon.shell-format"
-  }
-}
-```
-
 ## Pre-commit Hooks
 
 - prettier (markdown, JSON, YAML)

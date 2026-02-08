@@ -81,14 +81,6 @@ When creating a new repository:
 6. Create `.pre-commit-config.yaml` (`/pre-commit` skill)
 7. Create `.markdownlint.yaml` with `MD013: false`
 
-### Common VS Code Settings (all projects)
-
-Always configure in `.vscode/settings.json`:
-
-- `editor.formatOnSave: true`
-- `editor.defaultFormatter` for each language
-- Prettier as default for markdown, JSON, YAML
-
 ### Common Pre-commit Hooks (all projects)
 
 - prettier (for markdown, JSON, YAML)

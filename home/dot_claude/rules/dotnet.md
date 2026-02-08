@@ -20,28 +20,6 @@ When creating a new .NET project, always set up:
 - CSharpier (dotnet tool)
 - `.gitignore` (use `dotnet new gitignore`)
 
-## VS Code Extensions
-
-- ms-dotnettools.csdevkit
-- csharpier.csharpier-vscode
-- esbenp.prettier-vscode
-- editorconfig.editorconfig
-- davidanson.vscode-markdownlint
-
-## VS Code Settings
-
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "[csharp]": {
-    "editor.defaultFormatter": "csharpier.csharpier-vscode"
-  }
-}
-```
-
-This ensures VS Code and pre-commit both use CSharpier for consistent formatting.
-
 ## Formatting & Linting
 
 - Formatter: CSharpier (zero config, opinionated)
