@@ -6,33 +6,9 @@ paths:
   - "**/Directory.Build.props"
 ---
 
-# C# / .NET Archetype
-
-## New Project Setup
-
-When creating a new .NET project, always set up:
-
-- `.editorconfig` (4-space indent for C#, StyleCop rules)
-- `.vscode/extensions.json` and `.vscode/settings.json`
-- `.markdownlint.yaml` (MD013: false)
-- `.pre-commit-config.yaml`
-- StyleCop.Analyzers NuGet package
-- CSharpier (dotnet tool)
-- `.gitignore` (use `dotnet new gitignore`)
+# C# / .NET
 
 ## Formatting & Linting
 
-- Formatter: CSharpier (zero config, opinionated)
+- Formatter: dotnet format
 - Linter: StyleCop.Analyzers NuGet package
-- Run via: `dotnet format` (integrates both)
-- Never disable, suppress, or modify StyleCop or analyzer rules without asking first
-
-## Testing
-
-Test projects (`*.Tests`) - relaxed rules:
-
-- SA1600 series (XML docs): disabled or warning
-- SA1300 (underscore in names): allow for BDD-style test names
-- VSTHRD200 (async naming): relaxed
-
-Production code: full StyleCop enforcement
