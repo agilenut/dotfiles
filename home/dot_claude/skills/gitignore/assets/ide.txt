@@ -1,0 +1,12 @@
+# IDEs
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sln.iml
+.claude/settings.local.json
