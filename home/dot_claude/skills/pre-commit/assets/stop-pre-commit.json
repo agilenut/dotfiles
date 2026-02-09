@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "changed=$(git diff --name-only HEAD; git ls-files --others --exclude-standard); [ -z \"$changed\" ] && exit 0; output=$(echo \"$changed\" | xargs pre-commit run --files 2>&1); status=$?; [ $status -ne 0 ] && echo \"$output\" >&2 && exit 2; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
