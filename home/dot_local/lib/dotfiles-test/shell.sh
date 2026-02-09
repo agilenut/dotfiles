@@ -107,7 +107,7 @@ test_color_output() {
 
   if command -v eza &>/dev/null; then
     local eza_output
-    eza_output=$(eza --color=always / 2>/dev/null | head -1)
+    eza_output=$(eza --color=always / 2>/dev/null | head -1 || true)
     if has_ansi_codes "$eza_output"; then
       pass "eza produces ANSI color codes"
     else
@@ -121,7 +121,7 @@ test_color_output() {
   if command -v man &>/dev/null; then
     local man_output
     # Use zsh to get the less_termcap settings, then run man
-    man_output=$(zsh_check 'MANPAGER="less" man -P "head -50" ls 2>/dev/null')
+    man_output=$(zsh_check 'MANPAGER="less" man -P "head -50" ls 2>/dev/null' || true)
     if has_ansi_codes "$man_output"; then
       pass "man pages produce ANSI color codes"
     else
