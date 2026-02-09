@@ -34,9 +34,7 @@
 - Commit message: Short summary, body with bullets
 - Atomic commits; Separate commits for unrelated changes
 - Before committing: Code must be linted, tested, and reviewed. Docs must be updated
-- No co-authoring. No "Generated with Claude Code" or similar footers
-- Never commit secrets
-- No --amend, push (unless asked)
+- No co-authoring, secrets, or --amend/push (unless asked)
 
 ## Markdown
 
