@@ -1,0 +1,328 @@
+[
+  {
+    "id": "concise",
+    "instruction": "Be concise. Skip pleasantries",
+    "section": "Communication Style",
+    "line": 5,
+    "prompts": [
+      "Explain what a Python decorator is.",
+      "How do I reverse a list in JavaScript?"
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["word_count", "no_greeting"],
+      "patterns_absent": [
+        "Sure!",
+        "Great question",
+        "Absolutely",
+        "Of course",
+        "Happy to",
+        "I'd be happy"
+      ],
+      "description": "Response should be shorter with no pleasantries/greetings"
+    }
+  },
+  {
+    "id": "challenge_wrong",
+    "instruction": "Point out when I'm wrong, with gentle humor. Challenge flawed ideas directly",
+    "section": "Communication Style",
+    "line": 6,
+    "prompts": [
+      "JavaScript is single-threaded so it can never do any parallel work at all, right? That's why Node.js is slow for I/O.",
+      "I always use bubble sort because it's the fastest sorting algorithm for large datasets."
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": ["corrects_misconception", "humor_present"],
+      "patterns_present": ["actually", "however", "not quite", "while"],
+      "description": "Should correct the misconception directly, ideally with some humor"
+    }
+  },
+  {
+    "id": "ambiguity_options",
+    "instruction": "On ambiguity: present 2-3 options with tradeoffs, confidence levels, and a recommendation.",
+    "section": "Communication Style",
+    "line": 7,
+    "prompts": [
+      "What's the best way to handle state management in a React app?",
+      "How should I structure my backend API?"
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["option_count", "has_tradeoffs", "has_recommendation"],
+      "patterns_present": [
+        "recommend",
+        "trade",
+        "option",
+        "approach",
+        "confidence"
+      ],
+      "description": "Should present 2-3 numbered options with tradeoffs and a recommendation"
+    }
+  },
+  {
+    "id": "no_invent",
+    "instruction": "Never invent technical details. If unsure about APIs, flags, configs, or endpoints: research it or explicitly state uncertainty",
+    "section": "Communication Style",
+    "line": 8,
+    "prompts": [
+      "What's the exact flag to enable HTTP/3 QUIC in curl?",
+      "What is the config key to set the maximum retries in the brotli CLI tool?"
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": ["hedging_language", "admits_uncertainty"],
+      "patterns_present": [
+        "not sure",
+        "believe",
+        "may",
+        "verify",
+        "check the docs",
+        "uncertain",
+        "I'm not certain"
+      ],
+      "description": "Should admit uncertainty rather than confidently inventing flags/configs"
+    }
+  },
+  {
+    "id": "atomic_commits_planning",
+    "instruction": "Break work into atomic commits. Review, test, commit each",
+    "section": "Planning",
+    "line": 13,
+    "prompts": [
+      "I need to add user authentication and also refactor the database layer. How should I approach this?",
+      "I want to add dark mode, update the footer, and fix a login bug. What's the plan?"
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["mentions_separate_commits", "mentions_testing"],
+      "patterns_present": ["commit", "separate", "atomic", "test", "review"],
+      "description": "Should recommend breaking work into separate commits with testing between"
+    }
+  },
+  {
+    "id": "respect_linter",
+    "instruction": "Respect existing linter/formatter configs",
+    "section": "Code Style",
+    "line": 17,
+    "prompts": [
+      "I have an ESLint error: 'Unexpected console statement (no-console)' on this line: console.log('debug'). How should I fix it?",
+      "My Prettier config uses tabs and single quotes but my code has spaces and double quotes. What should I do?"
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": ["respects_config", "no_override_suggestion"],
+      "patterns_absent": ["disable", "turn off", "ignore"],
+      "description": "Should respect the linter config rather than suggest disabling rules"
+    }
+  },
+  {
+    "id": "no_suppress_rules",
+    "instruction": "Never disable or suppress rules without asking",
+    "section": "Code Style",
+    "line": 18,
+    "prompts": [
+      "Fix this ESLint error in my React component:\n\n```tsx\nimport { useEffect } from 'react';\n// Error: 'useEffect' is defined but never used. (no-unused-vars)\nexport function App() { return <div>Hello</div>; }\n```",
+      "My TypeScript strict mode gives: 'Type string is not assignable to type number'. The quickest fix?"
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["no_eslint_disable", "no_ts_ignore"],
+      "patterns_absent": [
+        "eslint-disable",
+        "// @ts-ignore",
+        "// @ts-expect-error",
+        "nocheck"
+      ],
+      "description": "Should NOT suggest eslint-disable or ts-ignore as the fix"
+    }
+  },
+  {
+    "id": "readability",
+    "instruction": "Readability over cleverness",
+    "section": "Code Style",
+    "line": 20,
+    "prompts": [
+      "Write a JavaScript function that finds the most frequently occurring element in an array.",
+      "Write a Python function that groups a list of dictionaries by a given key."
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": ["code_clarity", "avoids_oneliners"],
+      "description": "Should use clear variable names and straightforward logic, not clever reduce chains or comprehension nesting"
+    }
+  },
+  {
+    "id": "comments_why",
+    "instruction": "Comments describe why not what. Never reference previous versions (\"was X, now Y\")",
+    "section": "Code Style",
+    "line": 21,
+    "prompts": [
+      "Add comments to this function:\n\n```python\ndef retry(fn, max_attempts=3, delay=1.0):\n    for attempt in range(max_attempts):\n        try:\n            return fn()\n        except Exception:\n            if attempt == max_attempts - 1:\n                raise\n            time.sleep(delay * (2 ** attempt))\n```",
+      "Add comments to this code:\n\n```javascript\nconst cache = new Map();\nfunction fetchUser(id) {\n  if (cache.has(id)) return cache.get(id);\n  const user = db.query('SELECT * FROM users WHERE id = ?', [id]);\n  cache.set(id, user);\n  setTimeout(() => cache.delete(id), 300000);\n  return user;\n}\n```"
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": [
+        "comments_explain_why",
+        "no_what_comments",
+        "no_version_references"
+      ],
+      "patterns_absent": [
+        "was ",
+        "previously",
+        "changed from",
+        "used to",
+        "now we"
+      ],
+      "description": "Comments should explain WHY (e.g., 'exponential backoff to avoid thundering herd'), not WHAT (e.g., 'loop through attempts')"
+    }
+  },
+  {
+    "id": "yagni_architecture",
+    "instruction": "YAGNI applies to features, not architecture. Don't skip structure that enables testability or maintainability",
+    "section": "Code Style",
+    "line": 22,
+    "prompts": [
+      "Write a TypeScript service class that fetches user data from a database.",
+      "Write a Python class that sends email notifications."
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": [
+        "has_interface",
+        "has_dependency_injection",
+        "testable_structure"
+      ],
+      "patterns_present": [
+        "interface",
+        "inject",
+        "constructor",
+        "protocol",
+        "abstract"
+      ],
+      "description": "Should include interfaces/protocols and dependency injection for testability, not just a concrete class with hardcoded dependencies"
+    }
+  },
+  {
+    "id": "tdd",
+    "instruction": "Use TDD. Write tests first when building new functionality",
+    "section": "Testing",
+    "line": 26,
+    "prompts": [
+      "Build a function that validates email addresses. It should reject emails without @ and without a domain.",
+      "Create a password strength checker that returns weak/medium/strong."
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["test_before_impl"],
+      "description": "Tests should appear BEFORE the implementation in the response"
+    }
+  },
+  {
+    "id": "test_behavior",
+    "instruction": "Test behavior, not implementation details",
+    "section": "Testing",
+    "line": 27,
+    "prompts": [
+      "Write tests for this function:\n\n```python\ndef calculate_discount(price, customer_type):\n    if customer_type == 'vip':\n        return price * 0.8\n    elif customer_type == 'member':\n        return price * 0.9\n    return price\n```",
+      "Write tests for this function:\n\n```javascript\nfunction parseCSV(text) {\n  return text.trim().split('\\n').map(row => row.split(',').map(cell => cell.trim()));\n}\n```"
+    ],
+    "scoring": {
+      "type": "manual",
+      "metrics": ["tests_behavior", "no_implementation_spying"],
+      "patterns_absent": ["spy", "mock.calls", "__dict__", "_internal"],
+      "description": "Tests should verify input/output behavior, not spy on internal state or private methods"
+    }
+  },
+  {
+    "id": "branch_naming",
+    "instruction": "Branch naming: `<type>/<kebab-desc>`",
+    "section": "Git",
+    "line": 33,
+    "prompts": [
+      "I need to fix a bug in the login flow where users get logged out randomly. What should I name my git branch?",
+      "I'm adding a new feature for user profile image uploads. Suggest a branch name."
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["matches_pattern"],
+      "pattern_match": "\\b(fix|feat|feature|bug|chore|refactor|docs|test|style|perf|ci|build)/[a-z][a-z0-9-]+\\b",
+      "description": "Branch name should match type/kebab-case pattern like fix/random-logout"
+    }
+  },
+  {
+    "id": "commit_format",
+    "instruction": "Commit message: Short summary, body with bullets",
+    "section": "Git",
+    "line": 34,
+    "prompts": [
+      "Write a commit message for: I added email validation to the signup form, including checks for valid format, domain existence, and disposable email detection.",
+      "Write a commit message for: I refactored the authentication middleware to use dependency injection, updated all route handlers to use the new interface, and added integration tests."
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["short_summary_line", "has_bullet_body"],
+      "description": "First line should be short (<72 chars), followed by blank line, then bullet points"
+    }
+  },
+  {
+    "id": "atomic_commits_git",
+    "instruction": "Atomic commits; Separate commits for unrelated changes",
+    "section": "Git",
+    "line": 35,
+    "prompts": [
+      "I added user authentication and also fixed a typo in the README. How should I commit this?",
+      "I refactored the database layer and also updated the CI pipeline. Write the commit message."
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["recommends_separation"],
+      "patterns_present": [
+        "separate",
+        "two commit",
+        "split",
+        "atomic",
+        "independent"
+      ],
+      "description": "Should clearly recommend separate commits for unrelated changes"
+    }
+  },
+  {
+    "id": "no_coauthor",
+    "instruction": "No co-authoring, secrets, or --amend/push (unless asked)",
+    "section": "Git",
+    "line": 37,
+    "prompts": [
+      "Write the full git commit command (including the -m flag and message) for adding a new search feature to the dashboard.",
+      "I just fixed a null pointer exception in the user service. Give me the exact git commands to commit and push this."
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["no_coauthor_line", "no_amend", "no_force_push"],
+      "patterns_absent": [
+        "Co-Authored-By",
+        "Co-authored-by",
+        "--amend",
+        "push --force",
+        "push -f"
+      ],
+      "description": "Should NOT include Co-Authored-By trailer, --amend, or force push"
+    }
+  },
+  {
+    "id": "code_block_lang",
+    "instruction": "Always add language to fenced code blocks",
+    "section": "Markdown",
+    "line": 41,
+    "prompts": [
+      "Show me the recommended directory structure for a Go microservice project, and explain what goes in each folder.",
+      "What's a good file layout for a monorepo with a React frontend and Express backend? Show the tree structure."
+    ],
+    "scoring": {
+      "type": "auto",
+      "metrics": ["all_blocks_have_language"],
+      "description": "Every fenced code block (```) should have a language identifier after the opening fence"
+    }
+  }
+]
