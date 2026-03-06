@@ -1,41 +1,58 @@
-# User Preferences
+# Rules
 
-## Communication Style
+- When I ask a question, just answer it — do not take action unless I ask
+- When a constraint drives complexity, verify it still holds before building workarounds
+- Never dismiss review findings based on project size, MVP status, or user count — evaluate each on its own merit
 
-- Be concise. Skip pleasantries
-- Point out when I'm wrong, with gentle humor. Challenge flawed ideas directly
-- On ambiguity: present 2-3 options with tradeoffs, confidence levels, and a recommendation.
-- Never invent technical details. If unsure about APIs, flags, configs, or endpoints: research it or explicitly state uncertainty
+## Bash
+
+- NEVER chain commands with && or | — always use separate Bash tool calls
+- Use quiet output flags: dotnet build -v quiet, dotnet test -v quiet, npm run --silent
+- No global installs: `npx` for one-off commands, `pip` only inside a venv, `pipx` for CLI tools, `npm install` only in a project (never `-g`), `dotnet tool` use `--local` in projects or `--global` only outside a project
 
 ## Planning
 
-- For non-trivial tasks, use plan mode first. Iterate until solid
-- Break work into atomic commits. Review, test, commit each
+- Break work into small, independently committable steps — one commit per step
+- After completing each step, stop and ask before continuing to the next
+- If implementation diverges from the plan, update the plan file before proceeding
+- NEVER write out full plan content in chat — use Edit for targeted changes, then summarize what changed
 
-## Code Style
+## Code
 
-- Respect existing linter/formatter configs
-- Never disable or suppress rules without asking
-- Match surrounding code style
-- Readability over cleverness
-- Comments describe why not what. Never reference previous versions ("was X, now Y")
-- YAGNI applies to features, not architecture. Don't skip structure that enables testability or maintainability
+- ALWAYS look up current APIs and versions on Context7 before using a library; use web search for broader approach questions
+- NEVER suppress compiler warnings or analyzer rules without asking first
+- No committed secrets or credentials
 
-## Testing
+## Dotnet
 
-- Use TDD. Write tests first when building new functionality
-- Test behavior, not implementation details
-- Never delete tests without asking
+- Prefer 1 type per file unless they really go together (e.g. static LoggerMessages)
 
 ## Git
 
-- On main? Branch before coding.
-- Branch naming: `<type>/<kebab-desc>`
-- Commit message: Short summary, body with bullets
-- Atomic commits; Separate commits for unrelated changes
-- Before committing: Code must be linted, tested, and reviewed. Docs must be updated
-- No co-authoring, secrets, or --amend/push (unless asked)
+- Never work on main — create a feature branch first
+- Never commit/push/merge/amend/force-push unless asked
+- Before committing: stage files, run `pre-commit run`, re-stage if it modified anything, repeat until clean — only then `git commit`
+- Each commit must build, test, and pass independently, no dead code or forward refs
+- ALWAYS update docs in the same commit as code — never a separate commit
+- Commit message: short summary, body with bullets explaining why
+- NEVER add Co-Authored-By lines to commits
+- NEVER add "Generated with Claude Code" to PRs
+- NEVER use Closes/Fixes in PRs — use "Part of #123" (issue stays open for board review)
+- Post merge CI failure: comment on failed PR (what broke, fix PR link) and update the issue with a running failure log
 
-## Markdown
+## Database
 
-- Always add language to fenced code blocks
+- EF migrations must be backward-compatible — never rename or drop columns in one step; use expand/contract
+
+## Testing
+
+- TDD: write test first, run it, see it FAIL, then write minimum code to pass, run again
+- Arrange / Act / Assert comments
+- Always build and test changes before reporting completion
+- If a required tool is unavailable (e.g., Docker), fix or ask — don't skip
+- NEVER change a test just to make it pass — if a test breaks, fix the code or ask me
+
+## Context
+
+- When editing CLAUDE.md, MEMORY.md, skills, or agents: be terse — minimum words, no explanations
+- Only add or suggest rules/memory/config that genuinely change behavior — if it won't change what Claude does, don't propose it

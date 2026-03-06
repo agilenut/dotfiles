@@ -93,7 +93,7 @@ repos:
     hooks:
       - id: markdownlint
         types: [markdown]
-        exclude: ^\.github/ISSUE_TEMPLATE/
+        exclude: ^(\.github/ISSUE_TEMPLATE/|home/dot_claude/agents/)
 
   # Prettier for general formatting (json, yaml, markdown, css)
   # Uses .editorconfig for settings (indent_size, end_of_line, etc.)
