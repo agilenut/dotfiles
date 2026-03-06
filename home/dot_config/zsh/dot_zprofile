@@ -30,5 +30,6 @@ fi
 typeset -U path PATH # No dupes
 path=(
   "$XDG_BIN_HOME"
+  "$XDG_STATE_HOME/dotnet/.dotnet/tools"
   $path
 )
