@@ -17,6 +17,22 @@
 - If implementation diverges from the plan, update the plan file before proceeding
 - NEVER write out full plan content in chat — use Edit for targeted changes, then summarize what changed
 
+### Plan Naming
+
+- Format: `{YYYY-MM-DD}-{brief-description}.md`
+- Never include story numbers in filenames
+- Never use auto-generated or random filenames
+
+### Plan Frontmatter
+
+```yaml
+---
+work: "<work-stream-name>"
+branch: "<branch-name-or-null>"
+stories: [82, 86]
+---
+```
+
 ## Code
 
 - ALWAYS look up current APIs and versions on Context7 before using a library; use web search for broader approach questions
@@ -39,6 +55,22 @@
 - NEVER add "Generated with Claude Code" to PRs
 - NEVER use Closes/Fixes in PRs — use "Part of #123" (issue stays open for board review)
 - Post merge CI failure: comment on failed PR (what broke, fix PR link) and update the issue with a running failure log
+
+## Workspace
+
+### Plans Directory Resolution
+
+1. `plansDirectory` from `.claude/settings.local.json`, then `.claude/settings.json`
+2. If not found and in a worktree: main tree's `.claude/settings.local.json`, then `.claude/settings.json`
+3. If not found: `~/.claude/settings.json`
+4. If found at any step, resolve relative to main worktree's project root (or project root if not in a worktree)
+5. If not found and in a repo, check for `.plans/` at main worktree root — use if it exists
+6. If not found, use `.claude/plans` at main worktree root
+7. If not in a repo, use `~/.claude/plans`
+
+### Reviews Directory
+
+All review output goes to `.reviews/` relative to main worktree's project root: `.reviews/code/` for code reviews, `.reviews/plans/` for plan reviews. Branch review state is tracked in `.reviews/code/.last-reviewed.json`.
 
 ## Database
 

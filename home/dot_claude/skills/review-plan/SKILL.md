@@ -1,7 +1,7 @@
 ---
 name: review-plan
 description: "Use when user says /review-plan, asks to review a plan, or wants feedback on an implementation plan before coding"
-user-invokable: true
+user-invocable: true
 argument-hint: "[plan-filename]"
 ---
 
@@ -11,9 +11,10 @@ Review an implementation plan before coding begins.
 
 ## Step 1: Find the Plan
 
-1. If argument provided, look for it in `~/.claude/plans/`
-2. Otherwise, find the most recently modified `.md` file in `~/.claude/plans/`
-3. If no plan found, tell user
+1. Resolve plans directory per "Plans Directory Resolution" in CLAUDE.md
+2. If argument provided, look for it in the resolved directory
+3. Otherwise, find the most recently modified `.md` file in the resolved directory
+4. If no plan found, tell user
 
 ## Step 2: Gather Minimal Context
 
@@ -25,21 +26,21 @@ Only collect what the agent can't find on its own:
 
 Do NOT pre-read arch docs, CLAUDE.md, or design docs. Let the agent discover and interpret those itself.
 
-## Step 3: Spawn Reviewers (MUST use Task tool — do NOT inline)
+## Step 3: Spawn Reviewers (MUST use Agent tool — do NOT inline)
 
-You MUST use the Task tool here. Do NOT perform the review yourself.
+You MUST use the Agent tool here. Do NOT perform the review yourself.
 
 **Determine if the plan involves UI.** Scan the plan for references to components, pages, routes, views, CSS, styling, design, frontend, or UI frameworks. If yes, include the UX reviewer.
 
 **Always spawn:**
 
-- `subagent_type: "plan-reviewer"`, `description: "Review plan"` — pass the plan content, issue body (if any), project root path, and output path `~/.claude/plan-reviews/<plan-filename>-<YYYYMMDD-HHMMSS>.md`
+- `subagent_type: "plan-reviewer"`, `description: "Review plan"` — pass the plan content, issue body (if any), project root path, and output path `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>-plan.md` — run `date +%Y-%m-%d-%H%M%S` for the timestamp
 
-**Additionally spawn if plan involves UI** (add a second parallel Task call):
+**Additionally spawn if plan involves UI** (add a second parallel Agent call):
 
-- `subagent_type: "ux-reviewer"`, `description: "UX review plan"` — pass the plan content, project root path, and output path `~/.claude/plan-reviews/<plan-filename>-<YYYYMMDD-HHMMSS>-ux.md`
+- `subagent_type: "ux-reviewer"`, `description: "UX review plan"` — pass the plan content, project root path, and output path `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>-ux.md` — use same timestamp as above
 
-Wait for all Tasks to complete before proceeding.
+Wait for all agents to complete before proceeding.
 
 ## Step 4: Present Findings
 
@@ -47,7 +48,7 @@ After all subagents finish:
 
 1. Read the review files written by the subagents
 2. Triage: form your own opinion on which findings are worth addressing before coding
-3. Present using this exact format. Use markdown links for all file references.
+3. Present using this exact format. Use plain `path:line` format for all file references (not markdown links).
 
 ```markdown
 ## Plan Review: <plan-name>
@@ -77,7 +78,9 @@ After all subagents finish:
 
 Recommended: 1, 3, 4
 
-Full reports: [plan](path) | [ux](path)
+Full reports:
+.reviews/plans/<timestamp>-<plan-name>-plan.md
+.reviews/plans/<timestamp>-<plan-name>-ux.md
 ```
 
 Format rules:
@@ -88,7 +91,7 @@ Format rules:
 - **Fix** = must address before coding. **Skip** = noted but acceptable. **Consider** = alternative approach worth discussing.
 - Recommended line lists only the Fix and Consider item numbers
 - Omit UX verdict line and report link if UX reviewer was not spawned
-- Use markdown link syntax for ALL file references: `[file.cs:42](path/to/file.cs#L42)`
+- Use plain `path:line` format for ALL file references — repo-relative for project files, `~/` for files outside the repo. Never use markdown link syntax.
 
 ## Rules
 

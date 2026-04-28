@@ -17,6 +17,7 @@ LIB_DIR="$SCRIPT_DIR/../lib/dotfiles-test"
 source "$LIB_DIR/utils.sh"
 source "$LIB_DIR/packages.sh"
 source "$LIB_DIR/shell.sh"
+source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -90,6 +91,10 @@ main() {
   test_config_files
   test_fzf_keybindings
   test_aliases_defined
+
+  # Worktree hook tests
+  test_worktree_lib
+  test_worktree_e2e
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then
