@@ -23,11 +23,19 @@ export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 
 export LESSHISTFILE=-
 
-# NVM / NPM / NODE
+# MISE / NPM / NODE
 # -----------------------------------------------------------------------------
 
-export NVM_DIR="$XDG_DATA_HOME/nvm"
-export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc" # See this file for more env seutp.
+# Add mise shims to PATH for NON-INTERACTIVE shells (scripts, `zsh -c`, etc.)
+# Interactive shells get the full `mise activate` integration via mise.zsh
+# loaded by .zshrc; that path also adds shims, but doesn't run for
+# non-interactive shells.
+typeset -U path PATH # No dupes
+path=(
+  "$XDG_DATA_HOME/mise/shims"
+  $path
+)
+export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc" # See this file for more env setup.
 export NODE_REPL_HISTORY="$XDG_STATE_HOME/node/repl_history"
 
 # GO
