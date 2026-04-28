@@ -33,7 +33,7 @@ git -C "$REPO_ROOT" worktree add "$WORKTREE_PATH" "$BASE_BRANCH" --detach >&2
 
 # Run setup only if the repo's script supports --worktree.
 if [ -f "$WORKTREE_PATH/setup" ] && grep -q -- '--worktree' "$WORKTREE_PATH/setup"; then
-  OFFSET="$(pick_offset)"
+  OFFSET="$(pick_offset "$REPO_ROOT")"
   "$WORKTREE_PATH/setup" --worktree "$REPO_ROOT" --offset "$OFFSET" >&2
 fi
 
