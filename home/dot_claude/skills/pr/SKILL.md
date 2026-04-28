@@ -1,7 +1,7 @@
 ---
 name: pr
 description: "Use when user says /pr, asks about PR status, wants to create/merge a PR, or needs help with CI failures on a PR"
-user-invokable: true
+user-invocable: true
 argument-hint: "[pr-number]"
 ---
 
@@ -41,13 +41,20 @@ To distinguish CI_PASSED vs PRE_MERGE_TESTING and POST_MERGE_TESTING vs MERGED_D
 ### NO_PR
 
 - `git log --oneline main..HEAD` to summarize commits
+- Select one label based on the primary nature of the change. Check which labels exist in the repo (`gh label list --json name`) and use the best match:
+  - `enhancement` — new feature, new capability, new test suite
+  - `bug` — something was broken and this fixes it
+  - `security` — security fix or hardening
+  - `infrastructure` — CI/CD, workflows, deploy, infra scripts, Bicep, test maintenance (if label exists)
+  - `documentation` — docs-only changes (if label exists)
+  - No label if none of the above apply
 - Draft PR: short title (<70 chars), `## Summary` bullets
 - `## Test Plan` — only include if there are items. Items are things not already covered by CI (don't list "tests pass", "build succeeds", "deploy succeeds").
   - `### Pre-merge` — only include if there are pre-merge items
   - `### Post-merge` — only include if there are post-merge items
   - Omit `## Test Plan` entirely if neither section has items
 - Link issue: "Part of #N" (NEVER Closes/Fixes)
-- `gh pr create`, then re-run state detection
+- `gh pr create` (include `--label <label>` if a label was selected), then re-run state detection
 
 ### CI_RUNNING
 
@@ -120,5 +127,6 @@ To distinguish CI_PASSED vs PRE_MERGE_TESTING and POST_MERGE_TESTING vs MERGED_D
 
 ## Rules
 
-- Use markdown links for all file references: `[file.cs:42](path/to/file.cs#L42)`
+- Terminal output (status, CI summaries): use plain `path:line` format for file references
+- GitHub content (PR body, comments, issue edits): use markdown links `[file.cs:42](path/to/file.cs#L42)`
 - **Test plan re-verification**: If code changes after a test plan item was checked off, uncheck it and re-verify before offering to merge.

@@ -40,8 +40,6 @@
 [credential]
 	helper =
 	helper = manager
-[credential "https://dev.azure.com"]
-	useHttpPath = true
 {{- if $signingkey }}
 [gpg]
 	format = ssh
@@ -56,3 +54,5 @@
 [commit]
 	gpgsign = true
 {{- end }}
+[credential "https://dev.azure.com"]
+	useHttpPath = true

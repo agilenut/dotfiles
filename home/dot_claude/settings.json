@@ -41,11 +41,11 @@
       "Bash(gh run view *)",
       "Bash(gh run watch *)",
       "Bash(gh variable list *)",
-      "Bash(git -C *)",
       "Bash(git add *)",
       "Bash(git branch *)",
       "Bash(git checkout *)",
       "Bash(git clone *)",
+      "Bash(git config *)",
       "Bash(git diff *)",
       "Bash(git fetch *)",
       "Bash(git log *)",
@@ -80,11 +80,39 @@
       "mcp__context7__query-docs"
     ],
     "ask": [
+      "Bash(brew install *)",
       "Bash(git commit *)",
       "Bash(git merge *)",
       "Bash(git push *)",
       "Bash(gh pr create *)",
       "Bash(gh pr merge *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/create-worktree.sh",
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/remove-worktree.sh",
+            "timeout": 120
+          }
+        ]
+      }
     ]
-  }
+  },
+  "autoUpdatesChannel": "stable",
+  "theme": "dark-ansi"
 }
