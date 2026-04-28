@@ -17,6 +17,7 @@
     "git",
     "git-credential-manager",
     "jq",
+    "mise",
     "neovim",
     "pam-reattach",
     "ripgrep",
@@ -28,6 +29,8 @@
 
 [packages.linux.apt]
   # Note: eza not in standard apt repos; GCM installed separately
+  # Note: mise not in standard apt repos; install via PPA (ppa:jdxcode/mise)
+  #       or upstream install script — see https://mise.jdx.dev/installing-mise.html
   core = [
     "bat",
     "fd-find",
@@ -43,6 +46,8 @@
   ]
 
 [packages.linux.dnf]
+  # Note: mise not in standard dnf repos; install via COPR
+  #       (dnf copr enable jdxcode/mise) or upstream install script
   core = [
     "bat",
     "eza",
@@ -66,6 +71,7 @@
     "fzf",
     "git",
     "jq",
+    "mise",
     "neovim",
     "ripgrep",
     "tmux",
