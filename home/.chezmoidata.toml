@@ -16,6 +16,7 @@
     "gh",
     "git",
     "git-credential-manager",
+    "jq",
     "neovim",
     "pam-reattach",
     "ripgrep",
@@ -27,7 +28,19 @@
 
 [packages.linux.apt]
   # Note: eza not in standard apt repos; GCM installed separately
-  core = [ "bat", "fd-find", "fzf", "git", "neovim", "ripgrep", "tmux", "tree", "zoxide", "zsh" ]
+  core = [
+    "bat",
+    "fd-find",
+    "fzf",
+    "git",
+    "jq",
+    "neovim",
+    "ripgrep",
+    "tmux",
+    "tree",
+    "zoxide",
+    "zsh",
+  ]
 
 [packages.linux.dnf]
   core = [
@@ -36,6 +49,7 @@
     "fd-find",
     "fzf",
     "git",
+    "jq",
     "neovim",
     "ripgrep",
     "tmux",
@@ -45,7 +59,20 @@
   ]
 
 [packages.linux.pacman]
-  core = [ "bat", "eza", "fd", "fzf", "git", "neovim", "ripgrep", "tmux", "tree", "zoxide", "zsh" ]
+  core = [
+    "bat",
+    "eza",
+    "fd",
+    "fzf",
+    "git",
+    "jq",
+    "neovim",
+    "ripgrep",
+    "tmux",
+    "tree",
+    "zoxide",
+    "zsh",
+  ]
 
   # =============================================================================
   # PROFILES - Dev tools and apps are profile-specific (alphabetized)

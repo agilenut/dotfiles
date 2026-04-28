@@ -1,7 +1,7 @@
 ---
 name: plans
 description: "Use when user says /plans, wants to list/search/select plans, or references a plan by number or keyword"
-user-invokable: true
+user-invocable: true
 argument-hint: "[search-term]"
 ---
 
@@ -59,23 +59,18 @@ When user says "review plan N": invoke the `/review-plan` skill with that plan's
 
 ### 1. Discover plans directory
 
-Resolve in order — use the first that yields an existing directory:
-
-1. Read `.claude/settings.local.json` (then `.claude/settings.json`) in the working directory for a `plansDirectory` key
-2. If found, resolve that path relative to the working directory
-3. If the resolved directory does not exist and you are in a git worktree, find the main worktree root (`git worktree list` — first entry) and resolve the same relative path from there
-4. Fall back to `~/.claude/plans/`
+Resolve per "Plans Directory Resolution" in CLAUDE.md.
 
 ### 2. List/search plans
 
-1. Glob `{plans-dir}/*.md`
-2. For each file: read first 5 lines to extract summary (first heading or first non-empty line)
-3. Sort by modification time (use `ls -lt` via Bash)
-4. If search term provided: Grep across plan files for the term
-5. Present the table
+1. `ls -lt {plans-dir}/*.md` via Bash to get sorted file list
+2. For each file: `Read(file, limit=5)` to extract summary (first heading or first non-empty line after frontmatter)
+3. If search term provided: Grep across plan files for the term
+4. Present the table
 
 ## Rules
 
+- Use Glob, Read, and Grep tools — NEVER use bash loops, head, cat, or for to read plan files
 - Do NOT modify any plan files
 - Do NOT read full plan content during listing — only first few lines for summary
 - Paths shown should be filenames only (not full paths) to keep the table clean
