@@ -27,7 +27,7 @@ romkatv/zsh-bench kind:path
 "$ZDOTDIR/zshrc.d/editor.zsh"
 "$ZDOTDIR/zshrc.d/macos.zsh" conditional:is-macos
 "$ZDOTDIR/zshrc.d/prompt.zsh"
-"$ZDOTDIR/zshrc.d/nvm.zsh"
+"$ZDOTDIR/zshrc.d/mise.zsh"
 
 # Completions
 # -----------------------------------------------------------------------------

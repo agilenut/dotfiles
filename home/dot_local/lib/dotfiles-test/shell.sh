@@ -57,7 +57,7 @@ test_completion_system() {
     fail "fzf-tab color styles not found"
   fi
 
-  # npm completion (loaded via nvm or npm itself)
+  # npm completion (loaded via mise or npm itself)
   if command -v npm &>/dev/null; then
     if zsh_check 'type _npm &>/dev/null || type _npm_completion &>/dev/null'; then
       pass "npm completion function loaded"
