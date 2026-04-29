@@ -15,6 +15,16 @@ if [ -z "$WORKTREE_PATH" ]; then
   echo "WARNING: No cwd in stdin, skipping cleanup" >&2
   exit 0
 fi
+
+# Canonicalize the path before any guard or destructive op so a JSON value
+# like "../sibling" can't smuggle the worktree-remove --force into a
+# directory the caller didn't actually mean.
+CANONICAL="$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)" || {
+  echo "WARNING: cwd is not a valid directory: $WORKTREE_PATH; skipping cleanup" >&2
+  exit 0
+}
+WORKTREE_PATH="$CANONICAL"
+
 if ! is_worktree "$WORKTREE_PATH"; then
   echo "WARNING: $WORKTREE_PATH is not a git worktree, skipping" >&2
   exit 0
