@@ -235,6 +235,55 @@ test_worktree_e2e() {
     fail "expected reuse branch (path='$wt_path_2' stderr='$reuse_stderr')"
   fi
 
+  # ---- Defensive paths ----
+  # create-worktree.sh should reject a nonexistent cwd with non-zero exit
+  # AND emit an ERROR on stderr so a developer can debug it.
+  local bogus="$root/does-not-exist"
+  local create_stderr create_rc
+  printf '{"cwd":"%s"}' "$bogus" | "$WORKTREE_CREATE" >/dev/null 2>"$root/create-stderr" \
+    && create_rc=0 || create_rc=$?
+  create_stderr=$(cat "$root/create-stderr" 2>/dev/null)
+  if [ "$create_rc" -ne 0 ] && [[ "$create_stderr" == *"ERROR"* ]]; then
+    pass "create-worktree.sh rejects nonexistent cwd with ERROR"
+  else
+    fail "create-worktree.sh defensive path failed (rc=$create_rc stderr='$create_stderr')"
+  fi
+
+  # remove-worktree.sh should warn and exit 0 (no-op) on nonexistent cwd —
+  # it must not return success after deleting nothing AND must not error
+  # the caller's hook chain.
+  local rm_stderr
+  printf '{"cwd":"%s"}' "$bogus" | "$WORKTREE_REMOVE" 2>"$root/rm-stderr" >/dev/null
+  rm_stderr=$(cat "$root/rm-stderr" 2>/dev/null)
+  if [[ "$rm_stderr" == *"WARNING"* ]]; then
+    pass "remove-worktree.sh warns on nonexistent cwd"
+  else
+    fail "remove-worktree.sh missing WARNING for nonexistent cwd: '$rm_stderr'"
+  fi
+
+  # Canonicalization: a cwd containing `..` resolves the real path. Feed
+  # "$repo/.." which canonicalizes to "$root". The test asserts that
+  # create-worktree.sh fails (because $root isn't a git repo) — proving
+  # the hook landed at the resolved parent rather than re-using "$repo"'s
+  # repo state.
+  #
+  # Precondition: $root must NOT be inside a git tree, otherwise the test
+  # would pass for the wrong reason. mktemp on macOS (/var/folders/...)
+  # and Linux (/tmp) is reliably outside a tree, but assert it explicitly.
+  if git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    skip "canonicalization test (mktemp root is inside a git tree)"
+  else
+    local traversal_stderr traversal_rc
+    printf '{"cwd":"%s/.."}' "$repo" | "$WORKTREE_CREATE" >/dev/null 2>"$root/traversal-stderr" \
+      && traversal_rc=0 || traversal_rc=$?
+    traversal_stderr=$(cat "$root/traversal-stderr" 2>/dev/null)
+    if [ "$traversal_rc" -ne 0 ]; then
+      pass "create-worktree.sh canonical cwd is not a git repo => fails (does not escape to $repo)"
+    else
+      fail "create-worktree.sh accepted traversal cwd (stderr='$traversal_stderr')"
+    fi
+  fi
+
   # ---- Remove path (via the hook script, not teardown_worktree directly) ----
   # remove-worktree.sh reads JSON from stdin and exercises parse_cwd +
   # is_worktree + teardown_worktree end-to-end.
