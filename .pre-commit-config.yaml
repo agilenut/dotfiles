@@ -82,7 +82,9 @@ repos:
         types: [text]
         files: \.toml(\.tmpl)?$
       - id: taplo-lint
-        # Schema validation disabled in .taplo.toml; this checks syntax only
+        # --no-schema skips the remote schema catalog fetch (which has been
+        # failing in CI due to upstream API format change). Syntax-only lint.
+        args: [--no-schema]
         types: [text]
         files: \.toml(\.tmpl)?$
 
