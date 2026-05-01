@@ -88,6 +88,7 @@ Format rules:
 - ONE continuous numbered list — never restart numbering
 - Order: critical first, then important, then alternatives, then suggestions
 - Each finding is a mini-block: severity + reviewer on line 1, description on line 2, Fix/Skip/Consider verdict on line 3
+- Separate findings with a blank line so they render as a loose list (paragraph spacing between items)
 - **Fix** = must address before coding. **Skip** = noted but acceptable. **Consider** = alternative approach worth discussing.
 - Recommended line lists only the Fix and Consider item numbers
 - Omit UX verdict line and report link if UX reviewer was not spawned
