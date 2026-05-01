@@ -1,0 +1,14 @@
+#!/bin/bash
+# ~/bin/term-elenkis
+
+# @raycast.schemaVersion 1
+# @raycast.title Elenkis Terminal
+# @raycast.mode silent
+# @raycast.icon 💻
+# @raycast.packageName Terminals
+
+exec open -na Alacritty --args \
+  --config-file "$HOME/.config/alacritty/elenkis.toml" \
+  --title "Elenkis" \
+  --working-directory "$HOME/repos/sc/elenkis" \
+  -e tmux new -A -s elenkis

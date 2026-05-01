@@ -1,0 +1,14 @@
+#!/bin/bash
+# ~/bin/term-personal
+
+# @raycast.schemaVersion 1
+# @raycast.title Personal Terminal
+# @raycast.mode silent
+# @raycast.icon 💻
+# @raycast.packageName Terminals
+
+exec open -na Alacritty --args \
+  --config-file "$HOME/.config/alacritty/alacritty.toml" \
+  --title "Personal" \
+  --working-directory "$HOME/repos/" \
+  -e tmux new -A -s personal
