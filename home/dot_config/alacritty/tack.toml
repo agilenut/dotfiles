@@ -1,0 +1,6 @@
+# ~/.config/alacritty/elenkis.toml
+[general]
+  import = [ "~/.config/alacritty/alacritty.toml" ]
+
+[colors.primary]
+  background = "#161b17" # subtle green tint

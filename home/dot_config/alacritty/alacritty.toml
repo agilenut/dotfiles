@@ -11,6 +11,14 @@
 
 [window]
 
+  dynamic_title = true
+
+  # maximized for laptop
+  dimensions.columns = 180
+  dimensions.lines   = 50
+  position.x         = 0
+  position.y         = 0
+
   # same dimentions as rectangle centered view
   #dimensions.columns = 147
   #dimensions.lines = 43

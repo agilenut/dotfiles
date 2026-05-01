@@ -145,6 +145,8 @@ After all subagents finish:
    Description of what's wrong and why it matters.
    **Fix:** why this needs action
 
+---
+
 2. **[Important]** path/to/file.cs:42 (reviewer)
    Description of what's wrong and why it matters.
    **Skip:** why this is acceptable as-is
@@ -165,7 +167,7 @@ Format rules:
 - ONE continuous numbered list — never restart numbering
 - Order: critical first, then important, then suggestions
 - Each finding is a mini-block: severity + location + reviewer on line 1, description on line 2, Fix/Skip verdict on line 3
-- Separate findings with a blank line so they render as a loose list (paragraph spacing between items)
+- Separate findings with a `---` horizontal rule on its own line (with blank lines around it) so each finding renders as a visually distinct block — terminal renderers collapse loose-list spacing, but always render thematic breaks
 - **Fix** = you recommend acting on it. **Skip** = noted but not worth fixing, with reason
 - Recommended line at the end lists only the Fix item numbers
 - Only show verdict lines and report links for reviewers that actually ran

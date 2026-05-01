@@ -23,13 +23,3 @@ if command -v brew >/dev/null; then
   # https://docs.brew.sh/Analytics
   export HOMEBREW_NO_ANALYTICS=1
 fi
-
-# Path
-# -----------------------------------------------------------------------------
-
-typeset -U path PATH # No dupes
-path=(
-  "$XDG_BIN_HOME"
-  "$XDG_STATE_HOME/dotnet/.dotnet/tools"
-  $path
-)
