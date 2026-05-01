@@ -1,0 +1,14 @@
+#!/bin/bash
+# ~/bin/term-tack
+
+# @raycast.schemaVersion 1
+# @raycast.title Tack Terminal
+# @raycast.mode silent
+# @raycast.icon 💻
+# @raycast.packageName Terminals
+
+exec open -na Alacritty --args \
+  --config-file "$HOME/.config/alacritty/tack.toml" \
+  --title "Tack" \
+  --working-directory "$HOME/repos/tack" \
+  -e tmux new -A -s tack

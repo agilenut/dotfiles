@@ -62,13 +62,19 @@ After all subagents finish:
    Description of the issue and why it blocks implementation.
    **Fix:** what to change in the plan
 
+---
+
 2. **[Important]** (ux)
    Description and why it matters.
    **Skip:** why it's acceptable as-is
 
+---
+
 3. **[Alternative]** (plan)
    A different approach the reviewer proposed and why it might be better.
    **Consider:** tradeoffs vs the plan's current approach
+
+---
 
 4. **[Suggestion]** (ux)
    Description and why it matters.
@@ -88,7 +94,7 @@ Format rules:
 - ONE continuous numbered list — never restart numbering
 - Order: critical first, then important, then alternatives, then suggestions
 - Each finding is a mini-block: severity + reviewer on line 1, description on line 2, Fix/Skip/Consider verdict on line 3
-- Separate findings with a blank line so they render as a loose list (paragraph spacing between items)
+- Separate findings with a `---` horizontal rule on its own line (with blank lines around it) so each finding renders as a visually distinct block — terminal renderers collapse loose-list spacing, but always render thematic breaks
 - **Fix** = must address before coding. **Skip** = noted but acceptable. **Consider** = alternative approach worth discussing.
 - Recommended line lists only the Fix and Consider item numbers
 - Omit UX verdict line and report link if UX reviewer was not spawned

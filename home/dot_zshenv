@@ -23,18 +23,9 @@ export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 
 export LESSHISTFILE=-
 
-# MISE / NPM / NODE
+# NODE & NPM
 # -----------------------------------------------------------------------------
 
-# Add mise shims to PATH for NON-INTERACTIVE shells (scripts, `zsh -c`, etc.)
-# Interactive shells get the full `mise activate` integration via mise.zsh
-# loaded by .zshrc; that path also adds shims, but doesn't run for
-# non-interactive shells.
-typeset -U path PATH # No dupes
-path=(
-  "$XDG_DATA_HOME/mise/shims"
-  $path
-)
 export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc" # See this file for more env setup.
 export NODE_REPL_HISTORY="$XDG_STATE_HOME/node/repl_history"
 
@@ -62,3 +53,21 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=true
 export NUGET_PACKAGES="$XDG_CACHE_HOME/nuget/packages"
 export NUGET_HTTP_CACHE_PATH="$XDG_CACHE_HOME/nuget/http-cache"
 export NUGET_PLUGINS_CACHE_PATH="$XDG_CACHE_HOME/nuget/plugin-cache"
+
+# PATH
+# -----------------------------------------------------------------------------
+
+# Set in .zshenv (not .zprofile) so non-login shells get these too — e.g.
+# tmux panes spawned by alacritty -e from Raycast, or `zsh -c '...'` scripts.
+# Antidote's conditional plugins (is-macos, is-completion-fzf) live in
+# $XDG_BIN_HOME and must be findable when .zshrc loads them.
+#
+# Mise shims are here for the same reason. Interactive shells additionally
+# get the full `mise activate` integration via mise.zsh from .zshrc.
+typeset -U path PATH # No dupes
+path=(
+  "$XDG_BIN_HOME"
+  "$XDG_STATE_HOME/dotnet/.dotnet/tools"
+  "$XDG_DATA_HOME/mise/shims"
+  $path
+)
