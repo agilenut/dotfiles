@@ -165,6 +165,7 @@ Format rules:
 - ONE continuous numbered list — never restart numbering
 - Order: critical first, then important, then suggestions
 - Each finding is a mini-block: severity + location + reviewer on line 1, description on line 2, Fix/Skip verdict on line 3
+- Separate findings with a blank line so they render as a loose list (paragraph spacing between items)
 - **Fix** = you recommend acting on it. **Skip** = noted but not worth fixing, with reason
 - Recommended line at the end lists only the Fix item numbers
 - Only show verdict lines and report links for reviewers that actually ran
