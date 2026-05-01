@@ -18,6 +18,7 @@ source "$LIB_DIR/utils.sh"
 source "$LIB_DIR/packages.sh"
 source "$LIB_DIR/shell.sh"
 source "$LIB_DIR/worktree.sh"
+source "$LIB_DIR/smart_approve.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -95,6 +96,9 @@ main() {
   # Worktree hook tests
   test_worktree_lib
   test_worktree_e2e
+
+  # Smart approve hook tests
+  test_smart_approve
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then
