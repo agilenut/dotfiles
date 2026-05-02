@@ -1,0 +1,9 @@
+# Public-safe SSH config wrapper.
+# Per-context hosts (personal, tack, etc.) live in config.d/ as
+# encrypted files in this repo (decrypted on chezmoi apply).
+
+Include ~/.ssh/1Password/config
+Include ~/.ssh/config.d/*.conf
+
+Host *
+    IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
