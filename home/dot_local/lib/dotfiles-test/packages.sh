@@ -37,6 +37,7 @@ test_commands_installed() {
       "git-ignore"
       "go"
       "oh-my-posh"
+      "op"
       "pwsh"
       "shellcheck"
       "shfmt"
