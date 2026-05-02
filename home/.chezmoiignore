@@ -21,12 +21,19 @@
 # Encrypted SSH config snippets — skip when no age private key exists
 # locally (e.g. CI, fresh machine before age-keygen / fetch-chezmoi-age-key).
 # Without this, chezmoi would try to decrypt with a missing identity and
-# fail apply. `chezmoi.config.encryption` always reads as "age" (chezmoi
-# auto-detects from encrypted_* source files), so use stat on the identity
-# file instead — that's the reliable "do we actually have a key?" check.
+# fail apply.
+#
+# Notes:
+# - `chezmoi.config.encryption` always reads as "age" on machines with
+#   encrypted source files (chezmoi auto-detects). So check for the
+#   identity FILE existing instead — that's the reliable "do we actually
+#   have a key?" signal.
+# - The pattern uses the `.age`-suffixed path. For encrypted files,
+#   chezmoi matches .chezmoiignore against the source-derived name (with
+#   .age) at decrypt-decision time, not the destination name.
 {{ if not (stat .chezmoi.config.age.identity) }}
-.ssh/config.d/personal.conf
-.ssh/config.d/tack.conf
+.ssh/config.d/personal.conf.age
+.ssh/config.d/tack.conf.age
 {{ end }}
 
 # Windows-specific ignores
