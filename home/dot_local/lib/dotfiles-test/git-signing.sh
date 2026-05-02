@@ -49,18 +49,13 @@ test_ssh_config() {
 test_git_signing() {
   section "Git Commit Signing"
 
-  # Debug — temporarily added to diagnose CI failure
-  echo "  DEBUG HOME=$HOME XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-unset}"
-  echo "  DEBUG ~/.config/git/config exists: $([[ -f $HOME/.config/git/config ]] && echo yes || echo no)"
-  echo "  DEBUG ~/.gitconfig exists: $([[ -f $HOME/.gitconfig ]] && echo yes || echo no)"
-  if [[ -f $HOME/.config/git/config ]]; then
-    echo "  DEBUG signingkey in config/git/config: $(grep -E 'signingkey|gpg|gpgsign' "$HOME/.config/git/config" | tr '\n' '|' || echo NONE)"
-  fi
-  echo "  DEBUG git config --list --show-origin (filtered):"
-  git config --list --show-origin 2>&1 | grep -E "signingkey|gpg|commit\.gpgsign" | sed 's/^/    /' || echo "    (none)"
-
+  # Read git config WITHOUT --global. Quirk: when ~/.gitconfig exists,
+  # `git config --global --get` reads only ~/.gitconfig — it does NOT
+  # also fall back to $XDG_CONFIG_HOME/git/config where chezmoi writes.
+  # Bare `git config --get` reads the merged set (system + global + local)
+  # which is what `git commit -S` actually consumes.
   local format
-  format=$(git config --global --get gpg.format 2>/dev/null || echo "")
+  format=$(git config --get gpg.format 2>/dev/null || echo "")
   if [[ "$format" == "ssh" ]]; then
     pass "gpg.format=ssh"
   else
@@ -70,7 +65,7 @@ test_git_signing() {
   # The whole point of this PR: signing must NOT route through op-ssh-sign,
   # otherwise every commit prompts 1Password (and remote sessions can't sign).
   local program
-  program=$(git config --global --get gpg.ssh.program 2>/dev/null || echo "")
+  program=$(git config --get gpg.ssh.program 2>/dev/null || echo "")
   if [[ -z "$program" ]]; then
     pass "gpg.ssh.program unset (defaults to ssh-keygen, signs with on-disk key)"
   elif [[ "$program" == *op-ssh-sign* ]]; then
@@ -80,7 +75,7 @@ test_git_signing() {
   fi
 
   local sign
-  sign=$(git config --global --get commit.gpgsign 2>/dev/null || echo "")
+  sign=$(git config --get commit.gpgsign 2>/dev/null || echo "")
   if [[ "$sign" == "true" ]]; then
     pass "commit.gpgsign=true"
   else
@@ -88,7 +83,7 @@ test_git_signing() {
   fi
 
   local signingkey
-  signingkey=$(git config --global --get user.signingkey 2>/dev/null || echo "")
+  signingkey=$(git config --get user.signingkey 2>/dev/null || echo "")
   local expected="$HOME/.ssh/id_ed25519_git_signing_key_personal.pub"
   # signingkey is stored with literal ~ — expand for comparison
   local resolved="${signingkey/#\~/$HOME}"
