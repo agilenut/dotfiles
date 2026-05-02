@@ -49,6 +49,16 @@ test_ssh_config() {
 test_git_signing() {
   section "Git Commit Signing"
 
+  # Debug — temporarily added to diagnose CI failure
+  echo "  DEBUG HOME=$HOME XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-unset}"
+  echo "  DEBUG ~/.config/git/config exists: $([[ -f $HOME/.config/git/config ]] && echo yes || echo no)"
+  echo "  DEBUG ~/.gitconfig exists: $([[ -f $HOME/.gitconfig ]] && echo yes || echo no)"
+  if [[ -f $HOME/.config/git/config ]]; then
+    echo "  DEBUG signingkey in config/git/config: $(grep -E 'signingkey|gpg|gpgsign' "$HOME/.config/git/config" | tr '\n' '|' || echo NONE)"
+  fi
+  echo "  DEBUG git config --list --show-origin (filtered):"
+  git config --list --show-origin 2>&1 | grep -E "signingkey|gpg|commit\.gpgsign" | sed 's/^/    /' || echo "    (none)"
+
   local format
   format=$(git config --global --get gpg.format 2>/dev/null || echo "")
   if [[ "$format" == "ssh" ]]; then
