@@ -105,6 +105,14 @@
   name = "1password"
   app  = "1Password"
 
+# CLI cask — installs `op` to /opt/homebrew/bin/op. No .app bundle, so the
+# brew_cask_install .app-existence check intentionally falls through to the
+# `brew list --cask` check. README's Per-Machine Setup assumes `op` is present
+# (used by fetch-git-signing-key-personal and fetch-chezmoi-age-key).
+[[profiles.personal.apps.casks]]
+  name = "1password-cli"
+  app  = "1Password CLI"
+
 [[profiles.personal.apps.casks]]
   name = "alfred"
   app  = "Alfred 5"
