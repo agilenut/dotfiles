@@ -106,7 +106,9 @@ test_git_signing() {
       fail "signing key permissions are $mode (expected 600)"
     fi
   else
-    skip_with_followup "signing key not on disk yet" \
+    # Per-machine bootstrap step — CI never fetches the key from 1P,
+    # so use note_with_followup (doesn't count as a skip → exit 0).
+    note_with_followup "signing key not on disk yet" \
       "Run: fetch-git-signing-key-personal"
   fi
 }
