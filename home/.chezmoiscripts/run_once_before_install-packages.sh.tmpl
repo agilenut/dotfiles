@@ -124,26 +124,47 @@ brew_cask_install "{{ .name }}" "{{ .app }}"
 
 {{ else if eq .chezmoi.os "linux" -}}
 # Linux - Detect package manager and install
+#
+# Per-package install (not batched) so a single missing package — e.g.
+# `age` on Ubuntu < 22.04 — warns and continues instead of aborting the
+# whole bootstrap. Packages that don't exist in any version of a given
+# package manager are omitted from the list entirely (see chezmoidata.toml).
 
 section "Installing Packages"
+
+# Install one package, printing a clear warning instead of aborting if the
+# package manager can't find it. Suppresses noisy install output; on failure
+# we surface the actionable message ("install upstream") so the user knows
+# this needs manual follow-up on older distro releases.
+linux_install() {
+  local mgr="$1"
+  local pkg="$2"
+  shift 2
+  if "$@" &>/dev/null; then
+    echo "  ✓ $pkg"
+  else
+    echo "  ⚠ $pkg unavailable in $mgr — install upstream if needed"
+  fi
+}
 
 if command -v apt &>/dev/null; then
   echo "Using apt..."
   sudo apt update
-  sudo apt install -y {{ .packages.linux.apt.core | join " " }}
-
-  # eza might need a different source on some distros
-  if ! command -v eza &>/dev/null; then
-    echo "  ⚠ eza not available in apt, skipping..."
-  fi
+  {{- range .packages.linux.apt.core }}
+  linux_install apt "{{ . }}" sudo apt install -y "{{ . }}"
+  {{- end }}
 
 elif command -v dnf &>/dev/null; then
   echo "Using dnf..."
-  sudo dnf install -y {{ .packages.linux.dnf.core | join " " }}
+  {{- range .packages.linux.dnf.core }}
+  linux_install dnf "{{ . }}" sudo dnf install -y "{{ . }}"
+  {{- end }}
 
 elif command -v pacman &>/dev/null; then
   echo "Using pacman..."
-  sudo pacman -S --noconfirm {{ .packages.linux.pacman.core | join " " }}
+  {{- range .packages.linux.pacman.core }}
+  linux_install pacman "{{ . }}" sudo pacman -S --noconfirm "{{ . }}"
+  {{- end }}
 fi
 
 # GCM installation - prefer dotnet tool, fallback to package download

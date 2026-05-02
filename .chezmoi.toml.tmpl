@@ -15,6 +15,21 @@
 {{-   $signingkey = promptStringOnce . "github.signingkey" "SSH signing key path (leave empty to disable signing)" -}}
 {{- end -}}
 
+{{- /* Age encryption — private key lives at ~/.config/chezmoi/key.txt
+       (generate with `age-keygen -o ~/.config/chezmoi/key.txt` and back
+       up the file in 1Password as a Secure Note for new-machine recovery).
+       Recipient public key is not a secret and is fine in local rendered config. */ -}}
+{{- $ageRecipient := promptStringOnce . "age.recipient" "Age recipient public key (leave empty to skip encryption)" "" -}}
+
+{{- /* Top-level scalars MUST come before any [table] in TOML, otherwise
+       they get parsed as belonging to the previous table (e.g. emitting
+       `encryption = "age"` after `[data]` makes it `data.encryption` and
+       chezmoi prints "encryption not set"). Hence: encryption first,
+       then tables. */ -}}
+{{- if $ageRecipient }}
+encryption = "age"
+
+{{ end -}}
 [data]
     profile = {{ $profile | quote }}
 {{- if eq $profile "custom" }}
@@ -24,4 +39,11 @@
 {{- if $signingkey }}
         signingkey = {{ $signingkey | quote }}
 {{- end }}
+{{- end }}
+
+{{- if $ageRecipient }}
+
+[age]
+    identity = "~/.config/chezmoi/key.txt"
+    recipient = {{ $ageRecipient | quote }}
 {{- end }}

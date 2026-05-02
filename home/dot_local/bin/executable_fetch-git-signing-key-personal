@@ -1,0 +1,51 @@
+#!/bin/bash
+# ~/.local/bin/fetch-git-signing-key-personal
+
+# @raycast.schemaVersion 1
+# @raycast.title Fetch Git Signing Key (Personal)
+# @raycast.mode compact
+# @raycast.icon 🔑
+# @raycast.packageName Dotfiles
+# @raycast.description Pulls the personal git commit-signing key from 1Password to ~/.ssh
+
+# Fetches the signing key the user has marked for personal git commits
+# (1P item: "Git Signing Key (personal)" in vault "Private") and writes
+# it to ~/.ssh as id_ed25519_git_signing_key_personal{,.pub}. Idempotent
+# — re-run anytime the key rotates or after `rm`-ing the on-disk copy.
+#
+# To add another identity (e.g. work-client): copy this file to
+# fetch-git-signing-key-<identity>, change the three constants below,
+# add a sibling 1P item in the appropriate vault.
+
+set -euo pipefail
+
+VAULT="Private"
+ITEM="Git Signing Key (personal)"
+DEST="$HOME/.ssh/id_ed25519_git_signing_key_personal"
+
+# `op read` URIs reject literal parens and percent signs in item names
+# ("invalid character in secret reference: '('" / "'%'"), so URL encoding
+# also fails. Use `op item get` with positional args instead — it accepts
+# arbitrary item titles and lets us pull individual fields cleanly.
+#
+# Private-key field has an `ssh_formats.openssh.value` subfield with the
+# key in OpenSSH internal format (what ssh-keygen -Y sign requires); the
+# default `.value` is PKCS8 which ssh-keygen rejects with "invalid format".
+# Public-key field has no ssh_formats — its `.value` is already
+# `ssh-ed25519 ...` plaintext.
+get_field() {
+  op item get "$ITEM" --vault "$VAULT" --reveal --format json \
+    | jq -r --arg label "$1" '.fields[] | select(.label == $label) | (.ssh_formats.openssh.value // .value)'
+}
+
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
+
+get_field "private key" >"$DEST"
+get_field "public key" >"${DEST}.pub"
+chmod 600 "$DEST"
+chmod 644 "${DEST}.pub"
+
+echo "Fetched: ${ITEM}"
+echo "  Private: ${DEST}"
+echo "  Public:  ${DEST}.pub"
