@@ -20,6 +20,44 @@ On first run, you'll be prompted to select a profile:
 - **personal** - Predefined settings for personal use (default)
 - **custom** - Prompts for git name, email, and signing key
 
+## Per-Machine Setup
+
+Wire up git commit signing and chezmoi file encryption. Requires the
+1Password CLI: `brew install --cask 1password-cli`, then enable Settings →
+Developer → Integrate with 1Password CLI.
+
+**First-ever machine** — generate the age key and back it up:
+
+```bash
+mkdir -p ~/.config/chezmoi && age-keygen -o ~/.config/chezmoi/key.txt && chmod 600 ~/.config/chezmoi/key.txt
+op document create ~/.config/chezmoi/key.txt --title "Chezmoi Age Key" --vault Private
+```
+
+**New machine** — restore from that backup:
+
+```bash
+fetch-chezmoi-age-key
+```
+
+Then on either, finish setup (re-init picks up only new prompts via `promptStringOnce`):
+
+```bash
+chezmoi init agilenut                  # paste the value after "public key:"
+chezmoi apply
+fetch-git-signing-key-personal
+```
+
+First-ever machine only — register the public key on GitHub once
+(Settings → SSH and GPG keys → **New signing key**, paste
+`~/.ssh/id_ed25519_git_signing_key_personal.pub`). Other machines reuse it.
+
+### Add another signing identity
+
+Create `Git Signing Key (<identity>)` in the relevant 1P vault, copy
+`fetch-git-signing-key-personal` → `fetch-git-signing-key-<identity>`
+and edit VAULT/ITEM/DEST, then add `[includeIf "gitdir:~/repos/<identity>/"]`
+to git config pointing at a sibling identity-specific config file.
+
 ## Profiles
 
 Packages and configuration are organized into profiles defined in `.chezmoidata.toml`:

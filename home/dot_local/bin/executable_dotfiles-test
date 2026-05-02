@@ -19,6 +19,7 @@ source "$LIB_DIR/packages.sh"
 source "$LIB_DIR/shell.sh"
 source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/smart_approve.sh"
+source "$LIB_DIR/git-signing.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -99,6 +100,12 @@ main() {
 
   # Smart approve hook tests
   test_smart_approve
+
+  # SSH config + git commit-signing tests
+  test_ssh_config
+  test_git_signing
+  test_fetch_signing_script
+  test_fetch_age_key_script
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then

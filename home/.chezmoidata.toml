@@ -7,6 +7,7 @@
 
 [packages.darwin]
   core = [
+    "age",
     "bat",
     "chezmoi",
     "duti",
@@ -31,7 +32,10 @@
   # Note: eza not in standard apt repos; GCM installed separately
   # Note: mise not in standard apt repos; install via PPA (ppa:jdxcode/mise)
   #       or upstream install script — see https://mise.jdx.dev/installing-mise.html
+  # Note: age requires Debian 12+ / Ubuntu 22.04+ in main repos; older
+  #       releases need the upstream binary from github.com/FiloSottile/age
   core = [
+    "age",
     "bat",
     "fd-find",
     "fzf",
@@ -48,7 +52,10 @@
 [packages.linux.dnf]
   # Note: mise not in standard dnf repos; install via COPR
   #       (dnf copr enable jdxcode/mise) or upstream install script
+  # Note: age is in Fedora repos; on RHEL/CentOS you may need EPEL or the
+  #       upstream binary from github.com/FiloSottile/age
   core = [
+    "age",
     "bat",
     "eza",
     "fd-find",
@@ -65,6 +72,7 @@
 
 [packages.linux.pacman]
   core = [
+    "age",
     "bat",
     "eza",
     "fd",
@@ -87,7 +95,7 @@
 [profiles.personal.github]
   name       = "agilenut"
   email      = "705864+agilenut@users.noreply.github.com"
-  signingkey = "~/.ssh/1Password/SHA256_komh+fO2Z_PSDFal72v5Ry0bLzDwR5pBViPf5Ibl3+s.pub"
+  signingkey = "~/.ssh/id_ed25519_git_signing_key_personal.pub"
 
 [profiles.personal.packages.darwin]
   dev       = [ "dotnet-sdk", "git-ignore", "go", "powershell", "shellcheck", "shfmt" ]

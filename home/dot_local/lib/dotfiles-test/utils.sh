@@ -54,6 +54,26 @@ skip_with_followup() {
   fi
 }
 
+# Informational note with follow-up. Does NOT count as a skip, so it
+# won't trip the exit-2 in main when the only "missing" thing is a
+# per-machine bootstrap step that simply doesn't apply in CI (e.g.
+# fetching a key from 1Password — CI has no 1Password to fetch from).
+note_with_followup() {
+  local description="$1"
+  local followup="$2"
+  echo -e "  ${BLUE}ℹ${RESET} $description"
+  local found=false
+  for existing in "${FOLLOW_UPS[@]+"${FOLLOW_UPS[@]}"}"; do
+    if [[ "$existing" == "$followup" ]]; then
+      found=true
+      break
+    fi
+  done
+  if [[ "$found" == false ]]; then
+    FOLLOW_UPS+=("$followup")
+  fi
+}
+
 section() {
   echo ""
   echo ""

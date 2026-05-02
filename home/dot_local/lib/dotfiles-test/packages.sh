@@ -10,6 +10,7 @@ test_commands_installed() {
   # those binary-name differences would need shell aliases or symlinks
   # on apt before the test passes there.
   local commands=(
+    "age"
     "bat"
     "fzf"
     "git"

@@ -1,0 +1,33 @@
+#!/bin/bash
+# ~/.local/bin/fetch-chezmoi-age-key
+
+# @raycast.schemaVersion 1
+# @raycast.title Fetch Chezmoi Age Key
+# @raycast.mode compact
+# @raycast.icon 🔐
+# @raycast.packageName Dotfiles
+# @raycast.description Pulls the chezmoi age private key from 1Password to ~/.config/chezmoi
+
+# Fetches the age key chezmoi uses to decrypt encrypted source files
+# (1P document: "Chezmoi Age Key" in vault "Private") and writes it to
+# ~/.config/chezmoi/key.txt. Idempotent — re-run on any new machine
+# during initial setup, or after rotating the key.
+#
+# First-time setup (one machine): generate locally, then back up to 1P:
+#   age-keygen -o ~/.config/chezmoi/key.txt
+#   op document create ~/.config/chezmoi/key.txt \
+#       --title "Chezmoi Age Key" --vault Private
+
+set -euo pipefail
+
+VAULT="Private"
+ITEM="Chezmoi Age Key"
+DEST="$HOME/.config/chezmoi/key.txt"
+
+mkdir -p "$(dirname "$DEST")"
+
+op document get "$ITEM" --vault "$VAULT" --out-file "$DEST"
+chmod 600 "$DEST"
+
+echo "Fetched: ${ITEM}"
+echo "  Path: ${DEST}"
