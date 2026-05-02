@@ -18,6 +18,17 @@
 .config/git/config-sc
 {{ end }}
 
+# Encrypted SSH config snippets — skip when no age private key exists
+# locally (e.g. CI, fresh machine before age-keygen / fetch-chezmoi-age-key).
+# Without this, chezmoi would try to decrypt with a missing identity and
+# fail apply. `chezmoi.config.encryption` always reads as "age" (chezmoi
+# auto-detects from encrypted_* source files), so use stat on the identity
+# file instead — that's the reliable "do we actually have a key?" check.
+{{ if not (stat .chezmoi.config.age.identity) }}
+.ssh/config.d/personal.conf
+.ssh/config.d/tack.conf
+{{ end }}
+
 # Windows-specific ignores
 {{ if eq .chezmoi.os "windows" }}
 # No native zsh
