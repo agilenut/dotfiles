@@ -31,6 +31,7 @@ test_commands_installed() {
   if [[ "$(uname)" == "Darwin" ]]; then
     commands+=(
       "chezmoi"
+      "claude"
       "dotnet"
       "fd"
       "git-credential-manager"
@@ -55,6 +56,21 @@ test_commands_installed() {
   # manual PPA/COPR setup (see chezmoidata.toml comments).
   if [[ "$(uname)" == "Darwin" ]] || command -v pacman &>/dev/null; then
     commands+=("mise")
+  fi
+
+  # lazygit: in darwin and pacman core. Skipped on apt (not in Debian 12 /
+  # Ubuntu 22.04|24.04 default repos) and dnf (not in Fedora default repos
+  # — see chezmoidata.toml comments).
+  if [[ "$(uname)" == "Darwin" ]] || command -v pacman &>/dev/null; then
+    commands+=("lazygit")
+  fi
+
+  # delta (git-delta): in darwin, dnf, and pacman core. Skipped on apt
+  # (not in Debian 12 / Ubuntu 22.04 default repos — see chezmoidata.toml
+  # comments). Package name is `git-delta`; binary is `delta`.
+  if [[ "$(uname)" == "Darwin" ]] || command -v dnf &>/dev/null \
+    || command -v pacman &>/dev/null; then
+    commands+=("delta")
   fi
 
   for cmd in "${commands[@]}"; do

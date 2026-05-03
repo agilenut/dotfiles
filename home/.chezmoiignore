@@ -18,6 +18,16 @@
 .config/git/config-sc
 {{ end }}
 
+# Recap skill config — local-only (contains client repo paths, treat as
+# sensitive). Belt-and-braces so an accidental `chezmoi add` doesn't land
+# it in the dotfiles repo.
+.claude/skills/recap/recap.toml
+
+# LaunchAgents — macOS-only (~/Library/LaunchAgents has no analogue elsewhere)
+{{ if ne .chezmoi.os "darwin" }}
+Library/LaunchAgents/
+{{ end }}
+
 # Encrypted SSH config snippets — skip when no age private key exists
 # locally (e.g. CI, fresh machine before age-keygen / fetch-chezmoi-age-key).
 # Without this, chezmoi would try to decrypt with a missing identity and

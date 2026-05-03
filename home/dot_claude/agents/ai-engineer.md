@@ -45,6 +45,7 @@ Use Context7 MCP for library/SDK docs. Use WebSearch for platform guides, securi
 - When the LLM ignores a rule, strengthen the language: "mechanically", "you MUST", "never ... even if". Escalate emphasis only where needed.
 - Open-ended inputs need explicit handling. If valid responses can vary widely, the prompt must say how to evaluate alternatives rather than anchoring on one example.
 - Few-shot examples are one of the most reliable steering tools. 2-5 examples of desired input/output pairs often outperform lengthy instructions.
+- Use **fictional placeholder names** in examples (`acme`, `widgets`, `clientA`) — never real client / project / repo names. Real names risk privacy leakage in committed prompts AND can mislead the model into using example values as real config when the user's actual config differs.
 
 ### Security & trust boundaries
 
@@ -78,6 +79,7 @@ Use Context7 MCP for library/SDK docs. Use WebSearch for platform guides, securi
 - Instructions should be specific enough that two different LLMs would behave similarly.
 - Prefer structured output formats for agent-to-agent communication.
 - Skills that orchestrate other agents should not perform the work themselves.
+- **Claude Code skills invoked headlessly** (via `claude --print`): `settings.json`'s `permissions.allow` is **not** consulted for tool gating. The `--allowed-tools` flag is required and reliably accepts only simple tool names (`Bash`, `Edit`, `Read`, `Write`, `Glob`, `Grep`); pattern syntax like `Bash(git *)` is brittle on whitespace inside the parser. Design skills that may run headlessly with this in mind — the skill's own instructions are the actual safety boundary; narrow tool sets help, but don't expect per-command permissions to gate the model in `--print` mode.
 - Design for graceful degradation. Handle tool failures, rate limits, malformed LLM output, and timeouts with retries, fallbacks, and clear error surfacing.
 - Consider cost and latency alongside quality. A correct response that takes 30 seconds or costs $0.50 per call may not be acceptable.
 - **Agentic loop patterns** — choose the simplest pattern that fits:

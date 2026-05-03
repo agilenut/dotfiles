@@ -24,6 +24,7 @@
 {{- if $signingkey }}
 	signingkey = {{ $signingkey }}
 {{- end }}
+
 [core]
 {{- if eq .chezmoi.os "windows" }}
 	autocrlf = true
@@ -31,20 +32,48 @@
 	autocrlf = input
 {{- end }}
 	editor = code
+{{- if lookPath "delta" }}
+	pager = delta
+{{- end }}
+
 [init]
 	defaultBranch = main
+
 [status]
 	short = true
+
 [pull]
 	rebase = false
+
 [credential]
 	helper =
 	helper = manager
+
 {{- if $signingkey }}
 [gpg]
 	format = ssh
+
 [commit]
 	gpgsign = true
+
 {{- end }}
 [credential "https://dev.azure.com"]
 	useHttpPath = true
+
+{{- if lookPath "delta" }}
+
+[interactive]
+	diffFilter = delta --color-only
+
+[delta]
+	navigate = true
+	line-numbers = true
+	side-by-side = false
+	syntax-theme = vscode_dark_modern
+{{- end }}
+
+[merge]
+	conflictstyle = zdiff3
+
+[diff]
+	colorMoved = default

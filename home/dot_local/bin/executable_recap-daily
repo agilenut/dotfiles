@@ -1,0 +1,31 @@
+#!/bin/bash
+# Daily recap wrapper invoked by launchd. Runs Claude Code headlessly to
+# generate yesterday's recap and write it to ~/Documents/recaps/.
+set -euo pipefail
+umask 077
+
+# Yesterday's date in YYYY-MM-DD form (BSD on macOS, GNU elsewhere).
+if [[ "$(uname)" == "Darwin" ]]; then
+  YESTERDAY=$(date -v-1d +%Y-%m-%d)
+else
+  YESTERDAY=$(date -d 'yesterday' +%Y-%m-%d)
+fi
+
+LOG="$HOME/Library/Logs/recap-daily-${YESTERDAY}.log"
+
+mkdir -p "$HOME/Documents/recaps"
+mkdir -p "$(dirname "$LOG")"
+
+# Always log the exit status — silent failure is the worst signal.
+trap 'echo "=== $(date) — exit $? ===" >>"$LOG"' EXIT
+
+{
+  echo "=== $(date) — recap for $YESTERDAY ==="
+  claude \
+    --print \
+    --dangerously-skip-permissions \
+    --allowed-tools="Bash,Read,Write,Glob,Grep" \
+    "/recap $YESTERDAY"
+  echo "=== $(date) — done ==="
+  echo
+} >>"$LOG" 2>&1
