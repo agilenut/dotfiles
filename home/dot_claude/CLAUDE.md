@@ -7,8 +7,8 @@
 
 ## Bash
 
-- NEVER chain commands with && or | — always use separate Bash tool calls, even when the hook permits the chain
-- `gh api` reads must include `-X GET` or `--method GET` — bare `gh api PATH` prompts
+- NEVER chain commands with && or | — always use separate Bash tool calls, even when the hook permits the chain. Don't use `xargs` as a bridge either. When call 2 needs call 1's output, prefer (a) one-call forms — e.g. `gh pr list --json number,title,reviews,checks` for multi-field reads in a single API call; (b) a temp file the second call reads; (c) model-transcribed values, only for short unambiguous strings like a SHA.
+- `gh api` reads must include `-X GET` or `--method GET` — bare `gh api PATH` prompts.
 - Use quiet output flags: dotnet build -v quiet, dotnet test -v quiet, npm run --silent
 - No global installs: `npx` for one-off commands, `pip` only inside a venv, `pipx` for CLI tools, `npm install` only in a project (never `-g`), `dotnet tool` use `--local` in projects or `--global` only outside a project
 

@@ -91,8 +91,8 @@ pre-commit run --all-files
 
 Before committing changes to this repo:
 
-1. `chezmoi diff` - preview what will change
-2. `chezmoi apply -v` - apply and verify files land correctly
+1. `chezmoi diff` - preview what will change. **Always run this first** — it surfaces local-only divergence (changes you've made directly to managed files like `~/.claude/settings.json` that aren't in dotfiles yet) so you don't accidentally clobber them in step 2.
+2. `chezmoi apply -v` - apply and verify files land correctly. **If `chezmoi diff` shows local-only changes** (changes to managed files that aren't in the dotfiles source), `apply` will revert them. **Stop and ask the user** how to proceed — options: `chezmoi add` those changes first to bring them under management, ignore the divergence and commit without applying, or accept the revert. Don't auto-decide.
 3. `dotfiles-test --auto-only` - run automated tests
 4. `pre-commit run --all-files` - run linting/formatting
 
@@ -113,6 +113,18 @@ chezmoi diff && chezmoi apply -v
 # Update external dependencies
 chezmoi update
 ```
+
+## Privacy
+
+This repo is public. Never commit PII:
+
+- Real first/last names — use the repo's GitHub username (the `<owner>` in the repo URL, also visible via `gh repo view --json owner --jq .owner.login`) instead
+- Real client / project / company names — use fictional placeholders (`acme`, `widgets`)
+- Personal email addresses — use the GitHub no-reply email
+- Hostnames, IPs, infrastructure identifiers
+- API keys, tokens, secrets
+
+Applies to launchd labels, comments, examples, template defaults, test fixtures, scripts — anything that gets committed.
 
 ## Gotchas
 

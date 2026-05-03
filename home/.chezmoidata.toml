@@ -17,7 +17,9 @@
     "gh",
     "git",
     "git-credential-manager",
+    "git-delta",
     "jq",
+    "lazygit",
     "mise",
     "neovim",
     "pam-reattach",
@@ -34,6 +36,11 @@
   #       or upstream install script — see https://mise.jdx.dev/installing-mise.html
   # Note: age requires Debian 12+ / Ubuntu 22.04+ in main repos; older
   #       releases need the upstream binary from github.com/FiloSottile/age
+  # Note: lazygit not in Debian 12 / Ubuntu 22.04|24.04 default repos (only
+  #       Debian 13 trixie). Use upstream release binary on older systems.
+  # Note: git-delta not in Debian 12 / Ubuntu 22.04 default repos (in
+  #       Ubuntu 24.04 noble and Debian 13 trixie as `git-delta`). Use
+  #       upstream .deb from github.com/dandavison/delta on older systems.
   core = [
     "age",
     "bat",
@@ -54,6 +61,8 @@
   #       (dnf copr enable jdxcode/mise) or upstream install script
   # Note: age is in Fedora repos; on RHEL/CentOS you may need EPEL or the
   #       upstream binary from github.com/FiloSottile/age
+  # Note: lazygit not in Fedora default repos; install via COPR
+  #       (dnf copr enable atim/lazygit) or upstream release binary
   core = [
     "age",
     "bat",
@@ -61,6 +70,7 @@
     "fd-find",
     "fzf",
     "git",
+    "git-delta",
     "jq",
     "neovim",
     "ripgrep",
@@ -78,7 +88,9 @@
     "fd",
     "fzf",
     "git",
+    "git-delta",
     "jq",
+    "lazygit",
     "mise",
     "neovim",
     "ripgrep",
@@ -120,6 +132,12 @@
 [[profiles.personal.apps.casks]]
   name = "appcleaner"
   app  = "AppCleaner"
+
+# CLI cask — installs `claude` binary. No .app bundle, so test_casks_installed
+# is bypassed; `claude` is checked in test_commands_installed instead.
+[[profiles.personal.apps.casks]]
+  name = "claude-code"
+  app  = "Claude Code"
 
 [[profiles.personal.apps.casks]]
   name = "firefox"
