@@ -20,6 +20,7 @@ source "$LIB_DIR/shell.sh"
 source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/smart_approve.sh"
 source "$LIB_DIR/git-signing.sh"
+source "$LIB_DIR/recap.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -106,6 +107,9 @@ main() {
   test_git_signing
   test_fetch_signing_script
   test_fetch_age_key_script
+
+  # Recap skill wrapper tests (macOS only)
+  test_recap_wrapper
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then
