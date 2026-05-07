@@ -199,12 +199,13 @@ test_smart_approve() {
   fi
 
   # Reads via --get must still be allowed (deny pattern's trailing ' *' should
-  # not match read forms).
+  # not match read forms). The hook explicitly returns allow here; if Claude
+  # Code's native ask layer ever overrides hook-allow, this still passes.
   d=$(decision_for '"git config --get alias.foo"')
-  if [ "$d" = "fallthrough" ] || [ "$d" = "allow" ]; then
-    pass "git config --get alias.foo → allow/fall-through (read not blocked)"
+  if [ "$d" = "allow" ]; then
+    pass "git config --get alias.foo → allow (read explicitly allowed by hook)"
   else
-    fail "alias read via --get should not deny (got: $d)"
+    fail "git config --get alias.foo should explicitly allow (got: $d)"
   fi
 
   # Bare-key read (no value) must still pass — tests the trailing space+value
