@@ -144,4 +144,76 @@ test_smart_approve() {
   else
     fail "chain with find -exec should deny (got: $d)"
   fi
+
+  # ---- git RCE deny patterns (alias-set, core.fsmonitor/sshCommand, protocol.ext) ----
+
+  # Bang-alias attack — quoted form (the realistic shell form).
+  d=$(decision_for "\"git config alias.foo '!evil'\"")
+  if [ "$d" = "deny" ]; then
+    pass "git config alias.foo '!evil' → deny (alias-set)"
+  else
+    fail "quoted bang-alias should deny (got: $d)"
+  fi
+
+  # Bang-alias with --global flag interposed.
+  d=$(decision_for "\"git config --global alias.foo '!evil'\"")
+  if [ "$d" = "deny" ]; then
+    pass "git config --global alias.foo '!evil' → deny (flag-interposed alias-set)"
+  else
+    fail "--global alias.foo '!evil' should deny (got: $d)"
+  fi
+
+  # Bang-alias via -c one-shot form.
+  d=$(decision_for "\"git -c alias.foo='!evil' status\"")
+  if [ "$d" = "deny" ]; then
+    pass "git -c alias.foo='!evil' status → deny (one-shot alias)"
+  else
+    fail "git -c alias.*=* should deny (got: $d)"
+  fi
+
+  # core.fsmonitor — known git-RCE config key.
+  d=$(decision_for '"git -c core.fsmonitor=evil status"')
+  if [ "$d" = "deny" ]; then
+    pass "git -c core.fsmonitor=evil → deny"
+  else
+    fail "core.fsmonitor should deny (got: $d)"
+  fi
+
+  # camelCase variant — covered.
+  d=$(decision_for '"git -c core.fsMonitor=evil status"')
+  if [ "$d" = "deny" ]; then
+    pass "git -c core.fsMonitor=evil → deny (camelCase covered)"
+  else
+    fail "core.fsMonitor should deny (got: $d)"
+  fi
+
+  # Documented residual gap: UPPERCASE git config keys (case-insensitive in git,
+  # case-sensitive in fnmatch) bypass the deny. Asserting fall-through here
+  # locks in the gap so a future fix (e.g. case-insensitive deny matching)
+  # can flip this assertion intentionally.
+  d=$(decision_for '"git -c CORE.fsmonitor=evil status"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "git -c CORE.fsmonitor=evil → fall-through (documented case gap)"
+  else
+    fail "CORE.fsmonitor case bypass status changed (got: $d)"
+  fi
+
+  # Reads via --get must still be allowed (deny pattern's trailing ' *' should
+  # not match read forms). The hook explicitly returns allow here; if Claude
+  # Code's native ask layer ever overrides hook-allow, this still passes.
+  d=$(decision_for '"git config --get alias.foo"')
+  if [ "$d" = "allow" ]; then
+    pass "git config --get alias.foo → allow (read explicitly allowed by hook)"
+  else
+    fail "git config --get alias.foo should explicitly allow (got: $d)"
+  fi
+
+  # Bare-key read (no value) must still pass — tests the trailing space+value
+  # discriminator in the deny pattern.
+  d=$(decision_for '"git config alias.foo"')
+  if [ "$d" = "fallthrough" ] || [ "$d" = "allow" ]; then
+    pass "git config alias.foo (bare-key read) → allow/fall-through"
+  else
+    fail "bare-key alias read should not deny (got: $d)"
+  fi
 }

@@ -199,6 +199,12 @@ The bar: **someone who doesn't know your codebase should understand what changed
 - File names, class names, function names, package names, CLI commands.
 - Colon-prefixed labels that compress meaning (`X: Y + Z` style).
 
+**Grounding (prevent topic confusion / hallucination):**
+
+- Ground bullets in transcript content, not the section's typical work. If a window's content is unrelated to the section, label the bullet as off-topic — don't reroute it.
+- Don't expand transcript terms into branded products you can't point to in this window's content. Use the transcript's term verbatim.
+- Sparse window: write a short generic bullet rather than fabricate specifics.
+
 **Anti-pattern → better, side by side** (illustrative — the rules above are the source of truth, apply them across all domains, not just the patterns shown here):
 
 | ❌ Don't                                                                | ✅ Do                                                                                                                                                                                           |

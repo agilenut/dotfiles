@@ -277,10 +277,10 @@ test_worktree_e2e() {
     printf '{"cwd":"%s/.."}' "$repo" | "$WORKTREE_CREATE" >/dev/null 2>"$root/traversal-stderr" \
       && traversal_rc=0 || traversal_rc=$?
     traversal_stderr=$(cat "$root/traversal-stderr" 2>/dev/null)
-    if [ "$traversal_rc" -ne 0 ]; then
-      pass "create-worktree.sh canonical cwd is not a git repo => fails (does not escape to $repo)"
+    if [ "$traversal_rc" -ne 0 ] && [[ "$traversal_stderr" == *"is not a git work tree"* ]]; then
+      pass "create-worktree.sh canonical cwd is not a git repo => fails via precheck (does not escape to $repo)"
     else
-      fail "create-worktree.sh accepted traversal cwd (stderr='$traversal_stderr')"
+      fail "create-worktree.sh should reject traversal cwd at precheck (rc=$traversal_rc, stderr='$traversal_stderr')"
     fi
   fi
 

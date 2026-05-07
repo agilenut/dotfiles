@@ -20,7 +20,16 @@ REPO_ROOT="$(cd "${CWD:-$(pwd)}" 2>/dev/null && pwd -P)" || {
 }
 REPO_NAME="$(basename "$REPO_ROOT")"
 
-BASE_BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")"
+# Reject early if the canonical cwd isn't a git work tree, so the user gets a
+# self-explanatory error rather than a downstream `git worktree add` failure.
+# Without this check, BASE_BRANCH falls back to literal "HEAD" and propagates
+# until `worktree add` fails with a less obvious "not a git repository".
+git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+  echo "ERROR: $REPO_ROOT is not a git work tree" >&2
+  exit 1
+}
+
+BASE_BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)"
 BRANCH_SLUG="${BASE_BRANCH//\//-}"
 
 # Reject branch slugs containing path separators or characters that could
