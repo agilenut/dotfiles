@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Install liberzon/claude-hooks smart_approve.py at a pinned SHA, with our
 # bare-command parser fix applied. Re-runs whenever this script's content
 # changes (chezmoi run_onchange semantics) — bumping the SHA below or editing
@@ -7,9 +7,11 @@
 # Upstream: https://github.com/liberzon/claude-hooks
 # License: MIT
 
-set -eu
+set -euo pipefail
 
 SHA="db5713da06d31e74f48923873abd0d9ce325679d" # liberzon/claude-hooks@main, 2026-03-21
+# recompute EXPECTED_SHA256 when bumping SHA: curl --proto '=https' --tlsv1.2 -fsSL "$URL" | shasum -a 256
+EXPECTED_SHA256="c98b27a11cb6fec1b83075d8cf43162f799b573bc8bf5d537570689e4c1cebc3"
 URL="https://raw.githubusercontent.com/liberzon/claude-hooks/${SHA}/smart_approve.py"
 HOOK_DIR="$HOME/.claude/hooks"
 HOOK="$HOOK_DIR/smart_approve.py"
@@ -22,7 +24,23 @@ mkdir -p "$HOOK_DIR"
 TMP="$(mktemp "$HOOK_DIR/.smart_approve.XXXXXX")"
 trap 'rm -f "$TMP"' EXIT
 
-curl -fsSL -o "$TMP" "$URL"
+# --proto '=https' --tlsv1.2 belt-and-suspenders against TLS downgrade or
+# protocol smuggling on the bootstrap fetch (HTTPS-only, TLS 1.2+).
+curl --proto '=https' --tlsv1.2 -fsSL -o "$TMP" "$URL"
+
+# Verify SHA-256 of the downloaded file before patching. Pinned commit SHA
+# protects against tag-rewrite; this protects against a compromised CDN
+# response or a silent re-point of the pin. Bump EXPECTED_SHA256 alongside
+# SHA when intentionally upgrading.
+#
+# `shasum` is BSD/macOS canonical; some minimal Linux images only ship
+# `sha256sum` (GNU coreutils, no Perl dep). Probe both. Stdout is left
+# visible so the "FAILED" message is loud on mismatch.
+if command -v shasum >/dev/null 2>&1; then
+  echo "${EXPECTED_SHA256}  ${TMP}" | shasum -a 256 -c -
+else
+  echo "${EXPECTED_SHA256}  ${TMP}" | sha256sum -c -
+fi
 
 # Patch parse_bash_patterns so "Bash(prefix *)" form (space-asterisk suffix,
 # what users actually write in settings.json) matches bare commands too —
@@ -65,4 +83,4 @@ PY
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 
-echo "Installed smart_approve.py @ ${SHA} -> ${HOOK}" >&2
+echo "Installed smart_approve.py @ ${SHA} -> ${HOOK}"
