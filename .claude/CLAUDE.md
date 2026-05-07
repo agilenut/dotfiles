@@ -135,3 +135,4 @@ Applies to launchd labels, comments, examples, template defaults, test fixtures,
 - `dotfiles-test` runs from installed location (`~/.local/bin`); to test source changes before `chezmoi apply`, run `./home/dot_local/bin/executable_dotfiles-test` or use VS Code's "Run Test Task"
 - Tmux plugins (resurrect, sensible) require first-run install: start tmux, press `C-a I` (Ctrl-a, then Shift-i)
 - Manual tests work best in tmux (inline testing); without tmux, falls back to subshell mode
+- Claude Code's native ASK rules override `permissionDecision=allow` from a `PreToolUse:Bash` hook. If `smart_approve.py` returns allow but the command still prompts, look for a broader matching ASK in `home/dot_claude/settings.json` — removing the ASK (when deny coverage is sufficient) lets hook-allow take effect.
