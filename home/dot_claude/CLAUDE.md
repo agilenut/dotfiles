@@ -4,6 +4,7 @@
 - When a constraint drives complexity, verify it still holds before building workarounds
 - NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs, here-strings, or any `<lang> -c/-e` form) — use Read/Edit/Grep/Glob; if no built-in fits, ask first
 - Never dismiss review findings based on project size, MVP status, or user count — evaluate each on its own merit
+- Format questions for single-keystroke answers: y/n, or a/b/c lettered options. Avoid open-ended "do you want X or Y?" phrasings.
 
 ## Bash
 
