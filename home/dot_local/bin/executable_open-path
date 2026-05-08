@@ -1,0 +1,136 @@
+#! /usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# open-path
+# =============================================================================
+# Open a file path captured from a terminal hint in nvim:
+# - Inside tmux (any client attached): new window in the current session, the
+#   existing client switches to it. No new Alacritty.
+# - Outside tmux: new Alacritty window attached to the fallback session
+#   (default `personal`, override with OPEN_PATH_SESSION) with the file open.
+# nvim's cwd is the nearest user-owned git repo root. Handles absolute,
+# ~/-prefixed, $PWD-relative, and repo-relative paths, with optional
+# :line[:col] suffixes.
+
+set -euo pipefail
+
+# Alacritty hint commands are spawned by launchd-inherited PATH, which omits
+# Homebrew and ~/.local/bin. Restore them so tmux/nvim/alacritty resolve.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+
+# Detect the most-recently-active tmux client's session. Imperfect — if you
+# have multiple Alacritty windows attached to different sessions, this picks
+# whichever was most recently focused at the tmux server level, not strictly
+# the window the click came from. Override with OPEN_PATH_SESSION to force a
+# specific target.
+TMUX_CURRENT=""
+if [[ -n "${OPEN_PATH_SESSION+set}" ]]; then
+  TMUX_CURRENT="$OPEN_PATH_SESSION"
+elif [[ -n "$(tmux list-clients 2>/dev/null)" ]]; then
+  TMUX_CURRENT="$(tmux display-message -p '#S' 2>/dev/null || true)"
+fi
+FALLBACK_SESSION="${OPEN_PATH_SESSION:-personal}"
+
+raw="${1-}"
+[[ -n "$raw" ]] || exit 0
+
+# If the captured text is a URL, hand it off to the macOS opener so the URL
+# hint's behavior is duplicated when the user lands on a URL via the file
+# hint. The file regex often captures URL substrings like `//host/path`
+# (the `//` after a scheme like `https:`); recover those by prepending
+# `https:`. Reject SCP-style remote refs so they don't get treated as paths.
+case "$raw" in
+  *://*) exec /usr/bin/open -- "$raw" ;;
+  //*) exec /usr/bin/open -- "https:$raw" ;;
+esac
+case "${raw%%/*}" in
+  *@* | *:*) exit 1 ;;
+esac
+
+# Strip trailing :line[:col] suffix, capturing the line number.
+# Bash's POSIX regex is greedy without `?:` non-capturing groups, so try the
+# col form first (otherwise the line-only pattern would consume `path:line`
+# and leave `:col` stuck to the target).
+target="$raw"
+line=""
+if [[ "$raw" =~ ^(.+):([0-9]+):[0-9]+$ ]]; then
+  target="${BASH_REMATCH[1]}"
+  line="${BASH_REMATCH[2]}"
+elif [[ "$raw" =~ ^(.+):([0-9]+)$ ]]; then
+  target="${BASH_REMATCH[1]}"
+  line="${BASH_REMATCH[2]}"
+fi
+
+# Expand leading ~ or ~/ (literal match on input — tildes here are intentional)
+# shellcheck disable=SC2088
+case "$target" in
+  '~') target="$HOME" ;;
+  '~/'*) target="$HOME/${target#'~/'}" ;;
+esac
+
+resolved=""
+
+if [[ "$target" = /* ]]; then
+  [[ -e "$target" ]] && resolved="$target"
+else
+  if [[ -e "$PWD/$target" ]]; then
+    resolved="$PWD/$target"
+  else
+    # Walk up from $PWD looking for a repo root, then try repo-relative.
+    # `-O` requires .git be owned by the current user so a planted /tmp/.git
+    # (or shared-host .git) can't anchor resolution to an attacker root.
+    dir="$PWD"
+    while [[ -n "$dir" && "$dir" != "/" ]]; do
+      if [[ -e "$dir/.git" && -O "$dir/.git" && -e "$dir/$target" ]]; then
+        resolved="$dir/$target"
+        break
+      fi
+      dir="$(dirname "$dir")"
+    done
+  fi
+fi
+
+[[ -n "$resolved" ]] || exit 1
+
+# Find the repo root for the resolved file (used as nvim's cwd so plugin
+# pickers / project search start at the right place).
+repo_root="$(dirname "$resolved")"
+dir="$repo_root"
+while [[ -n "$dir" && "$dir" != "/" ]]; do
+  if [[ -e "$dir/.git" && -O "$dir/.git" ]]; then
+    repo_root="$dir"
+    break
+  fi
+  dir="$(dirname "$dir")"
+done
+
+# Build the nvim invocation.
+nvim_cmd=(nvim)
+[[ -n "$line" ]] && nvim_cmd+=("+$line")
+nvim_cmd+=("$resolved")
+
+shell_cmd="$(printf '%q ' "${nvim_cmd[@]}")"
+
+# Inside tmux: drop the file into a new window in the user's current session.
+# The existing attached client switches to it — no new Alacritty window.
+if [[ -n "$TMUX_CURRENT" ]] && tmux has-session -t "$TMUX_CURRENT" 2>/dev/null; then
+  exec tmux new-window -t "$TMUX_CURRENT" -c "$repo_root" "$shell_cmd"
+fi
+
+# Outside tmux (detached, or no tmux server at all): spawn a real new
+# Alacritty window via `open -na` so we don't piggyback on an existing
+# instance. Inside the new window, attach to (or create) the fallback
+# session and open the file there.
+if tmux has-session -t "$FALLBACK_SESSION" 2>/dev/null; then
+  new_idx="$(tmux new-window \
+    -t "$FALLBACK_SESSION" -c "$repo_root" -d \
+    -P -F '#{window_index}' "$shell_cmd")"
+  exec /usr/bin/open -na Alacritty --args \
+    --working-directory "$repo_root" \
+    -e tmux attach -t "$FALLBACK_SESSION:$new_idx"
+fi
+
+exec /usr/bin/open -na Alacritty --args \
+  --working-directory "$repo_root" \
+  -e tmux new-session -s "$FALLBACK_SESSION" -c "$repo_root" "$shell_cmd"
