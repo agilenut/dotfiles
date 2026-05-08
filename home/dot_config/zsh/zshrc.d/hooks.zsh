@@ -16,3 +16,35 @@ command_not_found_handler() {
   echo "zsh: command not found: $1"
   return 127
 }
+
+# Emit OSC 7 so terminal emulators (Alacritty) know the foreground shell's cwd.
+# Lets hint commands resolve relative paths against the current directory.
+# Skip in non-interactive shells (zsh -c, ssh command=, captured stdout) so
+# escape bytes don't leak into program output. Refuse to emit if PWD contains
+# control characters — a directory name with literal ESC/BEL would inject
+# arbitrary terminal sequences on every chpwd.
+#
+# Inside tmux, wrap the sequence in DCS passthrough so the outer terminal
+# also receives it. tmux otherwise consumes OSC 7 internally without
+# forwarding (tmux.conf must have `set -g allow-passthrough on`).
+_osc7_cwd() {
+  [[ -o interactive ]] || return 0
+  case "${HOST}${PWD}" in
+    *[[:cntrl:]]*) return 0 ;;
+  esac
+  # Minimal percent-encoding for common reserved chars in $PWD so RFC 3986
+  # parsers don't truncate at the first space/#/?. Most terminals tolerate
+  # raw bytes, but a few (and any logging that round-trips through a stricter
+  # URI parser) won't.
+  local encoded="${PWD// /%20}"
+  encoded="${encoded//#/%23}"
+  encoded="${encoded//\?/%3F}"
+  if [[ -n "$TMUX" ]]; then
+    printf '\ePtmux;\e\e]7;file://%s%s\e\e\\\e\\' "$HOST" "$encoded"
+  else
+    printf '\e]7;file://%s%s\e\\' "$HOST" "$encoded"
+  fi
+}
+typeset -ag chpwd_functions
+chpwd_functions+=(_osc7_cwd)
+_osc7_cwd
