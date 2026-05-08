@@ -22,6 +22,7 @@ romkatv/zsh-bench kind:path
 # Core shell configuration
 # -----------------------------------------------------------------------------
 
+"$ZDOTDIR/zshrc.d/tmux.zsh"
 "$ZDOTDIR/zshrc.d/colors.zsh"
 "$ZDOTDIR/zshrc.d/claude.zsh"
 "$ZDOTDIR/zshrc.d/editor.zsh"
