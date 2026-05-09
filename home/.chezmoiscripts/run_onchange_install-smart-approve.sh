@@ -166,6 +166,122 @@ with open(path, "w") as f:
     f.write(new_src)
 PY
 
+# Patch (Step 3): peel_command_wrappers function + normalize_command call site.
+# Strips leading time/nice/env/command/exec/ionice/taskset wrappers so the
+# inner command is what gets matched against allow patterns. The wrappers
+# themselves contribute no privileges; the inner command is the security-
+# relevant part. sudo/doas are intentionally NOT peeled (privilege escalation
+# should always surface to the user). command -v / -V are info-only and
+# stay matched via Bash(command -v *) directly without peeling.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+# --- Patch 1: insert peel_command_wrappers above the sentinel ---
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''def peel_command_wrappers(cmd):
+    """Strip leading command-wrapper invocations and return the inner command.
+
+    Wrappers handled: time, nice, ionice, taskset, env (binary form, not
+    KEY=VAL prefix — that's strip_env_vars' job), exec, command. Each runs
+    another command but contributes no privileges of its own, so the inner
+    command is the security-relevant part to match against allow patterns.
+
+    Recursive (handles `time nice CMD`) with a 16-level bound against
+    pathological input. On normal exit (peel chain ends because the next
+    token isn't a wrapper, or the wrapper has no inner command) returns
+    the peeled-so-far cmd. On bound exhaustion (17+ levels of wrappers)
+    returns the *original* cmd unchanged so the chain falls through to
+    native prompt — refusing to auto-allow pathologically nested input.
+
+    Special cases (do NOT peel):
+      - sudo / doas — privilege escalation; always prompt
+      - command -v / command -V / command --help — info-only invocations
+        that allow-match Bash(command -v *) directly; peeling would yield
+        an invalid `-v jq` command.
+    """
+    WRAPPER_NAMES = {"time", "nice", "ionice", "taskset", "env", "exec", "command"}
+    VALUE_FLAGS = {
+        "nice":    {"-n"},
+        "ionice":  {"-c", "-n", "-p", "-P"},
+        "env":     {"-u", "-C", "-S"},
+        "exec":    {"-a"},
+        "taskset": {"-c", "-p"},
+    }
+
+    original = cmd
+    for _ in range(16):
+        toks = cmd.strip().split()
+        if not toks or toks[0] not in WRAPPER_NAMES:
+            return cmd
+        first = toks[0]
+
+        if first == "command" and len(toks) >= 2 and toks[1] in ("-v", "-V", "--help"):
+            return cmd
+
+        i = 1
+        vflags = VALUE_FLAGS.get(first, set())
+        while i < len(toks) and toks[i].startswith("-"):
+            tok = toks[i]
+            if tok.startswith("--") and "=" in tok:
+                i += 1
+                continue
+            if tok in vflags and i + 1 < len(toks):
+                i += 2
+                continue
+            if first == "nice" and re.match(r"^-\\d+$", tok):
+                i += 1
+                continue
+            if tok == "--":
+                i += 1
+                break
+            i += 1
+
+        # taskset MASK positional: hex (0x3, 0xff), int (0, 42), or
+        # comma/dash list (0,1,2; 0-3; 1-3,5). Tightened to avoid matching
+        # bare hex-like words (cafe, dad) that aren't masks.
+        if first == "taskset" and i < len(toks) and re.match(r"^(0x[0-9a-fA-F]+|\\d+([-,]\\d+)*)$", toks[i]):
+            i += 1
+
+        if i >= len(toks):
+            return cmd
+
+        cmd = " ".join(toks[i:])
+
+    return original
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 3 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 3 fn patch did not apply to {path}")
+src = new_src
+
+# --- Patch 2: wire peel into normalize_command ---
+# Re-call strip_env_vars after peel so `env KEY=VAL CMD` (where strip_env_vars
+# initially saw `env` as the leading word) gets its newly-exposed KEY=VAL
+# stripped post-peel.
+call_old = "    # Collapse multiple spaces\n    cmd = re.sub(r'\\s+', ' ', cmd)"
+call_new = "    cmd = peel_command_wrappers(cmd)\n    cmd = strip_env_vars(cmd)\n    # Collapse multiple spaces\n    cmd = re.sub(r'\\s+', ' ', cmd)"
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 3 call-site patch: normalize_command anchor not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 3 call-site patch did not apply to {path}")
+src = new_src
+
+with open(path, "w") as f:
+    f.write(src)
+PY
+
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 

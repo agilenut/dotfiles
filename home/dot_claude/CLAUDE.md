@@ -10,6 +10,7 @@
 
 - PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines and checks each segment independently. Pipelines and chains auto-approve when every segment is allow-listed — compose freely (e.g. `gh pr list --json … | jq …`, `git log --oneline | head`).
 - Allow-listed text tools to compose with: jq, grep, sed, head, tail, sort, uniq, wc, cut, diff.
+- Wrapper commands `time`, `nice`, `env` (binary form), `command`, `exec`, `ionice`, `taskset` are peeled — the inner command is what's checked. `sudo`/`doas` are not peeled (privilege escalation always prompts).
 - Forms that still always prompt: `sh -c '…'`, `bash -c '…'`, `python -c '…'`/`python -m …`, `node -e '…'`, heredocs feeding an interpreter, here-strings. The _executor_ is what's checked, not the heredoc/string.
 - Native ASK overrides hook-allow. If an all-allow-listed chain still prompts, check `~/.claude/settings.json` `ask` for a broader pattern catching one segment.
 - Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which segment didn't match. Note: command previews land in the log unredacted, so don't enable while running commands with secrets in args.

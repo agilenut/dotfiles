@@ -387,4 +387,152 @@ test_smart_approve() {
   else
     fail "patch sentinel missing — Step 2 install patch may have skipped"
   fi
+
+  # ---- Step 3: command-wrapper prefix peeling ----
+  # peel_command_wrappers() strips leading time/nice/env/command/exec/ionice/
+  # taskset wrappers and re-checks the inner command against allow patterns.
+  # The wrapper itself contributes no privileges; the inner command is what's
+  # security-relevant. command -v / -V are info-only and stay matched via the
+  # Bash(command -v *) allow entry rather than being peeled.
+
+  d=$(decision_for '"time git status"')
+  if [ "$d" = "allow" ]; then
+    pass "time git status → allow (wrapper peeled)"
+  else
+    fail "'time git status' should peel to 'git status' and allow (got: $d)"
+  fi
+
+  d=$(decision_for '"nice git status"')
+  if [ "$d" = "allow" ]; then
+    pass "nice git status → allow (wrapper peeled)"
+  else
+    fail "'nice git status' should peel to 'git status' and allow (got: $d)"
+  fi
+
+  d=$(decision_for '"nice -n 10 git status"')
+  if [ "$d" = "allow" ]; then
+    pass "nice -n 10 git status → allow (peel consumes flag value)"
+  else
+    fail "'nice -n 10 git status' should peel to 'git status' (got: $d)"
+  fi
+
+  d=$(decision_for '"env git status"')
+  if [ "$d" = "allow" ]; then
+    pass "env (binary) git status → allow (wrapper peeled)"
+  else
+    fail "'env git status' should peel to 'git status' (got: $d)"
+  fi
+
+  d=$(decision_for '"command git status"')
+  if [ "$d" = "allow" ]; then
+    pass "command git status → allow (wrapper peeled)"
+  else
+    fail "'command git status' should peel to 'git status' (got: $d)"
+  fi
+
+  # command -v is info-only — must NOT peel (otherwise '-v jq' isn't a
+  # valid command). Allow comes from Bash(command -v *) directly.
+  d=$(decision_for '"command -v jq"')
+  if [ "$d" = "allow" ]; then
+    pass "command -v jq → allow (info-only, not peeled)"
+  else
+    fail "'command -v jq' should match Bash(command -v *) without peel (got: $d)"
+  fi
+
+  d=$(decision_for '"exec git status"')
+  if [ "$d" = "allow" ]; then
+    pass "exec git status → allow (wrapper peeled)"
+  else
+    fail "'exec git status' should peel to 'git status' (got: $d)"
+  fi
+
+  # Recursive peel: time nice CMD → nice CMD → CMD.
+  d=$(decision_for '"time nice git status"')
+  if [ "$d" = "allow" ]; then
+    pass "time nice git status → allow (recursive peel, 2 levels)"
+  else
+    fail "'time nice git status' should peel both wrappers (got: $d)"
+  fi
+
+  # Recursion bound — 10 levels of `time` should still allow without hang.
+  d=$(decision_for '"time time time time time time time time time time git status"')
+  if [ "$d" = "allow" ]; then
+    pass "10-level time wrapper → allow (recursion bound holds)"
+  else
+    fail "10-level time wrapper should peel to 'git status' (got: $d)"
+  fi
+
+  # sudo is intentionally NOT peeled — privilege escalation should always
+  # surface to the user via native prompt.
+  d=$(decision_for '"sudo git status"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "sudo git status → fallthrough (sudo not peeled, native handles)"
+  else
+    fail "'sudo git status' should NOT auto-allow via wrapper peeling (got: $d)"
+  fi
+
+  # Patch markers — Step 3 functions and call site landed.
+  if grep -q "peel_command_wrappers" "$SMART_APPROVE_HOOK"; then
+    pass "Step 3 patch marker present (peel_command_wrappers)"
+  else
+    fail "peel_command_wrappers missing — Step 3 install patch may have skipped"
+  fi
+
+  # Branch coverage for per-wrapper flag handling and corner cases.
+
+  # nice legacy negative-int form
+  d=$(decision_for '"nice -19 git status"')
+  if [ "$d" = "allow" ]; then
+    pass "nice -19 git status → allow (legacy negative-int)"
+  else
+    fail "'nice -19 git status' should peel via legacy form (got: $d)"
+  fi
+
+  # -- terminator
+  d=$(decision_for '"nice -n 10 -- git status"')
+  if [ "$d" = "allow" ]; then
+    pass "nice -n 10 -- git status → allow (-- terminator handled)"
+  else
+    fail "'nice -n 10 -- git status' should peel through -- (got: $d)"
+  fi
+
+  # env -u VAR (value-flag)
+  d=$(decision_for '"env -u FOO git status"')
+  if [ "$d" = "allow" ]; then
+    pass "env -u FOO git status → allow (-u value-flag consumed)"
+  else
+    fail "'env -u FOO git status' should peel (got: $d)"
+  fi
+
+  # env KEY=VAL CMD — post-peel strip_env_vars handles the asymmetry.
+  d=$(decision_for '"env FOO=bar git status"')
+  if [ "$d" = "allow" ]; then
+    pass "env FOO=bar git status → allow (post-peel strip_env_vars)"
+  else
+    fail "'env FOO=bar git status' should peel + restrip env (got: $d)"
+  fi
+
+  # taskset positional MASK (hex form)
+  d=$(decision_for '"taskset 0x3 git status"')
+  if [ "$d" = "allow" ]; then
+    pass "taskset 0x3 git status → allow (hex MASK consumed)"
+  else
+    fail "'taskset 0x3 git status' should peel hex MASK (got: $d)"
+  fi
+
+  # taskset -c CPU_LIST
+  d=$(decision_for '"taskset -c 0,1 git status"')
+  if [ "$d" = "allow" ]; then
+    pass "taskset -c 0,1 git status → allow (-c value-flag)"
+  else
+    fail "'taskset -c 0,1 git status' should peel -c LIST (got: $d)"
+  fi
+
+  # exec -a NAME (value-flag)
+  d=$(decision_for '"exec -a myname git status"')
+  if [ "$d" = "allow" ]; then
+    pass "exec -a myname git status → allow (-a value-flag)"
+  else
+    fail "'exec -a myname git status' should peel -a NAME (got: $d)"
+  fi
 }
