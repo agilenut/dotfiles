@@ -145,6 +145,41 @@ test_smart_approve() {
     fail "chain with find -exec should deny (got: $d)"
   fi
 
+  # ---- bare commands against patterns with interior wildcards ----
+  # Covers patterns like Bash(git -C * status *) being matched by a command
+  # with no trailing args (e.g. "git -C /path status"). Without the patch
+  # extension, the bare-prefix uses string equality and treats "*" as literal,
+  # while the full-pattern fnmatch needs a trailing space + something to match.
+
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> status → allow (bare cmd, interior * in pattern)"
+  else
+    fail "'git -C <path> status' should match Bash(git -C * status *) (got: $d)"
+  fi
+
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles log"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> log → allow (bare cmd, interior * in pattern)"
+  else
+    fail "'git -C <path> log' should match Bash(git -C * log *) (got: $d)"
+  fi
+
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles diff"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> diff → allow (bare cmd, interior * in pattern)"
+  else
+    fail "'git -C <path> diff' should match Bash(git -C * diff *) (got: $d)"
+  fi
+
+  # Regression check: with-args case must still match the inner pattern.
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status -s"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> status -s → allow (with args, full pattern)"
+  else
+    fail "'git -C <path> status -s' should match Bash(git -C * status *) (got: $d)"
+  fi
+
   # ---- git RCE deny patterns (alias-set, core.fsmonitor/sshCommand, protocol.ext) ----
 
   # Bang-alias attack — quoted form (the realistic shell form).
