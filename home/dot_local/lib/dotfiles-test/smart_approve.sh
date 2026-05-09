@@ -145,11 +145,13 @@ test_smart_approve() {
     fail "chain with find -exec should deny (got: $d)"
   fi
 
-  # ---- bare commands against patterns with interior wildcards ----
-  # Covers patterns like Bash(git -C * status *) being matched by a command
-  # with no trailing args (e.g. "git -C /path status"). Without the patch
-  # extension, the bare-prefix uses string equality and treats "*" as literal,
-  # while the full-pattern fnmatch needs a trailing space + something to match.
+  # ---- bare commands matched via explicit no-trailing-* allow patterns ----
+  # Settings.json has BOTH Bash(git -C * <subcmd>) and Bash(git -C * <subcmd> *)
+  # for status/log/diff. This is required because Claude's native pattern matcher
+  # (and the hook, which mirrors it) is **strict** for patterns with interior
+  # wildcards: Bash(git -C * status *) does NOT match bare `git -C /path status`
+  # — the trailing * needs a real arg. So the bare form needs its own pattern.
+  # See project CLAUDE.md "Gotchas" for the full permissive-vs-strict rule.
 
   d=$(decision_for '"git -C /Users/eric/repos/dotfiles status"')
   if [ "$d" = "allow" ]; then
