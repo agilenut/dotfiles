@@ -12,6 +12,7 @@
 - Allow-listed text tools to compose with: jq, grep, sed, head, tail, sort, uniq, wc, cut, diff.
 - Forms that still always prompt: `sh -c '…'`, `bash -c '…'`, `python -c '…'`/`python -m …`, `node -e '…'`, heredocs feeding an interpreter, here-strings. The _executor_ is what's checked, not the heredoc/string.
 - Native ASK overrides hook-allow. If an all-allow-listed chain still prompts, check `~/.claude/settings.json` `ask` for a broader pattern catching one segment.
+- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which segment didn't match. Note: command previews land in the log unredacted, so don't enable while running commands with secrets in args.
 - `gh api` reads must include `-X GET` or `--method GET` — bare `gh api PATH` prompts.
 - Quiet flags only on builds/tests where success is the only signal: dotnet build -v quiet, dotnet test -v quiet, npm run --silent. Failures still surface errors. Default verbosity while iterating.
 - Don't pre-truncate exploratory output with `head -n 5` / `tail -n 20` — too-small first window forces a re-run, paying twice. Read full output once; truncate once you know the shape.

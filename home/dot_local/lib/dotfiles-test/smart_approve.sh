@@ -331,4 +331,60 @@ test_smart_approve() {
   else
     fail "'jq | wc' chain should allow when both segments are allow-listed (got: $d)"
   fi
+
+  # ---- Step 2: verbose-on-fallthrough log-file emission ----
+  # SMART_APPROVE_VERBOSE=1 appends per-invocation entries to
+  # ~/.claude/logs/smart_approve.log on both decision and fallthrough paths.
+  # Without the env var, the log file is not touched.
+
+  local log_file="${HOME}/.claude/logs/smart_approve.log"
+  local before_lines after_lines marker
+
+  # Allow path with verbose on — log gets new lines containing the marker.
+  marker="step2_allow_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  before_lines=$(wc -l <"$log_file" 2>/dev/null | tr -d ' ' || printf 0)
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
+    | SMART_APPROVE_VERBOSE=1 python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  after_lines=$(wc -l <"$log_file" 2>/dev/null | tr -d ' ' || printf 0)
+  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$log_file" 2>/dev/null; then
+    pass "verbose=1, allow path → log file appended with command preview"
+  else
+    fail "verbose=1, allow path: log should grow and contain '${marker}' (lines: ${before_lines}→${after_lines})"
+  fi
+
+  # Fallthrough path with verbose on — log also grows.
+  marker="step2_fallthrough_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  before_lines=$after_lines
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unknownbinary ${marker}\"}}" \
+    | SMART_APPROVE_VERBOSE=1 python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  after_lines=$(wc -l <"$log_file" 2>/dev/null | tr -d ' ' || printf 0)
+  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$log_file" 2>/dev/null; then
+    pass "verbose=1, fallthrough path → log file appended"
+  else
+    fail "verbose=1, fallthrough: log should grow and contain '${marker}' (lines: ${before_lines}→${after_lines})"
+  fi
+
+  # Verbose unset — log not touched. Marker absence is sufficient; line-count
+  # delta is race-prone under parallel test execution and adds nothing.
+  marker="step2_off_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
+    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  if ! grep -q "$marker" "$log_file" 2>/dev/null; then
+    pass "verbose unset → log file unmodified (marker absent)"
+  else
+    fail "verbose unset: log should not contain '${marker}'"
+  fi
+
+  # Patch survival markers — assert Step 2 patches landed in the installed hook.
+  if grep -q "_emit_verbose_to_log_file" "$SMART_APPROVE_HOOK"; then
+    pass "Step 2 patch marker present (_emit_verbose_to_log_file)"
+  else
+    fail "Step 2 _emit_verbose_to_log_file missing — install script may have skipped patch"
+  fi
+
+  if grep -q "SMART_APPROVE_DOTFILES_PATCH_BLOCK" "$SMART_APPROVE_HOOK"; then
+    pass "patch sentinel present (SMART_APPROVE_DOTFILES_PATCH_BLOCK)"
+  else
+    fail "patch sentinel missing — Step 2 install patch may have skipped"
+  fi
 }
