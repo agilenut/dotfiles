@@ -42,6 +42,7 @@ test_commands_installed() {
       "pwsh"
       "shellcheck"
       "shfmt"
+      "tree-sitter"
     )
   fi
 
