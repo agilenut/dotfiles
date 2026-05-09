@@ -26,6 +26,7 @@
     "ripgrep",
     "tmux",
     "tree",
+    "tree-sitter-cli",
     "zoxide",
     "zsh",
   ]
