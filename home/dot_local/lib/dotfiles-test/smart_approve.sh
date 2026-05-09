@@ -253,4 +253,82 @@ test_smart_approve() {
   else
     fail "bare-key alias read should not deny (got: $d)"
   fi
+
+  # ---- Step 1: read-only allow additions ----
+  # Representative sample of the 21 new read-only allow entries (basename,
+  # cmp, column, comm, cut, df, diff, dirname, du, hexdump, lsof, od, paste,
+  # printf, ps, readlink, realpath, seq, stat, uniq, wc). Verifies bare and
+  # arg'd forms — bare requires the parser patch, arg'd requires the entry.
+
+  d=$(decision_for '"wc -l /tmp/foo"')
+  if [ "$d" = "allow" ]; then
+    pass "wc -l <file> → allow (new read-only entry)"
+  else
+    fail "'wc -l <file>' should match Bash(wc *) (got: $d)"
+  fi
+
+  d=$(decision_for '"wc"')
+  if [ "$d" = "allow" ]; then
+    pass "wc (bare) → allow"
+  else
+    fail "bare 'wc' should match Bash(wc *) via parser patch (got: $d)"
+  fi
+
+  d=$(decision_for '"cut -d: -f1 /etc/passwd"')
+  if [ "$d" = "allow" ]; then
+    pass "cut -d: -f1 <file> → allow"
+  else
+    fail "'cut -d: -f1 <file>' should match Bash(cut *) (got: $d)"
+  fi
+
+  d=$(decision_for '"diff a.txt b.txt"')
+  if [ "$d" = "allow" ]; then
+    pass "diff a.txt b.txt → allow"
+  else
+    fail "'diff a.txt b.txt' should match Bash(diff *) (got: $d)"
+  fi
+
+  d=$(decision_for '"stat /tmp/foo"')
+  if [ "$d" = "allow" ]; then
+    pass "stat <file> → allow"
+  else
+    fail "'stat <file>' should match Bash(stat *) (got: $d)"
+  fi
+
+  d=$(decision_for '"du -sh ."')
+  if [ "$d" = "allow" ]; then
+    pass "du -sh . → allow"
+  else
+    fail "'du -sh .' should match Bash(du *) (got: $d)"
+  fi
+
+  d=$(decision_for '"ps aux"')
+  if [ "$d" = "allow" ]; then
+    pass "ps aux → allow"
+  else
+    fail "'ps aux' should match Bash(ps *) (got: $d)"
+  fi
+
+  d=$(decision_for '"printf %s foo"')
+  if [ "$d" = "allow" ]; then
+    pass "printf %s foo → allow"
+  else
+    fail "'printf' should match Bash(printf *) (got: $d)"
+  fi
+
+  d=$(decision_for '"basename /tmp/foo.txt"')
+  if [ "$d" = "allow" ]; then
+    pass "basename → allow"
+  else
+    fail "'basename' should match Bash(basename *) (got: $d)"
+  fi
+
+  # Composing newly-allowed tools with existing ones in a chain — exercises
+  # the segment-level allow check the new ## Bash rule lifts the chain ban for.
+  d=$(decision_for '"jq . file.json | wc -l"')
+  if [ "$d" = "allow" ]; then
+    pass "jq | wc chain → allow (compose-freely guarantee)"
+  else
+    fail "'jq | wc' chain should allow when both segments are allow-listed (got: $d)"
+  fi
 }
