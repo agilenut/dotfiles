@@ -48,6 +48,14 @@ fi
 # requires a literal space + something after it. Without this patch, bare
 # `git status` inside a chain wouldn't match `Bash(git status *)`.
 #
+# IMPORTANT: this only fires for non-wildcard prefixes (uses string equality
+# on the bare prefix). Patterns with interior wildcards like
+# `Bash(git -C * status *)` are intentionally NOT loosened — the hook stays
+# strict, mirroring Claude's native matcher. To allow bare forms of
+# interior-wildcard patterns, add an explicit no-trailing-* entry to
+# settings.json (e.g. `Bash(git -C * status)`). See project CLAUDE.md
+# "Gotchas" for the full rule.
+#
 # Done in Python (string replace) rather than `patch` so the change survives
 # upstream line-number drift; if the function body refactors significantly,
 # the assert below fails loudly and the install aborts (review + bump SHA).

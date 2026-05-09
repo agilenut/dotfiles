@@ -145,6 +145,43 @@ test_smart_approve() {
     fail "chain with find -exec should deny (got: $d)"
   fi
 
+  # ---- bare commands matched via explicit no-trailing-* allow patterns ----
+  # Settings.json has BOTH Bash(git -C * <subcmd>) and Bash(git -C * <subcmd> *)
+  # for status/log/diff. This is required because Claude's native pattern matcher
+  # (and the hook, which mirrors it) is **strict** for patterns with interior
+  # wildcards: Bash(git -C * status *) does NOT match bare `git -C /path status`
+  # — the trailing * needs a real arg. So the bare form needs its own pattern.
+  # See project CLAUDE.md "Gotchas" for the full permissive-vs-strict rule.
+
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> status → allow (bare cmd, interior * in pattern)"
+  else
+    fail "'git -C <path> status' should match Bash(git -C * status *) (got: $d)"
+  fi
+
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles log"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> log → allow (bare cmd, interior * in pattern)"
+  else
+    fail "'git -C <path> log' should match Bash(git -C * log *) (got: $d)"
+  fi
+
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles diff"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> diff → allow (bare cmd, interior * in pattern)"
+  else
+    fail "'git -C <path> diff' should match Bash(git -C * diff *) (got: $d)"
+  fi
+
+  # Regression check: with-args case must still match the inner pattern.
+  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status -s"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> status -s → allow (with args, full pattern)"
+  else
+    fail "'git -C <path> status -s' should match Bash(git -C * status *) (got: $d)"
+  fi
+
   # ---- git RCE deny patterns (alias-set, core.fsmonitor/sshCommand, protocol.ext) ----
 
   # Bang-alias attack — quoted form (the realistic shell form).
