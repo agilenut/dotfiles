@@ -282,6 +282,148 @@ with open(path, "w") as f:
     f.write(src)
 PY
 
+# Patch (Step 4): peel_xargs function + add to normalize_command flow.
+# Strips leading `xargs [FLAGS] CMD ...` so the inner command is what gets
+# matched against allow patterns. Initial-args after CMD pass through as
+# CMD's positional args (semantically same as `CMD initial-args`).
+#
+# Refuses to peel when:
+#   - the inner command is an unsafe executor (sh -c, bash -c, python -c,
+#     awk, etc.) — those still prompt because the executor is what's checked
+#   - an unknown long flag is encountered — better to fall through than
+#     guess flag-vs-value semantics on novel/typo flags
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+# --- Patch 1: insert peel_xargs above the sentinel ---
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''def peel_xargs(cmd):
+    """Strip leading `xargs [FLAGS] CMD [INITIAL-ARGS]` and return the inner CMD.
+
+    xargs runs CMD with stdin args, so CMD is the security-relevant part to
+    match against allow patterns. The initial-args after CMD are passed to
+    CMD as positional args, semantically identical to `CMD initial-args`.
+
+    Returns the original cmd unchanged when:
+      - first token isn't `xargs`
+      - the inner command is an unsafe executor (sh, bash, zsh, dash, ksh,
+        python, python3, node, perl, ruby, awk) — peeling would let those
+        auto-allow despite still being a hidden-executor escape hatch
+      - an unknown long flag is encountered (--frobnicate) — refuses to
+        guess flag-vs-value semantics
+      - xargs has no inner command (just `xargs --help`)
+    """
+    BOOLEAN_SHORT = {"-0", "-r", "-t", "-p", "-x"}
+    VALUE_SHORT_PREFIXES = ("-n", "-L", "-P", "-I", "-J", "-d", "-E", "-a", "-s")
+    BOOLEAN_LONG = {"--null", "--no-run-if-empty", "--verbose", "--interactive",
+                    "--show-limits", "--no-quote", "--exit", "--help", "--version"}
+    VALUE_LONG = {"--max-args", "--max-procs", "--max-chars", "--max-lines",
+                  "--replace", "--delimiter", "--eof", "--arg-file",
+                  "--process-slot-var"}
+    # Inner-command interpreters that take their program as an arg — peeling
+    # would let `xargs <interpreter> -c '...'` auto-allow despite still being
+    # the same hidden-executor escape hatch as bare `<interpreter> -c '...'`.
+    # Match against the basename with any trailing version digits/dots
+    # stripped, so `/bin/sh`, `python3.11`, `lua5.4`, `pwsh.exe` all hit.
+    UNSAFE_INNER = {"sh", "bash", "zsh", "dash", "ksh", "fish", "nu",
+                    "python", "node", "perl", "ruby", "awk",
+                    "osascript", "pwsh", "php", "lua", "tclsh"}
+
+    toks = cmd.strip().split()
+    if not toks or toks[0] != "xargs":
+        return cmd
+
+    original = cmd
+    i = 1
+    while i < len(toks) and toks[i].startswith("-"):
+        tok = toks[i]
+        if tok == "--":
+            i += 1
+            break
+        if tok.startswith("--"):
+            if "=" in tok:
+                key = tok.split("=", 1)[0]
+                if key in VALUE_LONG or key in BOOLEAN_LONG:
+                    i += 1
+                    continue
+                return original
+            if tok in BOOLEAN_LONG:
+                i += 1
+                continue
+            if tok in VALUE_LONG and i + 1 < len(toks):
+                i += 2
+                continue
+            return original
+        if tok in BOOLEAN_SHORT:
+            i += 1
+            continue
+        consumed = False
+        for prefix in VALUE_SHORT_PREFIXES:
+            if tok == prefix:
+                if i + 1 < len(toks):
+                    i += 2
+                    consumed = True
+                    break
+                return original
+            if tok.startswith(prefix) and len(tok) > len(prefix):
+                i += 1
+                consumed = True
+                break
+        if consumed:
+            continue
+        # Unknown short flag — bail rather than guess. If the flag actually
+        # took a value (-Z VAL CMD), assuming boolean would let VAL slide in
+        # as the inner command. Safer to fall through to native prompt.
+        return original
+
+    if i >= len(toks):
+        return original
+
+    # Normalize the inner token: strip path (basename) and trailing version
+    # digits/dots so `/bin/sh`, `python3.11`, `lua5.4` all match the
+    # canonical interpreter name in UNSAFE_INNER.
+    inner_base = os.path.basename(toks[i])
+    m = re.match(r"^([a-zA-Z]+)[\\d.]*$", inner_base)
+    inner_normalized = m.group(1) if m else inner_base
+    if inner_normalized in UNSAFE_INNER or inner_base in UNSAFE_INNER:
+        return original
+
+    return " ".join(toks[i:])
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 4 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 4 fn patch did not apply to {path}")
+src = new_src
+
+# --- Patch 2: add peel_xargs call to normalize_command flow ---
+# Sequential after peel_command_wrappers: `time xargs CMD` → peel `time` →
+# `xargs CMD` → peel `xargs` → `CMD`. The reverse order (`xargs time CMD`)
+# is rare and falls through to native prompt — acceptable trade-off vs.
+# adding a fixed-point loop.
+call_old = "    cmd = peel_command_wrappers(cmd)\n    cmd = strip_env_vars(cmd)"
+call_new = "    cmd = peel_command_wrappers(cmd)\n    cmd = peel_xargs(cmd)\n    cmd = strip_env_vars(cmd)"
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 4 call-site patch: anchor not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 4 call-site patch did not apply to {path}")
+src = new_src
+
+with open(path, "w") as f:
+    f.write(src)
+PY
+
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 

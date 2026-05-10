@@ -535,4 +535,164 @@ test_smart_approve() {
   else
     fail "'exec -a myname git status' should peel -a NAME (got: $d)"
   fi
+
+  # ---- Step 4: xargs peel-and-inspect ----
+  # peel_xargs() strips a leading `xargs` invocation and returns the inner
+  # command. Returns the original cmd unchanged when the inner is an unsafe
+  # executor (sh -c, bash -c, python -c, awk, etc.) or when an unknown long
+  # flag is encountered (better to fall through than guess flag-vs-value).
+
+  d=$(decision_for '"xargs grep foo"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs grep foo → allow (canonical peel)"
+  else
+    fail "'xargs grep foo' should peel to 'grep foo' (got: $d)"
+  fi
+
+  d=$(decision_for '"xargs -0 grep foo"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs -0 grep foo → allow (boolean -0 flag)"
+  else
+    fail "'xargs -0 grep foo' should peel through -0 (got: $d)"
+  fi
+
+  d=$(decision_for '"xargs -I {} cat {}"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs -I {} cat {} → allow (-I value-flag)"
+  else
+    fail "'xargs -I {} cat {}' should peel (got: $d)"
+  fi
+
+  # -L1 attached value form (very common)
+  d=$(decision_for '"xargs -L1 cat"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs -L1 cat → allow (attached value form)"
+  else
+    fail "'xargs -L1 cat' should peel attached -L1 (got: $d)"
+  fi
+
+  # -n 5 separate value form
+  d=$(decision_for '"xargs -n 5 cat"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs -n 5 cat → allow (separate value form)"
+  else
+    fail "'xargs -n 5 cat' should peel (got: $d)"
+  fi
+
+  # -a FILE
+  d=$(decision_for '"xargs -a /tmp/list cat"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs -a /tmp/list cat → allow (-a FILE)"
+  else
+    fail "'xargs -a /tmp/list cat' should peel (got: $d)"
+  fi
+
+  # GNU long-form key=value
+  d=$(decision_for '"xargs --max-args=1 cat"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs --max-args=1 cat → allow (long --key=value)"
+  else
+    fail "'xargs --max-args=1 cat' should peel (got: $d)"
+  fi
+
+  # Unsafe inner — sh -c, bash -c, python -c
+  d=$(decision_for '"xargs sh -c echo"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs sh -c echo → fallthrough (unsafe inner; sh stays unmatched)"
+  else
+    fail "'xargs sh -c echo' should NOT auto-allow (got: $d)"
+  fi
+
+  d=$(decision_for '"xargs bash -c true"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs bash -c true → fallthrough (unsafe inner)"
+  else
+    fail "'xargs bash -c true' should NOT auto-allow (got: $d)"
+  fi
+
+  d=$(decision_for '"xargs python3 -c print"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs python3 -c print → fallthrough (unsafe inner)"
+  else
+    fail "'xargs python3 -c print' should NOT auto-allow (got: $d)"
+  fi
+
+  # Unknown long flag — bail rather than guess flag-vs-value semantics
+  d=$(decision_for '"xargs --frobnicate cat"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs --frobnicate cat → fallthrough (unknown long flag bails)"
+  else
+    fail "'xargs --frobnicate cat' should bail on unknown flag (got: $d)"
+  fi
+
+  # Composed with command-wrapper peel: time xargs grep foo
+  d=$(decision_for '"time xargs grep foo"')
+  if [ "$d" = "allow" ]; then
+    pass "time xargs grep foo → allow (Step 3 + Step 4 sequential peel)"
+  else
+    fail "'time xargs grep foo' should peel both wrappers (got: $d)"
+  fi
+
+  # Patch marker
+  if grep -q "peel_xargs" "$SMART_APPROVE_HOOK"; then
+    pass "Step 4 patch marker present (peel_xargs)"
+  else
+    fail "peel_xargs missing — Step 4 install patch may have skipped"
+  fi
+
+  # Inner-command basename normalization — absolute path bypass closed.
+  d=$(decision_for '"xargs /bin/sh -c echo"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs /bin/sh -c → fallthrough (basename normalization catches sh)"
+  else
+    fail "'xargs /bin/sh -c echo' should fallthrough via basename (got: $d)"
+  fi
+
+  # Version-suffix normalization (python3.11, python2.7, lua5.4).
+  d=$(decision_for '"xargs python3.11 -c print"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs python3.11 -c → fallthrough (version-suffix normalized)"
+  else
+    fail "'xargs python3.11 -c print' should fallthrough (got: $d)"
+  fi
+
+  # macOS-specific: osascript runs AppleScript via -e.
+  d=$(decision_for '"xargs osascript -e tell"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs osascript -e → fallthrough (osascript in UNSAFE_INNER)"
+  else
+    fail "'xargs osascript -e tell' should fallthrough (got: $d)"
+  fi
+
+  # Unknown short flag — must bail rather than mis-peel.
+  d=$(decision_for '"xargs -Z somevalue git status"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs -Z VAL git → fallthrough (unknown short flag bails)"
+  else
+    fail "'xargs -Z VAL git status' should bail on unknown short (got: $d)"
+  fi
+
+  # -- terminator with safe inner: peels through.
+  d=$(decision_for '"xargs -- cat /tmp/foo"')
+  if [ "$d" = "allow" ]; then
+    pass "xargs -- cat → allow (-- terminator, safe inner)"
+  else
+    fail "'xargs -- cat /tmp/foo' should peel through -- (got: $d)"
+  fi
+
+  # -- terminator does not unlock unsafe inner.
+  d=$(decision_for '"xargs -- sh -c echo"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs -- sh -c → fallthrough (-- doesn't bypass UNSAFE_INNER)"
+  else
+    fail "'xargs -- sh -c echo' should still fallthrough (got: $d)"
+  fi
+
+  # xargs sudo CMD — sudo isn't peeled by either layer; falls through.
+  d=$(decision_for '"xargs sudo git status"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "xargs sudo git status → fallthrough (sudo never auto-allows)"
+  else
+    fail "'xargs sudo git status' should fallthrough (got: $d)"
+  fi
 }
