@@ -627,9 +627,16 @@ fn_new = '''def _log_decision(decision, command):
         return
     try:
         import datetime
-        log_path = os.path.expanduser("~/.claude/logs/smart_approve_decisions.log")
+        # SMART_APPROVE_DECISIONS_LOG_PATH overrides the default path.
+        # Tests redirect to /dev/null (or a temp file) to prevent test runs
+        # from polluting the user trial's audit log.
+        log_path = os.environ.get(
+            "SMART_APPROVE_DECISIONS_LOG_PATH",
+            os.path.expanduser("~/.claude/logs/smart_approve_decisions.log"),
+        )
         log_dir = os.path.dirname(log_path)
-        os.makedirs(log_dir, exist_ok=True)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
         ts = datetime.datetime.now().isoformat(timespec="seconds")
         flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW
         fd = os.open(log_path, flags, 0o600)

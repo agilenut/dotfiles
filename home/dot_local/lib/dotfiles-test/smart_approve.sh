@@ -29,11 +29,13 @@ test_smart_approve() {
 
   # Helper: pipe a PreToolUse JSON envelope through the hook and extract
   # the permissionDecision (defaults to "fallthrough" for empty/silent output).
+  # SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null prevents test invocations
+  # from polluting the user's audit log at ~/.claude/logs/smart_approve_decisions.log.
   decision_for() {
     local cmd="$1"
     local out
     out=$(printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":$cmd}}" \
-      | python3 "$SMART_APPROVE_HOOK" 2>/dev/null)
+      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$SMART_APPROVE_HOOK" 2>/dev/null)
     if [ -z "$out" ]; then
       printf 'fallthrough'
     else
@@ -341,10 +343,13 @@ test_smart_approve() {
   local before_lines after_lines marker
 
   # Allow path with verbose on — log gets new lines containing the marker.
+  # SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null prevents Step 6's audit log
+  # from also being written to during these Step 2 verbose-log tests.
   marker="step2_allow_$$_$(date +%s%N 2>/dev/null || date +%s)"
   before_lines=$(wc -l <"$log_file" 2>/dev/null | tr -d ' ' || printf 0)
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
-    | SMART_APPROVE_VERBOSE=1 python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+    | env SMART_APPROVE_VERBOSE=1 SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
   after_lines=$(wc -l <"$log_file" 2>/dev/null | tr -d ' ' || printf 0)
   if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$log_file" 2>/dev/null; then
     pass "verbose=1, allow path → log file appended with command preview"
@@ -356,7 +361,8 @@ test_smart_approve() {
   marker="step2_fallthrough_$$_$(date +%s%N 2>/dev/null || date +%s)"
   before_lines=$after_lines
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unknownbinary ${marker}\"}}" \
-    | SMART_APPROVE_VERBOSE=1 python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+    | env SMART_APPROVE_VERBOSE=1 SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
   after_lines=$(wc -l <"$log_file" 2>/dev/null | tr -d ' ' || printf 0)
   if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$log_file" 2>/dev/null; then
     pass "verbose=1, fallthrough path → log file appended"
@@ -368,7 +374,8 @@ test_smart_approve() {
   # delta is race-prone under parallel test execution and adds nothing.
   marker="step2_off_$$_$(date +%s%N 2>/dev/null || date +%s)"
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
-    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+    | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
   if ! grep -q "$marker" "$log_file" 2>/dev/null; then
     pass "verbose unset → log file unmodified (marker absent)"
   else
@@ -908,20 +915,25 @@ test_smart_approve() {
   fi
 
   # ---- Step 6: decisions audit log (always-on) ----
-  # _log_decision() appends a line to ~/.claude/logs/smart_approve_decisions.log
-  # for every allow/deny decision (skip fallthroughs to keep volume low).
-  # Always-on, not gated by SMART_APPROVE_VERBOSE.
+  # _log_decision() appends a line to a path controlled by
+  # SMART_APPROVE_DECISIONS_LOG_PATH (defaults to
+  # ~/.claude/logs/smart_approve_decisions.log) for every allow/deny decision.
+  # Tests use a temp file via env override so they don't pollute the user's
+  # real trial-period audit log.
 
-  local decisions_log="${HOME}/.claude/logs/smart_approve_decisions.log"
+  local test_log
+  test_log=$(mktemp 2>/dev/null) || test_log="/tmp/smart_approve_test_$$.log"
+  : >"$test_log" # truncate so before-counts start at 0
   local marker before_lines after_lines
 
   # Allow decision → log gets a new line containing the command.
   marker="step6_allow_$$_$(date +%s%N 2>/dev/null || date +%s)"
-  before_lines=$(wc -l <"$decisions_log" 2>/dev/null | tr -d ' ' || printf 0)
+  before_lines=$(wc -l <"$test_log" 2>/dev/null | tr -d ' ' || printf 0)
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
-    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
-  after_lines=$(wc -l <"$decisions_log" 2>/dev/null | tr -d ' ' || printf 0)
-  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$decisions_log" 2>/dev/null; then
+    | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH="$test_log" \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  after_lines=$(wc -l <"$test_log" 2>/dev/null | tr -d ' ' || printf 0)
+  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$test_log" 2>/dev/null; then
     pass "allow decision → decisions log appended (env var unset, always-on)"
   else
     fail "allow decision: log should contain '${marker}' (lines: ${before_lines}→${after_lines})"
@@ -931,9 +943,10 @@ test_smart_approve() {
   marker="step6_deny_$$_$(date +%s%N 2>/dev/null || date +%s)"
   before_lines=$after_lines
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec rm ${marker} {} \\\\;\"}}" \
-    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
-  after_lines=$(wc -l <"$decisions_log" 2>/dev/null | tr -d ' ' || printf 0)
-  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$decisions_log" 2>/dev/null; then
+    | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH="$test_log" \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  after_lines=$(wc -l <"$test_log" 2>/dev/null | tr -d ' ' || printf 0)
+  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$test_log" 2>/dev/null; then
     pass "deny decision → decisions log appended"
   else
     fail "deny decision: log should contain '${marker}' (lines: ${before_lines}→${after_lines})"
@@ -943,17 +956,18 @@ test_smart_approve() {
   marker="step6_fall_$$_$(date +%s%N 2>/dev/null || date +%s)"
   before_lines=$after_lines
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unknownbinary ${marker}\"}}" \
-    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
-  if ! grep -q "$marker" "$decisions_log" 2>/dev/null; then
+    | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH="$test_log" \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  if ! grep -q "$marker" "$test_log" 2>/dev/null; then
     pass "fallthrough → decisions log unchanged (marker absent)"
   else
     fail "fallthrough: log should NOT contain '${marker}'"
   fi
 
   # Log file mode is 0o600 (security hardening — secrets in args concern).
-  if [ -f "$decisions_log" ]; then
+  if [ -f "$test_log" ]; then
     local mode
-    mode=$(stat -f '%Lp' "$decisions_log" 2>/dev/null || stat -c '%a' "$decisions_log" 2>/dev/null)
+    mode=$(stat -f '%Lp' "$test_log" 2>/dev/null || stat -c '%a' "$test_log" 2>/dev/null)
     if [ "$mode" = "600" ]; then
       pass "decisions log file mode is 0o600"
     else
@@ -972,9 +986,10 @@ test_smart_approve() {
   # Catches silent format breakage from future refactors.
   marker="step6_format_$$_$(date +%s%N 2>/dev/null || date +%s)"
   printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
-    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+    | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH="$test_log" \
+      python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
   local line
-  line=$(grep -F "$marker" "$decisions_log" 2>/dev/null | tail -1)
+  line=$(grep -F "$marker" "$test_log" 2>/dev/null | tail -1)
   if [ -n "$line" ]; then
     # Field 1: ISO timestamp like 2026-05-09T21:30:00
     # Field 2: ALLOW or DENY
@@ -991,4 +1006,6 @@ test_smart_approve() {
   else
     fail "decisions log: format-validation marker '${marker}' missing from log"
   fi
+
+  rm -f "$test_log"
 }
