@@ -8,9 +8,17 @@
 
 ## Bash
 
-- NEVER chain commands with && or | — always use separate Bash tool calls, even when the hook permits the chain. Don't use `xargs` as a bridge either. When call 2 needs call 1's output, prefer (a) one-call forms — e.g. `gh pr list --json number,title,reviews,checks` for multi-field reads in a single API call; (b) a temp file the second call reads; (c) model-transcribed values, only for short unambiguous strings like a SHA.
+- PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines and checks each segment independently. Pipelines and chains auto-approve when every segment is allow-listed — compose freely (e.g. `gh pr list --json … | jq …`, `git log --oneline | head`).
+- Allow-listed text tools to compose with: jq, grep, sed, head, tail, sort, uniq, wc, cut, diff.
+- Wrapper commands `time`, `nice`, `env` (binary form), `command`, `exec`, `ionice`, `taskset` are peeled — the inner command is what's checked. `sudo`/`doas` are not peeled (privilege escalation always prompts).
+- `xargs [FLAGS] CMD` is peeled — `CMD` is what's checked, with positional args attached. `xargs sh -c '…'` / `bash -c` / `python -c` / `awk` still prompt (the executor is what's checked). Unknown long flags bail rather than mis-parse.
+- `awk '…'` auto-allows when the program scans clean — no `system(`, `getline`, `print >`/`print |`, `printf >`/`printf |`, `@load`, `@include`, or backticks. Programs using `-f`/`-i`/`-e`/`-E`/`--source`/`--include` (loads external scripts, in-place rewrite) always prompt. Tokens that look dangerous as string-literal substrings get rejected as a false-positive — accepted cost.
+- Forms that still always prompt: `sh -c '…'`, `bash -c '…'`, `python -c '…'`/`python -m …`, `node -e '…'`, heredocs feeding an interpreter, here-strings. The _executor_ is what's checked, not the heredoc/string.
+- Native ASK overrides hook-allow. If an all-allow-listed chain still prompts, check `~/.claude/settings.json` `ask` for a broader pattern catching one segment.
+- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which segment didn't match. Note: command previews land in the log unredacted, so don't enable while running commands with secrets in args.
 - `gh api` reads must include `-X GET` or `--method GET` — bare `gh api PATH` prompts.
-- Use quiet output flags: dotnet build -v quiet, dotnet test -v quiet, npm run --silent
+- Quiet flags only on builds/tests where success is the only signal: dotnet build -v quiet, dotnet test -v quiet, npm run --silent. Failures still surface errors. Default verbosity while iterating.
+- Don't pre-truncate exploratory output with `head -n 5` / `tail -n 20` — too-small first window forces a re-run, paying twice. Read full output once; truncate once you know the shape.
 - No global installs: `npx` for one-off commands, `pip` only inside a venv, `pipx` for CLI tools, `npm install` only in a project (never `-g`), `dotnet tool` use `--local` in projects or `--global` only outside a project
 
 ## Planning
