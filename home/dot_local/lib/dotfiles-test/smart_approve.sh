@@ -906,4 +906,89 @@ test_smart_approve() {
   else
     fail "awk + find-exec chain should deny (got: $d)"
   fi
+
+  # ---- Step 6: decisions audit log (always-on) ----
+  # _log_decision() appends a line to ~/.claude/logs/smart_approve_decisions.log
+  # for every allow/deny decision (skip fallthroughs to keep volume low).
+  # Always-on, not gated by SMART_APPROVE_VERBOSE.
+
+  local decisions_log="${HOME}/.claude/logs/smart_approve_decisions.log"
+  local marker before_lines after_lines
+
+  # Allow decision → log gets a new line containing the command.
+  marker="step6_allow_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  before_lines=$(wc -l <"$decisions_log" 2>/dev/null | tr -d ' ' || printf 0)
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
+    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  after_lines=$(wc -l <"$decisions_log" 2>/dev/null | tr -d ' ' || printf 0)
+  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$decisions_log" 2>/dev/null; then
+    pass "allow decision → decisions log appended (env var unset, always-on)"
+  else
+    fail "allow decision: log should contain '${marker}' (lines: ${before_lines}→${after_lines})"
+  fi
+
+  # Deny decision → log also gets an entry.
+  marker="step6_deny_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  before_lines=$after_lines
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec rm ${marker} {} \\\\;\"}}" \
+    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  after_lines=$(wc -l <"$decisions_log" 2>/dev/null | tr -d ' ' || printf 0)
+  if [ "$after_lines" -gt "$before_lines" ] && grep -q "$marker" "$decisions_log" 2>/dev/null; then
+    pass "deny decision → decisions log appended"
+  else
+    fail "deny decision: log should contain '${marker}' (lines: ${before_lines}→${after_lines})"
+  fi
+
+  # Fallthrough → log NOT touched (volume control).
+  marker="step6_fall_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  before_lines=$after_lines
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"unknownbinary ${marker}\"}}" \
+    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  if ! grep -q "$marker" "$decisions_log" 2>/dev/null; then
+    pass "fallthrough → decisions log unchanged (marker absent)"
+  else
+    fail "fallthrough: log should NOT contain '${marker}'"
+  fi
+
+  # Log file mode is 0o600 (security hardening — secrets in args concern).
+  if [ -f "$decisions_log" ]; then
+    local mode
+    mode=$(stat -f '%Lp' "$decisions_log" 2>/dev/null || stat -c '%a' "$decisions_log" 2>/dev/null)
+    if [ "$mode" = "600" ]; then
+      pass "decisions log file mode is 0o600"
+    else
+      fail "decisions log mode should be 600, got: $mode"
+    fi
+  fi
+
+  # Patch marker
+  if grep -q "_log_decision" "$SMART_APPROVE_HOOK"; then
+    pass "Step 6 patch marker present (_log_decision)"
+  else
+    fail "_log_decision missing — Step 6 install patch may have skipped"
+  fi
+
+  # Format validation: line is <ISO-timestamp>\t<DECISION>\t<cmd[:300]>.
+  # Catches silent format breakage from future refactors.
+  marker="step6_format_$$_$(date +%s%N 2>/dev/null || date +%s)"
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"echo ${marker}\"}}" \
+    | env -u SMART_APPROVE_VERBOSE python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
+  local line
+  line=$(grep -F "$marker" "$decisions_log" 2>/dev/null | tail -1)
+  if [ -n "$line" ]; then
+    # Field 1: ISO timestamp like 2026-05-09T21:30:00
+    # Field 2: ALLOW or DENY
+    # Field 3: scrubbed command preview
+    local f1 f2
+    f1=$(printf '%s' "$line" | cut -f1)
+    f2=$(printf '%s' "$line" | cut -f2)
+    if printf '%s' "$f1" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$' \
+      && { [ "$f2" = "ALLOW" ] || [ "$f2" = "DENY" ]; }; then
+      pass "decisions log line format: <ISO-ts>\\t<ALLOW|DENY>\\t<cmd>"
+    else
+      fail "decisions log format check failed (ts=${f1}, decision=${f2})"
+    fi
+  else
+    fail "decisions log: format-validation marker '${marker}' missing from log"
+  fi
 }

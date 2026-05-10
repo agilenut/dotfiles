@@ -593,6 +593,78 @@ with open(path, "w") as f:
     f.write(src)
 PY
 
+# Patch (Step 6): _log_decision audit log + main() call-site.
+# Always-on (no SMART_APPROVE_VERBOSE gate). Logs every allow/deny decision
+# to ~/.claude/logs/smart_approve_decisions.log so the user can review which
+# commands the hook auto-decided over a trial period — particularly useful
+# for evaluating whether Step 5 (awk safety) and Step 4 (xargs peel)
+# heuristics fire often enough to justify the complexity.
+#
+# Fallthroughs are NOT logged — they're the majority of invocations on
+# read-heavy workloads and would dominate the log file.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+# --- Patch 1: insert _log_decision above the sentinel ---
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''def _log_decision(decision, command):
+    """Append a single line to ~/.claude/logs/smart_approve_decisions.log per decision.
+
+    Always-on (not gated by SMART_APPROVE_VERBOSE) so the trial-period audit
+    works without env-var setup. Same hardening as _emit_verbose_to_log_file:
+    O_NOFOLLOW + 0o600 + control-byte scrub. Best-effort: catches all
+    exceptions so the hook's primary job (the permission decision) isn't
+    affected by log-write failures or unexpected input. The function is
+    called BEFORE the JSON decision is emitted to stdout — letting an
+    exception escape would suppress the decision and silently fall through
+    to native prompt, which for a deny decision would be a soft bypass.
+    """
+    if not decision:
+        return
+    try:
+        import datetime
+        log_path = os.path.expanduser("~/.claude/logs/smart_approve_decisions.log")
+        log_dir = os.path.dirname(log_path)
+        os.makedirs(log_dir, exist_ok=True)
+        ts = datetime.datetime.now().isoformat(timespec="seconds")
+        flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW
+        fd = os.open(log_path, flags, 0o600)
+        with os.fdopen(fd, "a", buffering=1) as f:
+            scrubbed = "".join(c if c.isprintable() else f"\\\\x{ord(c):02x}" for c in command)[:300]
+            f.write(f"{ts}\\t{str(decision).upper()}\\t{scrubbed}\\n")
+    except Exception:
+        pass
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 6 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 6 fn patch did not apply to {path}")
+src = new_src
+
+# --- Patch 2: call _log_decision inside main()'s decision-emit block ---
+call_old = "    if decision is not None:"
+call_new = "    _log_decision(decision, command)\n    if decision is not None:"
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 6 call-site patch: main() decision-emit anchor not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 6 call-site patch did not apply to {path}")
+src = new_src
+
+with open(path, "w") as f:
+    f.write(src)
+PY
+
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 
