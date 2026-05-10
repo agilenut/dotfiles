@@ -424,6 +424,175 @@ with open(path, "w") as f:
     f.write(src)
 PY
 
+# Patch (Step 5): is_awk_program_safe + command_passes_allow + decide() wire-in.
+# Lets safe awk programs auto-allow without putting Bash(awk *) on the
+# allow list (which would also pass dangerous shapes like
+# `awk 'BEGIN{system("rm")}'`). Safety scan:
+#   - Reject -f / -i / -e / -E and their long-form equivalents (uninspectable
+#     external program, inplace rewrite, alternate program location, gawk
+#     fallback program loader)
+#   - Reject any unknown flag (better to fall through than guess flag-vs-value)
+#   - Scan program text for system( / getline / print(f) > / print(f) | /
+#     @load / @include / backtick command-substitution
+# False-positive case: a program containing one of those tokens as a string
+# literal substring (e.g. `awk '{print "system( is text"}'`) gets rejected.
+# Acceptable cost — falls through to native prompt rather than auto-allowing
+# something whose intent we can't statically determine.
+#
+# decide() call-site: replace the allow-loop's command_matches_pattern with
+# command_passes_allow. The DENY loop stays on command_matches_pattern —
+# awk safety doesn't influence deny matching. Asymmetry is intentional: an
+# unsafe awk program shouldn't be *denied*, it should fall through.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+# --- Patch 1: insert is_awk_program_safe + command_passes_allow above sentinel ---
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''def is_awk_program_safe(cmd):
+    """Heuristic safety check for an `awk` invocation.
+
+    Returns True only if `cmd` is an `awk` invocation AND:
+      - no dangerous flags are present (-f / --file=, -i / --include=,
+        -e / --source=, -E / --exec=, or any unknown flag)
+      - the program text scans clean of shell-out, file-write, and
+        external-load primitives
+
+    False positives are accepted: a program containing one of the
+    dangerous tokens as a literal-string substring (e.g.,
+    `awk 'BEGIN{print "system( is text"}'`) will be rejected. Falls
+    through to native prompt rather than auto-allowing programs whose
+    intent we can\\'t statically verify — safer direction.
+    """
+    import shlex
+    BOOLEAN_FLAGS = {"--lint", "--posix", "--traditional", "--csv",
+                     "--non-decimal-data", "--re-interval",
+                     "--gen-pot", "--no-optimize", "--bignum",
+                     "--profile", "--debug", "--copyright",
+                     "--help", "--version"}
+    REJECT_SHORT = {"-f", "-i", "-e", "-E"}
+    REJECT_LONG_PREFIXES = ("--file", "--include", "--source", "--exec")
+    VALUE_SHORT_PREFIXES = ("-F", "-v")
+
+    # shlex.split (not str.split) so the quoted awk program is one token
+    # rather than being whitespace-split into pieces. Critical: a naive
+    # split on `awk \\'{print > "/tmp/x"}\\' file` would scatter the
+    # `print >` across tokens and miss the dangerous-token check.
+    try:
+        toks = shlex.split(cmd)
+    except ValueError:
+        return False  # malformed quoting — play it safe
+    if not toks or toks[0] != "awk":
+        return False
+
+    i = 1
+    while i < len(toks):
+        tok = toks[i]
+        if not tok.startswith("-"):
+            break
+        if tok == "--":
+            i += 1
+            break
+        if tok in REJECT_SHORT:
+            return False
+        if any(tok == p or tok.startswith(p + "=") for p in REJECT_LONG_PREFIXES):
+            return False
+        if tok.startswith("--"):
+            if "=" in tok:
+                key = tok.split("=", 1)[0]
+                if key in BOOLEAN_FLAGS:
+                    i += 1
+                    continue
+                return False
+            if tok in BOOLEAN_FLAGS:
+                i += 1
+                continue
+            return False
+        # Short value-flag: separate (-F SEP) or attached (-F: / -vx=1).
+        consumed = False
+        for prefix in VALUE_SHORT_PREFIXES:
+            if tok == prefix:
+                if i + 1 < len(toks):
+                    i += 2
+                    consumed = True
+                    break
+                return False
+            if tok.startswith(prefix) and len(tok) > len(prefix):
+                i += 1
+                consumed = True
+                break
+        if consumed:
+            continue
+        return False  # unknown short flag — bail
+
+    if i >= len(toks):
+        return False  # awk with no program text
+
+    program = toks[i]
+
+    # Regex-based detection (rather than substring) so `print $0 > "/tmp/x"`
+    # and `print "data" |& "sh"` (data between print and the redirect/pipe
+    # operator) get caught — substring matchers required adjacency.
+    # The @<ident>( pattern catches gawk indirect calls like
+    # `awk 'BEGIN{a="syst"; @a("rm")}'` that build the function name at
+    # runtime and bypass a literal `system(` check.
+    DANGEROUS_PATTERNS = (
+        re.compile(r"\\bsystem\\s*\\("),
+        re.compile(r"\\bgetline\\b"),
+        re.compile(r"\\bprintf?\\b[^;{}\\n]*[>|]"),
+        re.compile(r"@(load|include|[A-Za-z_]+\\s*\\()"),
+    )
+    for pattern in DANGEROUS_PATTERNS:
+        if pattern.search(program):
+            return False
+    if "`" in program:
+        return False
+
+    return True
+
+
+def command_passes_allow(cmd, allow_patterns):
+    """Allow-gate check with awk-safety special case.
+
+    Used in place of command_matches_pattern in the allow loop of decide().
+    The deny loop continues to use command_matches_pattern directly — awk
+    safety only widens what allows, never what denies.
+    """
+    if command_matches_pattern(cmd, allow_patterns):
+        return True
+    if cmd.startswith("awk ") and is_awk_program_safe(cmd):
+        return True
+    return False
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 5 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 5 fn patch did not apply to {path}")
+src = new_src
+
+# --- Patch 2: wire command_passes_allow into decide()'s allow loop ---
+call_old = "        if not command_matches_pattern(cmd, allow_patterns):"
+call_new = "        if not command_passes_allow(cmd, allow_patterns):"
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 5 call-site patch: decide() allow-loop anchor not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 5 call-site patch did not apply to {path}")
+src = new_src
+
+with open(path, "w") as f:
+    f.write(src)
+PY
+
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 

@@ -695,4 +695,215 @@ test_smart_approve() {
   else
     fail "'xargs sudo git status' should fallthrough (got: $d)"
   fi
+
+  # ---- Step 5: awk safety heuristic ----
+  # is_awk_program_safe() scans the program text + flags for shell-out, file
+  # write, or external-program-load primitives. Safe programs auto-allow
+  # without needing Bash(awk *) on the allow list. Unsafe programs (and any
+  # use of -f/-i/-e/-E/--source/--include) fall through to native prompt.
+
+  # Safe awk programs — common shapes auto-allow.
+  d=$(decision_for "\"awk '{print \$1}' /tmp/foo\"")
+  if [ "$d" = "allow" ]; then
+    pass "awk '{print \$1}' file → allow (safe program scans clean)"
+  else
+    fail "safe awk '{print \$1}' should auto-allow (got: $d)"
+  fi
+
+  d=$(decision_for "\"awk -F: '{print \$2}' /etc/passwd\"")
+  if [ "$d" = "allow" ]; then
+    pass "awk -F: '{print \$2}' file → allow (-F value-flag handled)"
+  else
+    fail "awk -F: should auto-allow (got: $d)"
+  fi
+
+  d=$(decision_for "\"awk -v x=1 'NR==1{print x}' file\"")
+  if [ "$d" = "allow" ]; then
+    pass "awk -v x=1 ... → allow (-v value-flag handled)"
+  else
+    fail "awk -v should auto-allow (got: $d)"
+  fi
+
+  # Unsafe awk programs — must fall through.
+  d=$(decision_for "\"awk 'BEGIN{system(\\\"rm\\\")}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk 'BEGIN{system(...)}' → fallthrough (system() blocked)"
+  else
+    fail "awk system() should fallthrough (got: $d)"
+  fi
+
+  d=$(decision_for "\"awk '{print > \\\"/tmp/x\\\"}' file\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk '{print > \"...\"}' → fallthrough (file write blocked)"
+  else
+    fail "awk print > should fallthrough (got: $d)"
+  fi
+
+  d=$(decision_for "\"awk '{ \\\"cmd\\\" | getline x }' file\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk getline → fallthrough (pipe-getline blocked)"
+  else
+    fail "awk getline should fallthrough (got: $d)"
+  fi
+
+  # Dangerous flags — -f loads external script.
+  d=$(decision_for '"awk -f /tmp/script.awk file"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk -f script.awk → fallthrough (external program load blocked)"
+  else
+    fail "awk -f should fallthrough (got: $d)"
+  fi
+
+  # -i inplace silently rewrites the input file.
+  d=$(decision_for "\"awk -i inplace '{print toupper(\$0)}' /tmp/x\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk -i inplace → fallthrough (in-place rewrite blocked)"
+  else
+    fail "awk -i should fallthrough (got: $d)"
+  fi
+
+  # -e is alternate program location; a program-text scan would skip it.
+  d=$(decision_for "\"awk -e '{system(\\\"x\\\")}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk -e → fallthrough (alternate program location blocked)"
+  else
+    fail "awk -e should fallthrough (got: $d)"
+  fi
+
+  # @load and @include are gawk extension/include directives.
+  d=$(decision_for "\"awk '@load \\\"filefuncs\\\"; {print stat()}' file\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk @load → fallthrough (gawk extension load blocked)"
+  else
+    fail "awk @load should fallthrough (got: $d)"
+  fi
+
+  # Documented false-positive: 'system(' inside a string literal still
+  # rejects (the heuristic doesn't parse awk syntax). Locks in the
+  # accepted cost.
+  d=$(decision_for "\"awk 'BEGIN{print \\\"system( is text\\\"}' file\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk with 'system(' as string literal → fallthrough (false-positive accepted)"
+  else
+    fail "awk false-positive case behavior changed (got: $d)"
+  fi
+
+  # Bare awk with no program — falls through (no program to scan).
+  d=$(decision_for '"awk"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "bare awk → fallthrough (no program to inspect)"
+  else
+    fail "bare awk should fallthrough (got: $d)"
+  fi
+
+  # Composed: cat | awk in a pipeline — both segments allow.
+  d=$(decision_for "\"cat /tmp/foo | awk '{print \$1}'\"")
+  if [ "$d" = "allow" ]; then
+    pass "cat | awk safe-program → allow (segment-level both ok)"
+  else
+    fail "'cat | awk safe' chain should allow (got: $d)"
+  fi
+
+  # Patch markers
+  if grep -q "is_awk_program_safe" "$SMART_APPROVE_HOOK"; then
+    pass "Step 5 patch marker present (is_awk_program_safe)"
+  else
+    fail "is_awk_program_safe missing — Step 5 install patch may have skipped"
+  fi
+
+  if grep -q "command_passes_allow" "$SMART_APPROVE_HOOK"; then
+    pass "Step 5 patch marker present (command_passes_allow)"
+  else
+    fail "command_passes_allow missing — Step 5 install patch may have skipped"
+  fi
+
+  # Branch coverage and bypass-attempt locks for the awk safety heuristic.
+
+  # Bypass-attempt: data between print and >. Must fall through.
+  d=$(decision_for "\"awk '{print \$0 > \\\"/tmp/x\\\"}' /tmp/foo\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk '{print \$0 > \"...\"}' → fallthrough (intervening data caught)"
+  else
+    fail "awk print-with-intervening-data should fallthrough (got: $d)"
+  fi
+
+  # Coprocess `|&` (gawk two-way pipe).
+  d=$(decision_for "\"awk '{print \\\"x\\\" |& \\\"sh\\\"}' file\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk '{print ... |& ...}' → fallthrough (coprocess blocked)"
+  else
+    fail "awk |& coprocess should fallthrough (got: $d)"
+  fi
+
+  # @indirect call — runtime function name construction.
+  d=$(decision_for "\"awk 'BEGIN{a=\\\"syst\\\"; @a(\\\"rm\\\")}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk @indirect call → fallthrough (gawk indirect call blocked)"
+  else
+    fail "awk @indirect should fallthrough (got: $d)"
+  fi
+
+  # @ inside string literal (false-positive avoidance) — should still allow.
+  d=$(decision_for "\"awk 'BEGIN{print \\\"user@host\\\"}'\"")
+  if [ "$d" = "allow" ]; then
+    pass "awk 'BEGIN{print \"user@host\"}' → allow (@ in string literal not function call)"
+  else
+    fail "awk @ in string literal should allow (got: $d)"
+  fi
+
+  # -E flag (gawk fallback program loader).
+  d=$(decision_for '"awk -E /tmp/script.awk file"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk -E → fallthrough (-E flag rejected)"
+  else
+    fail "awk -E should fallthrough (got: $d)"
+  fi
+
+  # --source=PROG long form.
+  d=$(decision_for "\"awk --source='{system(\\\"x\\\")}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk --source= → fallthrough (--source= rejected)"
+  else
+    fail "awk --source= should fallthrough (got: $d)"
+  fi
+
+  # --include=lib long form.
+  d=$(decision_for "\"awk --include=foo '{print}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk --include= → fallthrough (--include= rejected)"
+  else
+    fail "awk --include= should fallthrough (got: $d)"
+  fi
+
+  # bare awk -- (no program after terminator).
+  d=$(decision_for '"awk --"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk -- (no program) → fallthrough"
+  else
+    fail "awk -- should fallthrough (got: $d)"
+  fi
+
+  # Unknown short flag.
+  d=$(decision_for "\"awk -X '{print}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk -X → fallthrough (unknown short bails)"
+  else
+    fail "awk -X should fallthrough (got: $d)"
+  fi
+
+  # Unknown long flag.
+  d=$(decision_for "\"awk --frobnicate '{print}'\"")
+  if [ "$d" = "fallthrough" ]; then
+    pass "awk --frobnicate → fallthrough (unknown long bails)"
+  else
+    fail "awk --frobnicate should fallthrough (got: $d)"
+  fi
+
+  # Asymmetry lock: safe awk + denied find-exec → deny precedence.
+  d=$(decision_for "\"awk '{print}' && find . -exec rm {} \\\\;\"")
+  if [ "$d" = "deny" ]; then
+    pass "awk safe && find -exec → deny (deny loop unaffected by awk widening)"
+  else
+    fail "awk + find-exec chain should deny (got: $d)"
+  fi
 }
