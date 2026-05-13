@@ -1,31 +1,77 @@
 #!/bin/bash
 # Daily recap wrapper invoked by launchd. Runs Claude Code headlessly to
-# generate yesterday's recap and write it to ~/Documents/recaps/.
+# generate missing recaps (yesterday plus any earlier days the laptop
+# missed while asleep) and write them to ~/Documents/recaps/.
 set -euo pipefail
 umask 077
 
-# Yesterday's date in YYYY-MM-DD form (BSD on macOS, GNU elsewhere).
+RECAP_DIR="$HOME/Documents/recaps"
+LOG_DIR="$HOME/Library/Logs"
+mkdir -p "$RECAP_DIR" "$LOG_DIR"
+
+# Yesterday + next-day helper (BSD on macOS, GNU elsewhere).
 if [[ "$(uname)" == "Darwin" ]]; then
   YESTERDAY=$(date -v-1d +%Y-%m-%d)
+  next_day() { date -j -f "%Y-%m-%d" -v+1d "$1" +%Y-%m-%d; }
 else
   YESTERDAY=$(date -d 'yesterday' +%Y-%m-%d)
+  next_day() { date -d "$1 + 1 day" +%Y-%m-%d; }
 fi
 
-LOG="$HOME/Library/Logs/recap-daily-${YESTERDAY}.log"
+# Start the day after the most recent recap on disk; if none, just yesterday.
+# nullglob lets the array stay empty without aborting under set -e.
+shopt -s nullglob
+recap_files=("$RECAP_DIR"/????-??-??.md)
+shopt -u nullglob
+if ((${#recap_files[@]} == 0)); then
+  DAY="$YESTERDAY"
+else
+  # Filenames are ISO dates — lexicographic sort matches chronological.
+  # Negative array index isn't supported on /bin/bash 3.2 (the launchd-resolved
+  # shebang on macOS), so compute the last index explicitly.
+  LAST=$(basename "${recap_files[${#recap_files[@]} - 1]}" .md)
+  DAY=$(next_day "$LAST")
+fi
 
-mkdir -p "$HOME/Documents/recaps"
-mkdir -p "$(dirname "$LOG")"
+# Nothing to do — exit silently so hourly fires are cheap no-ops.
+if [[ "$DAY" > "$YESTERDAY" ]]; then
+  exit 0
+fi
 
-# Always log the exit status — silent failure is the worst signal.
-trap 'echo "=== $(date) — exit $? ===" >>"$LOG"' EXIT
+# Mutex against concurrent fires — the midnight calendar trigger and an
+# hourly tick can land near the same minute. mkdir is atomic; the loser
+# exits silently. Trap covers normal exit + common signals (SIGKILL can't
+# be caught — manual cleanup if launchd ever force-stops the job).
+LOCK_DIR="$LOG_DIR/recap-daily.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  exit 0
+fi
+trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT HUP INT TERM
 
-{
-  echo "=== $(date) — recap for $YESTERDAY ==="
-  claude \
-    --print \
-    --dangerously-skip-permissions \
-    --allowed-tools="Bash,Read,Write,Glob,Grep" \
-    "/recap $YESTERDAY"
-  echo "=== $(date) — done ==="
-  echo
-} >>"$LOG" 2>&1
+# Loop forward through any missing days, up to and including yesterday.
+# Bail on the first failure — the next run will retry the same day rather
+# than advancing past it, since LAST is derived from files that exist on disk.
+while [[ ! "$DAY" > "$YESTERDAY" ]]; do
+  LOG="$LOG_DIR/recap-daily-${DAY}.log"
+  OUT="$RECAP_DIR/${DAY}.md"
+  (
+    set +e
+    echo "=== $(date) — recap for $DAY ==="
+    claude \
+      --print \
+      --dangerously-skip-permissions \
+      --allowed-tools="Bash,Read,Write,Glob,Grep" \
+      "/recap $DAY"
+    claude_exit=$?
+    if [[ -f "$OUT" ]]; then
+      echo "=== $(date) — claude exit $claude_exit, recap written ==="
+    else
+      echo "=== $(date) — claude exit $claude_exit, FAIL: $OUT not written ==="
+    fi
+    echo
+  ) >>"$LOG" 2>&1
+  if [[ ! -f "$OUT" ]]; then
+    exit 1
+  fi
+  DAY=$(next_day "$DAY")
+done

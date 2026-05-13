@@ -13,10 +13,16 @@
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>6</integer>
+        <integer>0</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>
+
+    <!-- Hourly catchup: launchd replays a missed StartInterval after wake, so
+         the first fire after a sleeping midnight still runs. The wrapper exits
+         early when yesterday's recap already exists, making extra fires cheap. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
 
     <key>RunAtLoad</key>
     <false/>
