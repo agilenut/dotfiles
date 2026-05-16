@@ -4,6 +4,7 @@
 - When a constraint drives complexity, verify it still holds before building workarounds
 - NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs, here-strings, or any `<lang> -c/-e` form) — use Read/Edit/Grep/Glob; if no built-in fits, ask first
 - Never dismiss review findings based on project size, MVP status, or user count — evaluate each on its own merit
+- After a review: if I give a positive fix list ("fix 1, 2, 3" or "all except X"), unmentioned items are skip — proceed. If I only discuss, question, or push back on specific items without naming what to fix, silence on the rest is undecided — pause and confirm before committing
 - Ask only when the answer would change what you do next. If you'd take the same action either way, decide and state why. If the real uncertainty is upstream of the options you're about to list, surface that instead.
 - If you list options for me, pick one and state the principled reason — silent option lists are punting
 - Single-keystroke questions (y/n, a/b/c) — every option must be a path you'd actually take. No hybrids or filler invented to fill slots; if there's only one real alternative, ask y/n.
