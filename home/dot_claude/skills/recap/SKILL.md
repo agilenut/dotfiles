@@ -69,9 +69,9 @@ If the argument is ambiguous, ask for clarification.
 Repos come from two sources — never from filesystem walks:
 
 1. **Configured sections** from `[sections]` in `recap.toml`.
-2. **Other (auto-discovered)** from `~/.claude/projects/<encoded-cwd>/*.jsonl` directories with files modified in the date range. Decode each name (replace `-` with `/`, leading `-` → leading `/`) to a cwd, then assign:
-   - Longest-prefix match against section paths → that section.
-   - Else `git -C <cwd> rev-parse --git-common-dir 2>/dev/null`. If it resolves under a section repo's `.git` (or `.git/worktrees/...`), assign to that section. Auto-picks up ad-hoc sibling worktrees.
+2. **Other (auto-discovered)** from `~/.claude/projects/<encoded-cwd>/*.jsonl` directories with files modified in the date range. Read the authoritative `cwd` from any transcript file in the directory (the `cwd` field on any message) — do NOT decode the directory name, which is lossy for repo names containing literal hyphens (`-` in a name becomes `/` on decode). Then assign:
+   - Longest-prefix match against section paths → that section. Normalize both sides first: expand `~` and resolve via `realpath`. Match on path-segment boundaries only — `~/work/acme` does NOT match `~/work/acme-platform`.
+   - Else `git -C <cwd> rev-parse --path-format=absolute --git-common-dir 2>/dev/null`. If it resolves under a section repo's `.git` (or `.git/worktrees/...`), assign to that section. Auto-picks up ad-hoc sibling worktrees. `--path-format=absolute` is required — bare `--git-common-dir` returns a relative path inside the repo and the prefix-match fails.
    - Else if `git rev-parse` succeeded → **Other**, full pipeline using `<cwd>` as the repo.
    - Else (not a git repo) → **Other** as a conversation folder. Skip git/gh; transcript-derived bullets only.
 
@@ -214,7 +214,7 @@ The bar: **someone who doesn't know your codebase should understand what changed
 
 **Grounding (prevent topic confusion / hallucination):**
 
-- Ground bullets in transcript content, not the section's typical work. Group windows by actual subject, not just `cwd` — a single explicit reference to another section's repo, PR, or issue is enough to reassign the window to that section. Side discussions count. If the subject doesn't map to any configured section, reassign to Other. Don't leave windows under the wrong section heading.
+- Ground bullets in transcript content, not the section's typical work. Group windows by actual subject, not just `cwd` — a single explicit reference to another section's repo, PR, or issue is enough to reassign the window to that section. Side discussions count. If the subject doesn't map to any configured section, reassign to Other. Don't leave windows under the wrong section heading. **A reassigned window's full duration counts toward the destination section's total (and the day-header total stays unchanged); the cwd-origin section does not also count it.**
 - Don't expand transcript terms into branded products you can't point to in this window's content. Use the transcript's term verbatim.
 - Sparse window: write a short generic bullet rather than fabricate specifics.
 
@@ -356,7 +356,6 @@ If `gh api` (or `gh pr list`) fails for a section, render the failure inline at 
 ## Rules
 
 - Read-only except for writing per-day files to `output_dir`.
-- Repo paths come from `[sections]` in `recap.toml` or from `cwd` fields in `~/.claude/projects/<encoded-cwd>/*.jsonl`. Never search the filesystem to locate repos (`find ~`, `mdfind`, listing arbitrary dirs). For ad-hoc sibling worktrees, use `git -C <cwd> rev-parse --git-common-dir` to test section membership.
 - If `gh` fails (not authenticated, no remote), skip PR data and note the gap inline at the section header (see "gh-failure notation").
 - Deduplicate commits across main and branch logs.
 - All times in user's local timezone, 24h format.
