@@ -4,7 +4,10 @@
 - When a constraint drives complexity, verify it still holds before building workarounds
 - NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs, here-strings, or any `<lang> -c/-e` form) — use Read/Edit/Grep/Glob; if no built-in fits, ask first
 - Never dismiss review findings based on project size, MVP status, or user count — evaluate each on its own merit
-- Format questions for single-keystroke answers: y/n, or a/b/c lettered options. Avoid open-ended "do you want X or Y?" phrasings.
+- Ask only when the answer would change what you do next. If you'd take the same action either way, decide and state why. If the real uncertainty is upstream of the options you're about to list, surface that instead.
+- If you list options for me, pick one and state the principled reason — silent option lists are punting
+- Single-keystroke questions (y/n, a/b/c) — every option must be a path you'd actually take. No hybrids or filler invented to fill slots; if there's only one real alternative, ask y/n.
+- Treat sibling-repo precedent as one data point, not a directive; when flipping a recommendation after seeing precedent, name the new principled reason — if the only reason is consistency, surface that as a trade-off, not the verdict
 
 ## Bash
 
@@ -25,7 +28,7 @@
 
 - Break work into small, independently committable steps — one commit per step
 - After completing each step, stop and ask before continuing to the next
-- If implementation diverges from the plan, update the plan file before proceeding
+- If you'd diverge from the plan's scope or approach, stop and ask before acting. Tactical choices inside the plan don't need an ask — update the plan file in the same commit if the choice should be remembered
 - NEVER write out full plan content in chat — use Edit for targeted changes, then summarize what changed
 
 ### Plan Naming
