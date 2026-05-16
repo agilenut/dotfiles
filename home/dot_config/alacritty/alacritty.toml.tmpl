@@ -9,6 +9,12 @@
 [env]
   TERM = "xterm-256color"
 
+[terminal]
+  # Silence "NSPasteboard#writeObjects: returned false" warns from OSC 52
+  # writes (Claude Code emits these; tmux forwards). tmux copy bindings use
+  # pbcopy directly, so disabling OSC 52 doesn't break explicit copies.
+  osc52 = "Disabled"
+
 [window]
 
   dynamic_title = true
