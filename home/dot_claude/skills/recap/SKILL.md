@@ -64,7 +64,20 @@ If the argument is ambiguous, ask for clarification.
 
 ## Step 3: Gather Data
 
-For each (section, date), gather data across all repos in that section.
+### Identify repos
+
+Repos come from two sources — never from filesystem walks:
+
+1. **Configured sections** from `[sections]` in `recap.toml`.
+2. **Other (auto-discovered)** from `~/.claude/projects/<encoded-cwd>/*.jsonl` directories with files modified in the date range. Decode each name (replace `-` with `/`, leading `-` → leading `/`) to a cwd, then assign:
+   - Longest-prefix match against section paths → that section.
+   - Else `git -C <cwd> rev-parse --git-common-dir 2>/dev/null`. If it resolves under a section repo's `.git` (or `.git/worktrees/...`), assign to that section. Auto-picks up ad-hoc sibling worktrees.
+   - Else if `git rev-parse` succeeded → **Other**, full pipeline using `<cwd>` as the repo.
+   - Else (not a git repo) → **Other** as a conversation folder. Skip git/gh; transcript-derived bullets only.
+
+**Never** `find ~`, `mdfind`, or list arbitrary directories to locate repos. Encoded directory names + transcript `cwd` fields are the only authoritative sources.
+
+For each repo identified above, gather data using the steps below.
 
 ### 3a. User identity
 
@@ -201,7 +214,7 @@ The bar: **someone who doesn't know your codebase should understand what changed
 
 **Grounding (prevent topic confusion / hallucination):**
 
-- Ground bullets in transcript content, not the section's typical work. If a window's content is unrelated to the section, label the bullet as off-topic — don't reroute it.
+- Ground bullets in transcript content, not the section's typical work. Group windows by actual subject, not just `cwd` — a single explicit reference to another section's repo, PR, or issue is enough to reassign the window to that section. Side discussions count. If the subject doesn't map to any configured section, reassign to Other. Don't leave windows under the wrong section heading.
 - Don't expand transcript terms into branded products you can't point to in this window's content. Use the transcript's term verbatim.
 - Sparse window: write a short generic bullet rather than fabricate specifics.
 
@@ -309,6 +322,21 @@ The file starts with `# <Day>, <Month> <DD> <YYYY> (<Xh Ym> total)` where the to
 ...
 ```
 
+### Sections-to-consider footer
+
+If the **Other** section contains one or more repos (not just conversation folders) that aren't covered by any configured section, append a small footer to the Other section reminding the user to update `recap.toml` if these are recurring:
+
+```markdown
+### Sections to consider
+
+The following appeared in Other today and aren't in any configured section. Add to `recap.toml` if recurring:
+
+- `~/repos/azure-build-example` (2 windows, 1h 15m)
+- `~/repos/paper-folder` (1 window, 30m)
+```
+
+Conversation folders (non-git cwds) don't appear in this footer — they're inherently ad-hoc.
+
 ### Empty cases
 
 - A section is **included** if it has any of: time blocks (windows), commits, or merged/reviewed PRs that date. Notes/Follow-ups alone (e.g. observations carried over from yesterday) are not enough to render a section — those have nothing to attach to.
@@ -328,6 +356,7 @@ If `gh api` (or `gh pr list`) fails for a section, render the failure inline at 
 ## Rules
 
 - Read-only except for writing per-day files to `output_dir`.
+- Repo paths come from `[sections]` in `recap.toml` or from `cwd` fields in `~/.claude/projects/<encoded-cwd>/*.jsonl`. Never search the filesystem to locate repos (`find ~`, `mdfind`, listing arbitrary dirs). For ad-hoc sibling worktrees, use `git -C <cwd> rev-parse --git-common-dir` to test section membership.
 - If `gh` fails (not authenticated, no remote), skip PR data and note the gap inline at the section header (see "gh-failure notation").
 - Deduplicate commits across main and branch logs.
 - All times in user's local timezone, 24h format.
