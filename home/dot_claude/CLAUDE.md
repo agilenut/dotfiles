@@ -7,7 +7,8 @@
 - After a review: if I give a positive fix list ("fix 1, 2, 3" or "all except X"), unmentioned items are skip — proceed. If I only discuss, question, or push back on specific items without naming what to fix, silence on the rest is undecided — pause and confirm before committing
 - Ask only when the answer would change what you do next. If you'd take the same action either way, decide and state why. If the real uncertainty is upstream of the options you're about to list, surface that instead.
 - If you list options for me, pick one and state the principled reason — silent option lists are punting
-- Single-keystroke questions (y/n, a/b/c) — every option must be a path you'd actually take. No hybrids or filler invented to fill slots; if there's only one real alternative, ask y/n.
+- Every option must be a path you'd actually take — no hybrids or filler invented to fill slots
+- Single-keystroke questions (y/n, a/b/c) — I may answer with combinations (a+b); keep the a/b/c shape, don't reach for multi-select tooling. If there's only one real alternative, ask y/n
 - Treat sibling-repo precedent as one data point, not a directive; when flipping a recommendation after seeing precedent, name the new principled reason — if the only reason is consistency, surface that as a trade-off, not the verdict
 
 ## Bash
