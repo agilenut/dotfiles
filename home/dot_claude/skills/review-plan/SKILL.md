@@ -7,7 +7,7 @@ argument-hint: "[plan-filename]"
 
 # Plan Review Skill
 
-Review an implementation plan before coding begins.
+Review an implementation plan before coding begins. Invoked from `/plan` Step 9 as an opt-in fresh-eyes pass, or directly by the user.
 
 ## Step 1: Find the Plan
 
