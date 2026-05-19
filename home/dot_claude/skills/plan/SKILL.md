@@ -51,6 +51,8 @@ Identify the open decisions in this plan. Walk them one at a time:
 4. **Resolve dependencies as you go.** Earlier decisions often pivot later ones — walk in dependency order.
 5. **Codebase-check, don't ask** when the answer's in the code or docs.
 
+When a contested choice resolves, note it in the plan file's **Decisions** section on the spot (file-tier only — see Step 8).
+
 **Surface these during the walk:**
 
 - **Sharpen fuzzy language.** When the user uses overloaded terms ("user", "account", "session"), propose a precise canonical alternative inline. "You're saying 'user' — Customer or AuthenticatedUser? Those behave differently."
@@ -116,6 +118,10 @@ Sections, in order (single-PR default):
 
 - **Goal** — 1–2 sentences
 - **Approach** — chosen direction + why (1–2 lines)
+- **Decisions** (when the walk had contested sub-choices) — each entry: decision + 1-line reason. Include when the choice was contested in the walk, diverges from a convention or default, or its reason isn't self-evident from Approach. Skip no-brainers.
+
+  Example: `Pure Prettier defaults over .prettierrc.json — user accepts wholesale style flip for ecosystem alignment; CLAUDE.md bullets updated same PR`
+
 - **Glossary** (when terms were sharpened during the walk) — canonical term → 1-line meaning. Only include the terms that actually got resolved.
 - **Commits** — numbered; each with title (verb-led, ≤8 words), scope (1-line description), review timing (`per-commit` | `end-of-PR`), manual test (`none` | `<steps>`). Apply Reference: Commit Boundaries and Reference: Review & Test Defaults.
 
@@ -164,7 +170,7 @@ After Step 8 (or after Step 6 for conversation-only), execute:
 - Plan files are local-only — gitignored by convention; no "commit the plan" step
 - One question at a time during the walk. Don't batch. Don't dump option matrices unless asked.
 - If a question is answerable by reading code, don't ask — answer it and surface the answer with your recommendation.
-- Capture decisions as they're made: when the walk settles a non-obvious choice, update the plan file with a 1-line reason on the spot (file-tier only). Conversation-only relies on chat history.
+- Capture decisions as they're made: when the walk settles a contested choice, add to the plan file's **Decisions** section with a 1-line reason on the spot (file-tier only). Conversation-only relies on chat history.
 - Mid-work changes (tactical revisions, scope shifts): see CLAUDE.md `## Planning`.
 - Never write full plan content in chat — use Edit on the plan file, then summarize what changed.
 
