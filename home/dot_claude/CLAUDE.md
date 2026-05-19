@@ -30,8 +30,9 @@
 
 - Break work into small, independently committable steps — one commit per step
 - After completing each step, stop and ask before continuing to the next
-- If you'd diverge from the plan's scope or approach, stop and ask before acting. Tactical choices inside the plan don't need an ask — update the plan file in the same commit if the choice should be remembered
+- If you'd diverge from the plan's scope or approach, stop and ask before acting. Tactical choices inside the plan don't need an ask — update the plan file as the choice is made (in the same commit as code if the plan is tracked; just save if gitignored)
 - NEVER write out full plan content in chat — use Edit for targeted changes, then summarize what changed
+- When the user signals new work (story / issue / "let's build X"), invoke `/plan` to scope it; tangents mid-implementation stay tangents unless explicitly escalated
 
 ### Plan Naming
 
@@ -46,6 +47,7 @@
 work: "<work-stream-name>"
 branch: "<branch-name-or-null>"
 stories: [82, 86]
+worktree: false
 ---
 ```
 
@@ -71,6 +73,12 @@ stories: [82, 86]
 - NEVER add "Generated with Claude Code" to PRs
 - NEVER use Closes/Fixes in PRs — use "Part of #123" (issue stays open for board review)
 - Post merge CI failure: comment on failed PR (what broke, fix PR link) and update the issue with a running failure log
+
+## Worktree
+
+- `ToolSearch select:EnterWorktree` then call `EnterWorktree` — harness updates cwd; don't `cd` or `git -C` to navigate
+- `ExitWorktree` triggers cleanup (docker compose down + worktree remove)
+- Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling). Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
 
 ## Workspace
 
