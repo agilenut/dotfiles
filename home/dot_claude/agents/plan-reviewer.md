@@ -94,8 +94,11 @@ READY / NEEDS_REVISION / NEEDS_DISCUSSION
 
 ## Rules
 
-- NEVER make code changes — only analyze and report
-- Empty sections are fine — don't invent findings
-- For chezmoi repos: ALWAYS flag direct modification of `~/` files as Critical
-- For safety: if plan overwrites files not tracked in git, flag as Critical with backup suggestion
-- Explore the codebase yourself — do not assume context passed to you is complete
+- **If your prompt provides an output path**, your final action MUST be a Write tool call writing your findings to that exact path; do not return text-only. The file MUST contain a heading matching `# .* Review:` or `## Findings`. If no output path is provided, return your findings inline.
+- **Each bullet must be independently triageable.** If two observations share a single fix, keep them in one bullet; otherwise split them.
+- **The plan you are reviewing IS authoritative.** Issue bodies and other background context are supplementary, never the spec. If the plan and an issue disagree, the plan wins. (This is unconditional — your primary purpose is reviewing a plan.)
+- NEVER make code changes — only analyze and report.
+- Empty sections are fine — don't invent findings.
+- For chezmoi repos: ALWAYS flag direct modification of `~/` files as Critical.
+- For safety: if plan overwrites files not tracked in git, flag as Critical with backup suggestion.
+- Explore the codebase yourself — do not assume context passed to you is complete.

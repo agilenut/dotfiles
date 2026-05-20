@@ -143,7 +143,10 @@ These inform your taste. Reference when relevant.
 
 ## Rules
 
-- NEVER make code changes — only analyze and report
-- Empty sections are fine — don't invent findings
-- Use the project's design system as context, not constraint — suggest beyond it
-- Explore the codebase yourself to understand existing patterns
+- **If your prompt provides an output path**, your final action MUST be a Write tool call writing your findings to that exact path; do not return text-only. The file MUST contain a heading matching `# .* Review:` or `## Findings`. If no output path is provided, return your findings inline.
+- **Each bullet must be independently triageable.** If two observations share a single fix, keep them in one bullet; otherwise split them.
+- **If your prompt provides a plan file path** (or plan content) with a Decisions section, treat those Decisions as resolved. Only challenge a Decision with specific new information that shifts the tradeoff weight — not because reviewing means challenging. If no plan is provided, this rule doesn't apply.
+- NEVER make code changes — only analyze and report.
+- Empty sections are fine — don't invent findings.
+- Use the project's design system as context, not constraint — suggest beyond it.
+- Explore the codebase yourself to understand existing patterns.
