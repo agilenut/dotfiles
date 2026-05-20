@@ -51,13 +51,13 @@ Each Agent prompt receives:
 - **Issue body (if any) — mark explicitly as "background only. If the issue and the plan disagree, the plan wins."** Reviewers must treat the issue as supplementary, never as the spec.
 - Project root path (for codebase exploration)
 - Output path: `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>-<type>.md` where `<type>` is one of `plan` | `ux`. Run `date +%Y-%m-%d-%H%M%S` for the timestamp; do NOT hardcode it.
-- **Mandatory write rule** (verbatim, in every spawn prompt): `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '# .* Review:' or '## Findings'.`
+- **Mandatory write rule** (verbatim, in every spawn prompt): `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
 
 Wait for all agents to complete.
 
 ## Step 4: Post-Spawn Enforcement (salvage-first)
 
-For each spawned reviewer: Read the expected output path. **Structure-presence is the discriminator** — file contains `^# .+ Review:` on a single line OR a `## Findings` heading → accept. If file is missing/malformed but the Agent tool's text return contains that structure → **salvage**: write the returned text to the expected path; buffer salvage note in memory, emit when triage file is initialized at Step 8: `<reviewer> output salvaged from text return — did not call Write tool.` Neither path has structure → **re-spawn ONCE** with the original spawn prompt verbatim, prepended by: `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '# .* Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.` Still failing → hard-fail the reviewer, log `Reviewer <name> failed after retry; findings unavailable.`, continue with others.
+For each spawned reviewer: Read the expected output path. **Structure-presence is the discriminator** — file contains `^# .+ Review:` on a single line OR a `## Findings` heading → accept. If file is missing/malformed but the Agent tool's text return contains that structure → **salvage**: write the returned text to the expected path; buffer salvage note in memory, emit when triage file is initialized at Step 8: `<reviewer> output salvaged from text return — did not call Write tool.` Neither path has structure → **re-spawn ONCE** with the original spawn prompt verbatim, prepended by: `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '^# .+ Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.` Still failing → hard-fail the reviewer, log `Reviewer <name> failed after retry; findings unavailable.`, continue with others.
 
 ## Step 5: Build Atomic Findings
 

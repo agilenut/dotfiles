@@ -33,7 +33,7 @@
 - If you'd diverge from the plan's scope or approach, stop and ask before acting. Tactical choices inside the plan don't need an ask — update the plan file as the choice is made (in the same commit as code if the plan is tracked; just save if gitignored)
 - NEVER write out full plan content in chat — use Edit for targeted changes, then summarize what changed
 - When the user signals new work (story / issue / "let's build X"), invoke `/plan` to scope it; tangents mid-implementation stay tangents unless explicitly escalated
-- If a plan's commit declares `review: per-commit`, run `/review` before the pause-for-user-review step. End-of-PR timing runs once before `gh pr create`.
+- If the plan's Commits row tags `review: per-commit`, run `/review` before the stop-and-ask between commits (see the "stop and ask" rule above). End-of-PR timing runs once before pushing for review (typically `gh pr create`).
 
 ### Plan Naming
 

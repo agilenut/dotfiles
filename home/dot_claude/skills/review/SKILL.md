@@ -120,7 +120,7 @@ Each Agent prompt receives:
 - Full diff
 - CLAUDE.md contents
 - **Plan file PATH** (not content) if intent context found one — reviewer reads it directly to understand goals and respect Decisions
-- **Mandatory write rule** (verbatim, in every spawn prompt): `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '# .* Review:' or '## Findings'.`
+- **Mandatory write rule** (verbatim, in every spawn prompt): `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
 
 Wait for all agents to complete.
 
@@ -131,7 +131,7 @@ For each spawned reviewer, verify output before triage:
 1. Read the expected output path.
 2. **File exists AND contains the required heading structure** (matches `^# .+ Review:` on a single line, OR contains a `## Findings` heading) → accept.
 3. **File missing/empty OR malformed**, but the Agent tool's return string (the orchestrator's previous Agent tool call result for this reviewer) contains the required heading structure → salvage: write that returned text to the expected path. Log in triage (buffer in memory; emit when triage file is initialized in Step 8 under `## Salvage / failure log`): `<reviewer> output salvaged from text return — did not call Write tool.`
-4. **Neither path has structure** → re-spawn ONCE. Compose the new Agent prompt as: **the original spawn prompt verbatim** (diff, CLAUDE.md, plan path, output path, all of it) **prepended** by this reminder: `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '# .* Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.` Do not send only the reminder — the agent needs the full original context to redo the review.
+4. **Neither path has structure** → re-spawn ONCE. Compose the new Agent prompt as: **the original spawn prompt verbatim** (diff, CLAUDE.md, plan path, output path, all of it) **prepended** by this reminder: `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '^# .+ Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.` Do not send only the reminder — the agent needs the full original context to redo the review.
 5. **Still failing after re-spawn** → hard-fail that reviewer. Log in triage: `Reviewer <name> failed to produce output after retry; findings unavailable.` Continue with other reviewers.
 
 Structure-presence is the discriminator, not byte count.
