@@ -60,7 +60,7 @@ Read for the orchestrator's own use AND to pass to reviewers:
   1. Plan file matching the current branch slug, or the most recently modified plan touching files in the diff. Resolve plans directory per CLAUDE.md "Plans Directory Resolution".
   2. PR body in PR mode: `gh pr view <number> --json body --jq .body`
   3. Full commit message bodies on the branch: `git log main..HEAD --format=%B`
-  4. None found → emit a chat note **before the chat opener (or unconditionally at end of Step 14 if no items need review)**: `No plan/PR/commit bodies — criteria applied with reduced confidence; more findings will land in needs-review.` Don't gate the note behind dialog flow.
+  4. None found → include in Step 14's final summary: `No plan/PR/commit bodies — criteria applied with reduced confidence; more findings landed in needs-review.`
 - **Diff, per mode:**
   - Local: `git diff` + `git diff --cached`
   - Unreviewed: `git diff <sha>..HEAD` (sha from `.last-reviewed.json`)
@@ -180,23 +180,23 @@ Match by `same file + same root issue (paraphrase equivalence)`. Line number is 
 
 ### Bucket criteria
 
-- **Auto-fix** (ALL): verified yes; mechanical (typo, missing import, single-line correction, missing test case for a path the diff introduced); no behavior change beyond the fix's scope; no test rewriting; doesn't substantively expand scope (small boyscouting OK); fixes a gap from current work OR addresses a clear UX risk. Multi-file fine if correct + aligned + small-scoped.
+- **Auto-fix** (ALL): verified yes; mechanical (typo, missing import, single-line correction, missing test case for a path the diff introduced, closing an unfenced code block adjacent to fenced ones in a file the diff already touches); no behavior change beyond the fix's scope; no test rewriting; doesn't substantively expand scope (small boyscouting OK); fixes a gap from current work OR addresses a clear UX risk. Multi-file fine if correct + aligned + small-scoped.
 
 - **Auto-skip** (ANY): reviewer clearly wrong (`unverifiable citation` from Step 6 counts here); diminishes plan goal with no alt path that preserves both; large architectural / maintenance / developer burden; significantly more complexity for little gain. Examples: reviewer cites nonexistent file:line; finding proposes rewriting an unrelated module as async; suggests adopting an alternative library that's a multi-day spike.
 
-- **Needs-review** (everything else): close tradeoffs; diverts from plan approach; scope outside planned work exceeding boyscouting; important contract changes (API shape differs from plan); reviewer found new info shifting tradeoff weight; OR diminishes goal but a viable alt path exists. Examples: `IEnumerable` vs `List` return-type tradeoff; API contract drift from plan endpoint table; `Result<T>` instead of throwing for one function; rename of a method appearing in 6 other call sites.
+- **Needs-review** (everything else): close tradeoffs; diverts from plan approach; scope outside planned work exceeding boyscouting; important contract changes (API shape differs from plan); reviewer found new info shifting tradeoff weight; OR diminishes goal but a viable alt path exists. Examples: `IEnumerable` vs `List` return-type tradeoff; API contract drift from plan endpoint table; `Result<T>` instead of throwing for one function; rename of a method appearing in 6 other call sites; missing test requires mocking an external service or complex setup.
 
 ### Escalation rules (override auto-skip → force needs-review)
 
 If any apply, the finding goes to needs-review regardless of other reasoning. Better to ask one extra question than silently skip an important call.
 
-- **Hesitation → escalate.** Uncertain whether auto-fix or auto-skip cleanly fits? Escalate. Auto-buckets are for unambiguous cases.
-- **Scope-creep hedging is a hesitation signal.** Two cases that LOOK like scope creep but are textbook small-boyscouting. Confidence determines the bucket — auto-fix when you're sure, escalate when you're hedging.
+- **Hesitation → escalate.** Uncertain whether a finding clearly belongs in one auto-bucket — either way? Escalate. Both directions count: hedging toward auto-fix and hedging toward auto-skip both warrant escalation. Auto-buckets are for unambiguous cases.
+- **Scope-creep hedging is a hesitation signal.** Operable trigger: if you have written or are about to write any of these phrases in your reasoning, escalate. "Out of scope", "separate PR", "pre-existing not our concern", "we'd be piggybacking", "convention sweep deserves its own decision." Two cases that LOOK like scope creep but are small-boyscout when you're confident:
 
-  - **Pre-existing mechanical defects in files the branch already touches** — unfenced code blocks next to fenced ones, clear typos, missing language tags, broken-by-construction syntax. Zero marginal cost; the file is already being edited. If confident the defect is mechanical (no judgment call), auto-fix per bucket criteria. Split out judgment-laden parts (heading restructures, content rewrites) and surface those as needs-review.
-  - **Convention sweeps with one obvious canonical winner** — when 80%+ of the relevant codebase already uses one convention OR the branch's own work has already aligned with one variant. If confident the convention is uncontested, auto-fix the sweep. Reserve "separate PR for convention" for cases where the choice is genuinely contested.
+  - **Pre-existing mechanical defects in files the branch already touches** — unfenced code blocks next to fenced ones, clear typos, missing language tags, broken-by-construction syntax. Zero marginal cost; the file is already being edited. Confident → auto-fix; hedging → escalate with `My take: FIX`. Split judgment-laden parts (heading restructures, content rewrites) into needs-review.
+  - **Convention sweeps with one obvious canonical winner** — 80%+ of the relevant codebase uses one convention OR the branch's own work has already aligned with one variant. Confident → auto-fix the sweep; hedging → escalate. Reserve "separate PR for convention" for genuinely contested choices.
 
-  **Hesitation detection (the escalation trigger):** if you find yourself reasoning "this is out-of-scope", "separate PR for this", "pre-existing not our concern", "we'd be piggybacking", "convention sweep deserves its own decision" — that IS hesitation, not analysis. Escalate to needs-review with `My take: FIX` and render `Why surfacing this:` showing the prior hesitation. Let the user decide.
+  When escalating from hedging, render `Why surfacing this:` showing the prior hesitation.
 
 - **No thought-terminator labels.** "Cosmetic", "defensible", "minor", "stylistic", "nit" need a concrete harm-avoided named next to them. If none exists, escalate.
 - **Name-vs-meaning check.** Diff reshapes a URL/route/DTO/contract → any identifier whose name embeds the removed concept must surface as needs-review. Stale names compound across siblings — never auto-skip.
@@ -262,16 +262,15 @@ The triage file already exists from Step 8; update it in place.
 
 Do not run the full test suite — the end-of-review reminder cues that.
 
-## Step 11: Chat Opener
+## Step 11: Dialog Intro (only when needs-review items exist)
 
-After auto-fix completes, print the opener:
+If `N` needs-review items > 0, print the dialog intro:
 
 ```text
-Auto-fixed: <N> | Auto-skipped: <N> | Triage: .reviews/code/<timestamp>-<branch>-triage.md
-Needs your review: <N> — let's start with #<first>.
+Needs your review: <N> findings. Starting with #<first>.
 ```
 
-If no items need review, skip to Step 13.
+If `N` = 0, skip directly to Step 13 — no opener here. The final summary at Step 14 is the user's only chat output for this run.
 
 ## Step 12: Needs-Review Dialog (One at a Time)
 
@@ -436,23 +435,27 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 Single continuous numbering across all sections (matches the dialog ordering).
 
-## Step 14: Update Review Marker + End Reminder
+## Step 14: Update Review Marker + Final Summary
 
-After triage file write:
+Do silent file ops first, then print one combined summary at the end.
 
 1. Update `.reviews/code/.last-reviewed.json` — single JSON object mapping branch names to SHAs. Read existing file if present (parse mentally; no trailing commas, no comments), add or update current branch's entry, write back as one well-formed JSON object. Create if missing.
-2. PR mode additionally: check `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` and mention any failures in the chat output. Filter to failures only — avoids noise from all-passing checks.
-3. Print the end-of-review reminder:
+2. PR mode additionally: check `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` and note any failures for the summary below.
+3. Print the final summary as the LAST chat output (no further chat from this skill after this):
 
    ```text
+   Auto-fixed: <N> | Auto-skipped: <N> | Needs-review: <N> (fixed: <x>, skipped: <y>)
+   Triage: .reviews/code/<timestamp>-<branch>-triage.md
+
    Build green. Stage, run `pre-commit run`, re-stage if modified, then commit.
    Re-build and run full test suite if pre-commit touched code.
    ```
 
-   PR mode additionally append:
+   PR mode appends:
 
    ```text
    Auto-fixes applied locally. Commit+push to update PR; CI will re-run.
+   Failed checks: <list> (or "none")
    ```
 
 ## Rules
