@@ -191,6 +191,13 @@ Match by `same file + same root issue (paraphrase equivalence)`. Line number is 
 If any apply, the finding goes to needs-review regardless of other reasoning. Better to ask one extra question than silently skip an important call.
 
 - **Hesitation → escalate.** Uncertain whether auto-fix or auto-skip cleanly fits? Escalate. Auto-buckets are for unambiguous cases.
+- **Scope-creep hedging is a hesitation signal.** Two cases that LOOK like scope creep but are textbook small-boyscouting. Confidence determines the bucket — auto-fix when you're sure, escalate when you're hedging.
+
+  - **Pre-existing mechanical defects in files the branch already touches** — unfenced code blocks next to fenced ones, clear typos, missing language tags, broken-by-construction syntax. Zero marginal cost; the file is already being edited. If confident the defect is mechanical (no judgment call), auto-fix per bucket criteria. Split out judgment-laden parts (heading restructures, content rewrites) and surface those as needs-review.
+  - **Convention sweeps with one obvious canonical winner** — when 80%+ of the relevant codebase already uses one convention OR the branch's own work has already aligned with one variant. If confident the convention is uncontested, auto-fix the sweep. Reserve "separate PR for convention" for cases where the choice is genuinely contested.
+
+  **Hesitation detection (the escalation trigger):** if you find yourself reasoning "this is out-of-scope", "separate PR for this", "pre-existing not our concern", "we'd be piggybacking", "convention sweep deserves its own decision" — that IS hesitation, not analysis. Escalate to needs-review with `My take: FIX` and render `Why surfacing this:` showing the prior hesitation. Let the user decide.
+
 - **No thought-terminator labels.** "Cosmetic", "defensible", "minor", "stylistic", "nit" need a concrete harm-avoided named next to them. If none exists, escalate.
 - **Name-vs-meaning check.** Diff reshapes a URL/route/DTO/contract → any identifier whose name embeds the removed concept must surface as needs-review. Stale names compound across siblings — never auto-skip.
 - **Plan deviation → escalate.** Implementation diverges from plan's endpoint table / Decisions / glossary / named contract → needs-review, even if divergence looks defensible. Plan is the contract.
@@ -323,7 +330,11 @@ For each item:
 
 ### Opt-in preference capture (on user redirect)
 
-**Trigger condition (AND of):** (1) user redirected — pressed `n` against `My take: FIX` (now skipped) — AND (2) the redirect reason contains a generalizing signal. **OR**: user explicitly typed `remember` / `capture`. Ask ONCE per finding only when these hold:
+**Trigger condition (AND of):** (1) user redirected the orchestrator's recommendation — EITHER `n` against `My take: FIX` (now skipped) OR `n` against `My take: SKIP` (now redirected toward fix). Both directions count: a fix-to-skip redirect generates a "don't flag this category" preference; a skip-to-fix redirect generates a "lean toward FIX for this category" preference. AND (2) the redirect reason contains a generalizing signal. **OR**: user explicitly typed `remember` / `capture`. Ask ONCE per finding only when these hold.
+
+Generalizing signals: "we always", "this codebase prefers", "we lean toward", "don't flag this category", "treat X as Y", or a clear pattern phrase. For one-off / case-specific redirects, do not offer — the reasoning lives only in the triage file.
+
+**Always propose the drafted rule upfront** — never ask "want to save as preference?" without showing the text. If the user edits the draft inline, use their text as the rule body.
 
 ```text
 Capture as preference?
@@ -334,13 +345,12 @@ Why: <project pattern / user redirect>; captured <date>.
 Save to project / user / no? p / u / n
 ```
 
-ONLY offer when the redirect reason contains a generalizing signal: "we always", "this codebase prefers", "middleware validates these", "don't flag this category", or a clear pattern phrase. For one-off / case-specific redirects, do not offer — the reasoning lives only in the triage file.
+**Scope guidance** (use to recommend a default before asking):
 
-On `p`: append the rule to `<project-root>/.claude/review-preferences.md` via Edit.
-On `u`: append to `~/.claude/review-preferences.md` via Edit.
-On `n`: skip; reasoning stays in triage only.
+- **Project** (`<project-root>/.claude/review-preferences.md`): rule is specific to THIS codebase's conventions, technology choices, architectural patterns, naming, or stack ("we always validate at middleware", "models use TableName attribute"). Tied to the repo.
+- **User** (`~/.claude/review-preferences.md`): rule is a general process or bucketing calibration that applies across all projects ("bias toward FIX for pre-existing mechanical defects in touched files", "treat plan deviations as needs-review even if defensible"). Tied to the user's style.
 
-If the user edits the draft inline, use their text as the rule body.
+On `p`: append to project file via Edit. On `u`: append to user file via Edit. On `n`: skip; reasoning stays in triage only.
 
 ### Abort / pause
 

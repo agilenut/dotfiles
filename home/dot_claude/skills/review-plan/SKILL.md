@@ -116,6 +116,13 @@ Match by `same plan section + same root issue (paraphrase equivalence)`.
 If any apply, the finding goes to needs-review regardless of other reasoning. Better to ask one extra question than silently skip an important call.
 
 - **Hesitation → escalate.** Uncertain whether auto-fix or auto-skip cleanly fits? Escalate.
+- **Scope-creep hedging is a hesitation signal.** Two cases that LOOK like scope creep but are textbook small-boyscouting for plan reviews. Confidence determines the bucket — auto-fix when you're sure, escalate when you're hedging.
+
+  - **Pre-existing mechanical defects in the plan being reviewed** — typos, malformed markdown, missing language tags on code fences, broken cross-references. If confident the defect is mechanical (no content judgment required), auto-fix it. Split out judgment-laden parts (heading restructures, content rewrites, Decision rewordings) and surface those as needs-review.
+  - **Convention sweeps across plan steps with one obvious winner** — e.g., every commit row declares `review: per-commit` except one; every Decision uses the same format except one. If confident the convention is uncontested, auto-fix the sweep.
+
+  **Hesitation detection (the escalation trigger):** if you find yourself reasoning "this is out-of-scope", "separate plan revision", "we'd be piggybacking", "convention sweep deserves its own decision" — that IS hesitation, not analysis. Escalate to needs-review with `My take: FIX` and render `Why surfacing this:` showing the prior hesitation.
+
 - **No thought-terminator labels.** "Cosmetic", "defensible", "minor", "stylistic", "nit" need a concrete harm-avoided named next to them. If none exists, escalate.
 - **Name-vs-meaning check.** If the plan introduces or renames a contract (API endpoint, DTO field, schema) → any reviewer finding about an identifier whose name now embeds a stale concept must surface as needs-review.
 - **Plan internal consistency.** When a reviewer flags inconsistency between the plan's Goal / Approach / Decisions / Commits sections → force needs-review. The plan is the contract; internal contradictions need explicit resolution. _Anti-example:_ reviewer notes Approach mentions JSON but Step 2 says YAML — force needs-review even if it looks like a typo, because the Goal anchors the choice and an auto-fix to either side might be wrong.
@@ -237,7 +244,11 @@ For each item, update the triage entry's Status:
 
 ### Opt-in preference capture (on user redirect)
 
-**Trigger (AND of):** (1) user pressed `n` against `My take: FIX` AND (2) redirect reason contains a generalizing signal ("we always", "this codebase prefers", "don't flag this category"). **OR:** user typed `remember` / `capture`. Ask ONCE per finding:
+**Trigger (AND of):** (1) user redirected the orchestrator's recommendation — EITHER `n` against `My take: FIX` (now skipped) OR `n` against `My take: SKIP` (now redirected toward fix). Both directions count. A fix-to-skip redirect generates a "don't flag this category" preference; a skip-to-fix redirect generates a "lean toward FIX for this category" preference. AND (2) redirect reason contains a generalizing signal: "we always", "this codebase prefers", "we lean toward", "don't flag this category", "treat X as Y", or a clear pattern phrase. **OR:** user typed `remember` / `capture`. Ask ONCE per finding when these hold.
+
+For one-off / case-specific redirects, do not offer — the reasoning lives only in the triage file.
+
+**Always propose the drafted rule upfront** — never ask "want to save as preference?" without showing the text. If the user edits the draft inline, use their text as the rule body.
 
 ```text
 Capture as preference?
@@ -248,7 +259,12 @@ Why: <project pattern / user redirect>; captured <date>.
 Save to project / user / no? p / u / n
 ```
 
-`p` → append to `<project-root>/.claude/review-preferences.md`. `u` → append to `~/.claude/review-preferences.md`. `n` → skip; reasoning stays in triage only.
+**Scope guidance** (recommend a default before asking):
+
+- **Project** (`<project-root>/.claude/review-preferences.md`): rule is specific to THIS codebase's conventions, technology, or patterns ("we always validate at middleware", "plans always use `stories:` frontmatter, never inline issue refs"). Tied to the repo.
+- **User** (`~/.claude/review-preferences.md`): general process or bucketing calibration that applies across all projects ("bias toward FIX for pre-existing mechanical defects in touched files", "treat plan deviations as needs-review even if defensible"). Tied to your style.
+
+`p` → append to project file. `u` → append to user file. `n` → skip; reasoning stays in triage only.
 
 ### Abort / pause
 
