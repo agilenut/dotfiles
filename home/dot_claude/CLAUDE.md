@@ -68,7 +68,6 @@ worktree: false
 - Never commit/push/merge/amend/force-push unless asked
 - Before committing: stage files, run `pre-commit run`, re-stage if it modified anything, repeat until clean — only then `git commit`
 - Each commit must build, test, and pass independently, no dead code or forward refs
-- ALWAYS update docs in the same commit as code — never a separate commit
 - Commit message: short summary, body with bullets explaining why
 - NEVER add Co-Authored-By lines to commits
 - NEVER add "Generated with Claude Code" to PRs
@@ -109,7 +108,26 @@ All review output goes to `.reviews/` relative to main worktree's project root: 
 - If a required tool is unavailable (e.g., Docker), fix or ask — don't skip
 - NEVER change a test just to make it pass — if a test breaks, fix the code or ask me
 
-## Context
+## Documentation
 
-- When editing CLAUDE.md, MEMORY.md, skills, or agents: be terse — minimum words, no explanations
-- Only add or suggest rules/memory/config that genuinely change behavior — if it won't change what Claude does, don't propose it
+Universal — applies to all prose (READMEs, project docs, CLAUDE.md, MEMORY.md, skills, agents):
+
+- **Ask first, write second.** Before adding any content (new section, new bullet, new paragraph), ask: does the reader need this? Is this the right context for it? If either is unclear, don't add it. Default toward restraint.
+- Capture only meaningful signal; no fluff, no restatement, no "as discussed above"
+- Use specific identifiers (class / function / file / table / command names) deliberately. Include them when they're the content (setup commands, API reference) or genuinely help the reader; skip them when they're noise distracting from the core message.
+- Structure (bullets, headings, spacing) matters more than character count
+- Lists for discrete items; prose for flowing ideas
+- One-line italic TL;DR after each top-level section heading
+- Wrap prose paragraphs at ~80 chars; leave one-line bullets, tables, and code blocks alone
+- Cross-references add cognitive load — avoid forward/backward refs when possible
+
+Project docs (READMEs, guides, design docs):
+
+- Document the system as a reader needs it now, NOT as a changelog of what changed. Don't add a new section unless readers benefit from a dedicated landing place.
+- When adding a new way to do something, audit and remove or merge the obsolete ways. Replace, don't append.
+- Update docs in the same commit as the code change — never separately.
+- EXCEPTION: append-only-by-design docs (ADRs, CHANGELOG.md, decision logs) preserve history — don't overwrite previous entries.
+
+Context files (CLAUDE.md, MEMORY.md, skills, agents):
+
+- Only add or suggest rules/memory/config that genuinely change behavior — if it won't change what Claude does, don't propose it.
