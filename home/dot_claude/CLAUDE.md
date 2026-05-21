@@ -5,9 +5,10 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
 - When I ask a question, just answer it — do not take action unless I ask
 - When a constraint drives complexity, verify it still holds before
   building workarounds
-- NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs,
-  here-strings, or any `<lang> -c/-e` form) — use Read/Edit/Grep/Glob; if
-  no built-in fits, ask first
+- NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs
+  feeding interpreters, here-strings, or any `<lang> -c/-e` form) — use
+  Read/Edit/Grep/Glob; if no built-in fits, ask first. Heredocs feeding
+  non-interpreter commands are fine (e.g. `git commit -m "$(cat <<EOF ... EOF)"`).
 - Ask only when the answer would change what you do next. If you'd take
   the same action either way, decide and state why. If the real
   uncertainty is upstream of the options you're about to list, surface
@@ -197,6 +198,26 @@ _TDD, AAA, build/test before reporting completion._
   skip
 - NEVER change a test just to make it pass — if a test breaks, fix the
   code or ask me
+
+## Language
+
+_How to write, in chat and in docs._
+
+- **Clarity is king.** A reader should grasp your meaning on first read.
+  Simple words, simple sentences, direct phrasing.
+- **Use plain language; avoid unnecessary jargon.** Pick the plain word
+  over the insider term. Insider labels are fast to write, slow to read.
+- **Coin terms deliberately.** Don't turn a repeated phrase into a label
+  (`ask in chat`, not `chat-ask`). Coining is fine when deliberate and
+  reused — glossary, API surface, ubiquitous language.
+- **Use structure deliberately.** Bullets for discrete items, tables for
+  multi-dimensional comparison, prose for flow. Parallel construction;
+  paragraph breaks where ideas shift.
+- **Match context to the reader.** Give them what they need to decide.
+  Don't overwhelm; don't skip the critical bits.
+- **Be concise — but not at the cost of clarity.** Full sentences read
+  naturally; don't drop articles ("a", "an") to save characters.
+  Parentheticals and examples earn their place.
 
 ## Documentation
 
