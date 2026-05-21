@@ -38,10 +38,11 @@ relevant test plan section.
 
 ### DIRTY
 
-- Show `git diff --stat`, ask if user wants to commit and push
-- If yes: craft commit message, commit, push (use `-u origin <branch>` if no
-  upstream)
-- Re-run state detection
+- Show `git diff --stat`. `git add` the relevant files; run `pre-commit`
+  and re-stage until clean. Craft a commit message; announce, then run
+  `git commit -m "<message>" && git push` as one Bash call (add
+  `-u origin <branch>` if no upstream) — one prompt covers commit and push.
+- Re-run state detection.
 
 ### NO_PR
 
@@ -77,10 +78,24 @@ relevant test plan section.
 
 ### CI_FAILED
 
-1. `gh pr checks <number>` to identify failures
-2. `gh run view <run-id> --log-failed` for logs
-3. Summarize what failed and why
-4. Offer to investigate and fix
+1. `gh pr checks <number>` and `gh run view <run-id> --log-failed` to
+   identify failures and read logs.
+2. Diagnose root cause; apply the fix via Edit/Write. **One attempt.**
+   Stop (end turn; user re-invokes `/pr`) if: log doesn't name a touched
+   file; fix would touch >1 conceptual area; multiple plausible causes;
+   failing test asserts behavior the change inverts (never edit a test
+   to make it pass).
+3. **Verify**: run `pre-commit` (mandatory — re-stage and repeat until
+   clean; auto-runs where allow-listed, may prompt in other repos). If
+   CLAUDE.md has a fenced bash block under `## Testing`, `## Build`, or
+   `## Development`, run it too; else note "build/test: unavailable".
+4. Post a summary block — sections in this order, use `(none)` /
+   `(unavailable)` for empty (never omit): **What failed** /
+   **Root cause** / **Fix** / **Files** / **Local verification**.
+5. Announce, then run `git commit -m "<message>" && git push` as one Bash
+   call — one prompt covers commit and push.
+6. Re-run state detection. Expect CI_RUNNING; if `gh pr checks` still
+   shows the old failed run, look for a newer run id.
 
 ### PRE_MERGE_TESTING
 
@@ -101,9 +116,10 @@ relevant test plan section.
 1. **Re-verify checks complete.** `gh pr checks <number>` — one-shot read
    (not `--watch`; need result inline). Confirm all passed/skipped; if any
    still running, transition to CI_RUNNING.
-2. All pre-merge items verified (or no pre-merge section). Offer to merge.
-3. If user approves: `gh pr merge <number> --squash --delete-branch` → re-run
-   state detection
+2. All pre-merge items verified (or no pre-merge section). Announce with
+   full pre-merge summary (PR #N `<title>`; target `<base>`; squash;
+   delete `<head>`), then run `gh pr merge <number> --squash --delete-branch`.
+3. Re-run state detection.
 
 ### MERGED_CI_RUNNING
 
@@ -123,12 +139,21 @@ relevant test plan section.
 
 ### MERGED_CI_FAILED
 
-1. `gh run view <run-id> --log-failed`
-2. Investigate, comment on PR with failure details and run link
-3. Offer to fix: create `fix/<branch>-ci`, push, new PR, update PR comment
-   with fix link
-4. Comment on linked issue: "PR #N merged, post-merge CI failed:
-   `<summary>`. Fix PR: #M"
+1. `gh run view <run-id> --log-failed`; diagnose root cause.
+2. Post initial failure comment on the original PR with details and run
+   link — announce, then `gh pr comment`.
+3. **One attempt.** Stop (end turn; user re-invokes `/pr`) on the same
+   conditions as CI_FAILED step 2.
+4. `git checkout -b fix/<branch>-ci`; apply the fix via Edit/Write.
+5. **Verify** (same rule as CI_FAILED step 3): `pre-commit` mandatory;
+   build/test if CLAUDE.md fenced block present.
+6. Post the summary block (same format as CI_FAILED step 4).
+7. Announce, then run `git commit -m "<message>" && git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
+   as one Bash call — one prompt covers commit, push, PR create.
+8. Post fix-PR follow-up comment on the original PR (link to fix PR) —
+   announce, then `gh pr comment`.
+9. Comment on linked issue: "PR #N merged, post-merge CI failed:
+   `<summary>`. Fix PR: #M" — announce, then `gh issue comment`.
 
 ### POST_MERGE_TESTING
 
@@ -157,8 +182,12 @@ relevant test plan section.
 
 ## Rules
 
-_Output formatting and re-verification._
+_Output, prompt announcements, re-verification._
 
+- **Announce before prompting commands.** For commands that trigger native
+  prompts (commits, pushes, merges, PR/issue create / edit / comment),
+  output a one-line intent announcement immediately before the Bash call
+  so the prompt has full context (e.g. "Merging PR #NNN — approve prompt").
 - Terminal output (status, CI summaries): use plain `path:line` format for
   file references
 - GitHub content (PR body, comments, issue edits): use markdown links
