@@ -328,9 +328,10 @@ mocking an external service.
   When escalating from hedging, render `Why surfacing this:` showing the
   prior hesitation.
 
-- **No thought-terminator labels.** `"cosmetic"`, `"defensible"`,
-  `"minor"`, `"stylistic"`, `"nit"` need a concrete harm-avoided
-  alongside. If none exists, escalate.
+- **No dismissive labels.** `"cosmetic"`, `"defensible"`, `"minor"`,
+  `"stylistic"`, `"nit"`, `"MVP"`, `"small project"`, `"low user count"`,
+  or similar shorthand are not skip reasons — they end thinking. Each
+  needs a concrete harm-avoided named alongside. If none exists, escalate.
 - **Stale-name check.** Diff reshapes a URL / route / DTO / contract →
   any identifier whose name embeds the removed concept → needs-review.
   Stale names compound across siblings.
@@ -665,15 +666,28 @@ output._
 2. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
    note any failures for the summary.
 3. Print the final summary as the LAST chat output (no further chat from
-   this skill after this):
+   this skill after this). Per-item enriched format with counts and item
+   numbers so the user can reference items by number for follow-up (e.g.,
+   "actually fix #4"):
 
    ```text
-   Auto-fixed: <N> | Auto-skipped: <N> | Needs-review: <N> (fixed: <x>, skipped: <y>)
+   Auto-fixed (<N>/<total>): #<i> (<5-word descriptor>), #<j> (<descriptor>), ...
+   Auto-skipped (<N>/<total>): #<i> (<descriptor>), ...
+   Needs-review (<N>/<total>; fixed: <x>, skipped: <y>, pending: <z>):
+     #<i> — <status>: <5-word user reason or descriptor>
+     ...
+
    Triage: .reviews/code/<timestamp>-<branch>-triage.md
 
    Build green. Stage, run `pre-commit run`, re-stage if modified, then commit.
    Re-build and run full test suite if pre-commit touched code.
    ```
+
+   `<total>` is the total count of findings across all buckets. Omit a
+   section if its count is 0. Descriptor format: short (≤6 words),
+   action-or-content focused. Examples: `typo in error msg`,
+   `missing using directive`, `matches review-preference`,
+   `parameterize SqlCommand`, `covered by middleware upstream`.
 
    PR mode appends:
 

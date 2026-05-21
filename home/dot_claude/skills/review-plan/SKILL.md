@@ -255,9 +255,10 @@ _Examples:_ reviewer proposes a different decomposition into commits
   When escalating from hedging, render `Why surfacing this:` showing the
   prior hesitation.
 
-- **No thought-terminator labels.** `"cosmetic"`, `"defensible"`,
-  `"minor"`, `"stylistic"`, `"nit"` need a concrete harm-avoided
-  alongside. If none exists, escalate.
+- **No dismissive labels.** `"cosmetic"`, `"defensible"`, `"minor"`,
+  `"stylistic"`, `"nit"`, `"MVP"`, `"small project"`, `"low user count"`,
+  or similar shorthand are not skip reasons — they end thinking. Each
+  needs a concrete harm-avoided named alongside. If none exists, escalate.
 - **Stale-name check.** If the plan introduces or renames a contract
   (API endpoint, DTO field, schema) → any reviewer finding about an
   identifier whose name embeds a stale concept must surface as
@@ -578,14 +579,27 @@ Single continuous numbering across all sections.
 _One combined summary as the last chat output._
 
 Print the final summary as the LAST chat output (no further chat from
-this skill after this):
+this skill after this). Per-item enriched format with counts and item
+numbers so the user can reference items by number for follow-up (e.g.,
+"actually fix #4"):
 
 ```text
-Auto-fixed: <N> | Auto-skipped: <N> | Needs-review: <N> (fixed: <x>, skipped: <y>)
+Auto-fixed (<N>/<total>): #<i> (<5-word descriptor>), #<j> (<descriptor>), ...
+Auto-skipped (<N>/<total>): #<i> (<descriptor>), ...
+Needs-review (<N>/<total>; fixed: <x>, skipped: <y>, pending: <z>):
+  #<i> — <status>: <5-word user reason or descriptor>
+  ...
+
 Triage: .reviews/plans/<timestamp>-<plan-name>-triage.md
 
 Plan updated. Re-read before starting implementation.
 ```
+
+`<total>` is the total count of findings across all buckets. Omit a
+section if its count is 0. Descriptor format: short (≤6 words),
+action-or-content focused. Examples: `typo in step title`,
+`missing chezmoi apply line`, `Decisions-section addition`,
+`split commit 1 into three`.
 
 No `.last-reviewed.json` analog — carry-over via prior triage handles
 dedup. "When was this plan last reviewed?" requires listing

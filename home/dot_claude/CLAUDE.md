@@ -1,39 +1,96 @@
 # Rules
 
+_Cross-cutting rules for collaboration, decisions, and meta-process._
+
 - When I ask a question, just answer it — do not take action unless I ask
-- When a constraint drives complexity, verify it still holds before building workarounds
-- NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs, here-strings, or any `<lang> -c/-e` form) — use Read/Edit/Grep/Glob; if no built-in fits, ask first
-- Never dismiss review findings based on project size, MVP status, or user count — evaluate each on its own merit
-- After a review: if I give a positive fix list ("fix 1, 2, 3" or "all except X"), unmentioned items are skip — proceed. If I only discuss, question, or push back on specific items without naming what to fix, silence on the rest is undecided — pause and confirm before committing
-- Ask only when the answer would change what you do next. If you'd take the same action either way, decide and state why. If the real uncertainty is upstream of the options you're about to list, surface that instead.
-- If you list options for me, pick one and state the principled reason — silent option lists are punting
-- Every option must be a path you'd actually take — no hybrids or filler invented to fill slots
-- Single-keystroke questions (y/n, a/b/c) — I may answer with combinations (a+b); keep the a/b/c shape, don't reach for multi-select tooling. If there's only one real alternative, ask y/n
-- Treat sibling-repo precedent as one data point, not a directive; when flipping a recommendation after seeing precedent, name the new principled reason — if the only reason is consistency, surface that as a trade-off, not the verdict
+- When a constraint drives complexity, verify it still holds before
+  building workarounds
+- NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs,
+  here-strings, or any `<lang> -c/-e` form) — use Read/Edit/Grep/Glob; if
+  no built-in fits, ask first
+- Ask only when the answer would change what you do next. If you'd take
+  the same action either way, decide and state why. If the real
+  uncertainty is upstream of the options you're about to list, surface
+  that instead.
+- If you list options for me, pick one and state the principled reason —
+  silent option lists are punting
+- Every option must be a path you'd actually take — no hybrids or filler
+  invented to fill slots
+- Single-keystroke questions (y/n, a/b/c) — I may answer with
+  combinations (a+b); keep the a/b/c shape, don't reach for multi-select
+  tooling. If there's only one real alternative, ask y/n.
+- Treat sibling-repo precedent as one data point, not a directive; when
+  flipping a recommendation after seeing precedent, name the new
+  principled reason — if the only reason is consistency, surface that as
+  a trade-off, not the verdict
 
 ## Bash
 
-- PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines and checks each segment independently. Pipelines and chains auto-approve when every segment is allow-listed — compose freely (e.g. `gh pr list --json … | jq …`, `git log --oneline | head`).
-- Allow-listed text tools to compose with: jq, grep, sed, head, tail, sort, uniq, wc, cut, diff.
-- Wrapper commands `time`, `nice`, `env` (binary form), `command`, `exec`, `ionice`, `taskset` are peeled — the inner command is what's checked. `sudo`/`doas` are not peeled (privilege escalation always prompts).
-- `xargs [FLAGS] CMD` is peeled — `CMD` is what's checked, with positional args attached. `xargs sh -c '…'` / `bash -c` / `python -c` / `awk` still prompt (the executor is what's checked). Unknown long flags bail rather than mis-parse.
-- `awk '…'` auto-allows when the program scans clean — no `system(`, `getline`, `print >`/`print |`, `printf >`/`printf |`, `@load`, `@include`, or backticks. Programs using `-f`/`-i`/`-e`/`-E`/`--source`/`--include` (loads external scripts, in-place rewrite) always prompt. Tokens that look dangerous as string-literal substrings get rejected as a false-positive — accepted cost.
-- Forms that still always prompt: `sh -c '…'`, `bash -c '…'`, `python -c '…'`/`python -m …`, `node -e '…'`, heredocs feeding an interpreter, here-strings. The _executor_ is what's checked, not the heredoc/string.
-- Native ASK overrides hook-allow. If an all-allow-listed chain still prompts, check `~/.claude/settings.json` `ask` for a broader pattern catching one segment.
-- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which segment didn't match. Note: command previews land in the log unredacted, so don't enable while running commands with secrets in args.
-- `gh api` reads must include `-X GET` or `--method GET` — bare `gh api PATH` prompts.
-- Quiet flags only on builds/tests where success is the only signal: dotnet build -v quiet, dotnet test -v quiet, npm run --silent. Failures still surface errors. Default verbosity while iterating.
-- Don't pre-truncate exploratory output with `head -n 5` / `tail -n 20` — too-small first window forces a re-run, paying twice. Read full output once; truncate once you know the shape.
-- No global installs: `npx` for one-off commands, `pip` only inside a venv, `pipx` for CLI tools, `npm install` only in a project (never `-g`), `dotnet tool` use `--local` in projects or `--global` only outside a project
+_Hook behavior, allow-list peeling, command shapes that prompt vs auto-allow._
+
+- PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines and checks
+  each segment independently. Pipelines and chains auto-approve when
+  every segment is allow-listed — compose freely (e.g.
+  `gh pr list --json … | jq …`, `git log --oneline | head`).
+- Allow-listed text tools to compose with: jq, grep, sed, head, tail,
+  sort, uniq, wc, cut, diff.
+- Wrapper commands `time`, `nice`, `env` (binary form), `command`,
+  `exec`, `ionice`, `taskset` are peeled — the inner command is what's
+  checked. `sudo`/`doas` are not peeled (privilege escalation always
+  prompts).
+- `xargs [FLAGS] CMD` is peeled — `CMD` is what's checked, with
+  positional args attached. `xargs sh -c '…'` / `bash -c` / `python -c`
+  / `awk` still prompt (the executor is what's checked). Unknown long
+  flags bail rather than mis-parse.
+- `awk '…'` auto-allows when the program scans clean — no `system(`,
+  `getline`, `print >`/`print |`, `printf >`/`printf |`, `@load`,
+  `@include`, or backticks. Programs using `-f`/`-i`/`-e`/`-E`/`--source`/`--include`
+  (loads external scripts, in-place rewrite) always prompt. Tokens that
+  look dangerous as string-literal substrings get rejected as a
+  false-positive — accepted cost.
+- Forms that still always prompt: `sh -c '…'`, `bash -c '…'`,
+  `python -c '…'`/`python -m …`, `node -e '…'`, heredocs feeding an
+  interpreter, here-strings. The _executor_ is what's checked, not the
+  heredoc/string.
+- Native ASK overrides hook-allow. If an all-allow-listed chain still
+  prompts, check `~/.claude/settings.json` `ask` for a broader pattern
+  catching one segment.
+- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info
+  to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which
+  segment didn't match. Note: command previews land in the log
+  unredacted, so don't enable while running commands with secrets in args.
+- `gh api` reads must include `-X GET` or `--method GET` — bare
+  `gh api PATH` prompts.
+- Quiet flags only on builds/tests where success is the only signal:
+  `dotnet build -v quiet`, `dotnet test -v quiet`, `npm run --silent`.
+  Failures still surface errors. Default verbosity while iterating.
+- Don't pre-truncate exploratory output with `head -n 5` / `tail -n 20`
+  — too-small first window forces a re-run, paying twice. Read full
+  output once; truncate once you know the shape.
+- No global installs: `npx` for one-off commands, `pip` only inside a
+  venv, `pipx` for CLI tools, `npm install` only in a project (never
+  `-g`), `dotnet tool` use `--local` in projects or `--global` only
+  outside a project
 
 ## Planning
 
-- Break work into small, independently committable steps — one commit per step
+_How to scope, sequence, and pause work for non-trivial tasks._
+
+- Break work into small, independently committable steps — one commit
+  per step
 - After completing each step, stop and ask before continuing to the next
-- If you'd diverge from the plan's scope or approach, stop and ask before acting. Tactical choices inside the plan don't need an ask — update the plan file as the choice is made (in the same commit as code if the plan is tracked; just save if gitignored)
-- NEVER write out full plan content in chat — use Edit for targeted changes, then summarize what changed
-- When the user signals new work (story / issue / "let's build X"), invoke `/plan` to scope it; tangents mid-implementation stay tangents unless explicitly escalated
-- If the plan's Commits row tags `review: per-commit`, run `/review` before the stop-and-ask between commits (see the "stop and ask" rule above). End-of-PR timing runs once before pushing for review (typically `gh pr create`).
+- If you'd diverge from the plan's scope or approach, stop and ask
+  before acting. Tactical choices inside the plan don't need an ask —
+  update the plan file as the choice is made (in the same commit as
+  code if the plan is tracked; just save if gitignored)
+- NEVER write out full plan content in chat — use Edit for targeted
+  changes, then summarize what changed
+- When the user signals new work (story / issue / "let's build X"),
+  invoke `/plan` to scope it; tangents mid-implementation stay tangents
+  unless explicitly escalated
+- If the plan's Commits row tags `review: per-commit`, run `/review`
+  before the stop-and-ask between commits. End-of-PR timing runs once
+  before pushing for review (typically `gh pr create`).
 
 ### Plan Naming
 
@@ -54,80 +111,131 @@ worktree: false
 
 ## Code
 
-- ALWAYS look up current APIs and versions on Context7 before using a library; use web search for broader approach questions
+_Library use, warnings, secrets._
+
+- ALWAYS look up current APIs and versions on Context7 before using a
+  library; use web search for broader approach questions
 - NEVER suppress compiler warnings or analyzer rules without asking first
 - No committed secrets or credentials
 
 ## Dotnet
 
-- Prefer 1 type per file unless they really go together (e.g. static LoggerMessages)
+_File-per-type convention._
+
+- Prefer 1 type per file unless they really go together (e.g. static
+  LoggerMessages)
 
 ## Git
 
+_Branching, committing, PRs, post-merge cleanup._
+
 - Never work on main — create a feature branch first
 - Never commit/push/merge/amend/force-push unless asked
-- Before committing: stage files, run `pre-commit run`, re-stage if it modified anything, repeat until clean — only then `git commit`
-- Each commit must build, test, and pass independently, no dead code or forward refs
+- Before committing: stage files, run `pre-commit run`, re-stage if it
+  modified anything, repeat until clean — only then `git commit`
+- Each commit must build, test, and pass independently, no dead code or
+  forward refs
 - Commit message: short summary, body with bullets explaining why
 - NEVER add Co-Authored-By lines to commits
 - NEVER add "Generated with Claude Code" to PRs
-- NEVER use Closes/Fixes in PRs — use "Part of #123" (issue stays open for board review)
-- Post merge CI failure: comment on failed PR (what broke, fix PR link) and update the issue with a running failure log
+- NEVER use Closes/Fixes in PRs — use "Part of #123" (issue stays open
+  for board review)
+- Post merge CI failure: comment on failed PR (what broke, fix PR link)
+  and update the issue with a running failure log
 
 ## Worktree
 
-- `ToolSearch select:EnterWorktree` then call `EnterWorktree` — harness updates cwd; don't `cd` or `git -C` to navigate
+_Entering, exiting, where they land._
+
+- `ToolSearch select:EnterWorktree` then call `EnterWorktree` — harness
+  updates cwd; don't `cd` or `git -C` to navigate
 - `ExitWorktree` triggers cleanup (docker compose down + worktree remove)
-- Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling). Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
+- Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling).
+  Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
 
 ## Workspace
 
+_Where plans and reviews live; resolution order for plans directory._
+
 ### Plans Directory Resolution
 
-1. `plansDirectory` from `.claude/settings.local.json`, then `.claude/settings.json`
-2. If not found and in a worktree: main tree's `.claude/settings.local.json`, then `.claude/settings.json`
+1. `plansDirectory` from `.claude/settings.local.json`, then
+   `.claude/settings.json`
+2. If not found and in a worktree: main tree's
+   `.claude/settings.local.json`, then `.claude/settings.json`
 3. If not found: `~/.claude/settings.json`
-4. If found at any step, resolve relative to main worktree's project root (or project root if not in a worktree)
-5. If not found and in a repo, check for `.plans/` at main worktree root — use if it exists
+4. If found at any step, resolve relative to main worktree's project
+   root (or project root if not in a worktree)
+5. If not found and in a repo, check for `.plans/` at main worktree root
+   — use if it exists
 6. If not found, use `.claude/plans` at main worktree root
 7. If not in a repo, use `~/.claude/plans`
 
 ### Reviews Directory
 
-All review output goes to `.reviews/` relative to main worktree's project root: `.reviews/code/` for code reviews, `.reviews/plans/` for plan reviews. Branch review state is tracked in `.reviews/code/.last-reviewed.json`.
+All review output goes to `.reviews/` relative to main worktree's
+project root: `.reviews/code/` for code reviews, `.reviews/plans/` for
+plan reviews. Branch review state is tracked in
+`.reviews/code/.last-reviewed.json`.
 
 ## Database
 
-- EF migrations must be backward-compatible — never rename or drop columns in one step; use expand/contract
+_Migration safety._
+
+- EF migrations must be backward-compatible — never rename or drop
+  columns in one step; use expand/contract
 
 ## Testing
 
-- TDD: write test first, run it, see it FAIL, then write minimum code to pass, run again
+_TDD, AAA, build/test before reporting completion._
+
+- TDD: write test first, run it, see it FAIL, then write minimum code
+  to pass, run again
 - Arrange / Act / Assert comments
 - Always build and test changes before reporting completion
-- If a required tool is unavailable (e.g., Docker), fix or ask — don't skip
-- NEVER change a test just to make it pass — if a test breaks, fix the code or ask me
+- If a required tool is unavailable (e.g., Docker), fix or ask — don't
+  skip
+- NEVER change a test just to make it pass — if a test breaks, fix the
+  code or ask me
 
 ## Documentation
 
-Universal — applies to all prose (READMEs, project docs, CLAUDE.md, MEMORY.md, skills, agents):
+_How to write prose: principles for READMEs, project docs, and context
+files (CLAUDE.md, MEMORY.md, skills, agents)._
 
-- **Ask first, write second.** Before adding any content (new section, new bullet, new paragraph), ask: does the reader need this? Is this the right context for it? If either is unclear, don't add it. Default toward restraint.
-- Capture only meaningful signal; no fluff, no restatement, no "as discussed above"
-- Use specific identifiers (class / function / file / table / command names) deliberately. Include them when they're the content (setup commands, API reference) or genuinely help the reader; skip them when they're noise distracting from the core message.
-- Structure (bullets, headings, spacing) matters more than character count
+Universal:
+
+- **Ask first, write second.** Before adding any content (new section,
+  new bullet, new paragraph), ask: does the reader need this? Is this
+  the right context for it? If either is unclear, don't add it. Default
+  toward restraint.
+- Capture only meaningful signal; no fluff, no restatement, no "as
+  discussed above"
+- Use specific identifiers (class / function / file / table / command
+  names) deliberately. Include them when they're the content (setup
+  commands, API reference) or genuinely help the reader; skip them when
+  they're noise distracting from the core message.
+- Structure (bullets, headings, spacing) matters more than character
+  count
 - Lists for discrete items; prose for flowing ideas
 - One-line italic TL;DR after each top-level section heading
-- Wrap prose paragraphs at ~80 chars; leave one-line bullets, tables, and code blocks alone
-- Cross-references add cognitive load — avoid forward/backward refs when possible
+- Wrap prose paragraphs at ~80 chars; leave one-line bullets, tables,
+  and code blocks alone
+- Cross-references add cognitive load — avoid forward/backward refs
+  when possible
 
 Project docs (READMEs, guides, design docs):
 
-- Document the system as a reader needs it now, NOT as a changelog of what changed. Don't add a new section unless readers benefit from a dedicated landing place.
-- When adding a new way to do something, audit and remove or merge the obsolete ways. Replace, don't append.
+- Document the system as a reader needs it now, NOT as a changelog of
+  what changed. Don't add a new section unless readers benefit from a
+  dedicated landing place.
+- When adding a new way to do something, audit and remove or merge the
+  obsolete ways. Replace, don't append.
 - Update docs in the same commit as the code change — never separately.
-- EXCEPTION: append-only-by-design docs (ADRs, CHANGELOG.md, decision logs) preserve history — don't overwrite previous entries.
+- EXCEPTION: append-only-by-design docs (ADRs, CHANGELOG.md, decision
+  logs) preserve history — don't overwrite previous entries.
 
 Context files (CLAUDE.md, MEMORY.md, skills, agents):
 
-- Only add or suggest rules/memory/config that genuinely change behavior — if it won't change what Claude does, don't propose it.
+- Only add or suggest rules/memory/config that genuinely change behavior
+  — if it won't change what Claude does, don't propose it.
