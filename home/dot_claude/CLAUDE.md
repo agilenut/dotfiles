@@ -198,6 +198,26 @@ _TDD, AAA, build/test before reporting completion._
 - NEVER change a test just to make it pass — if a test breaks, fix the
   code or ask me
 
+## Language
+
+_How to write, in chat and in docs._
+
+- **Clarity is king.** A reader should grasp your meaning on first read.
+  Simple words, simple sentences, direct phrasing.
+- **Use plain language; avoid unnecessary jargon.** Pick the plain word
+  over the insider term. Insider labels are fast to write, slow to read.
+- **Coin terms deliberately.** Don't turn a repeated phrase into a label
+  (`ask in chat`, not `chat-ask`). Coining is fine when deliberate and
+  reused — glossary, API surface, ubiquitous language.
+- **Use structure deliberately.** Bullets for discrete items, tables for
+  multi-dimensional comparison, prose for flow. Parallel construction;
+  paragraph breaks where ideas shift.
+- **Match context to the reader.** Give them what they need to decide.
+  Don't overwhelm; don't skip the critical bits.
+- **Be concise — but not at the cost of clarity.** Full sentences read
+  naturally; don't drop articles ("a", "an") to save characters.
+  Parentheticals and examples earn their place.
+
 ## Documentation
 
 _How to write prose: principles for READMEs, project docs, and context
