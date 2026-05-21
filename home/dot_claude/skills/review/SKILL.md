@@ -6,151 +6,221 @@ user-invocable: true
 
 # Review Orchestrator
 
-Spawn reviewers, verify, auto-fix obvious, auto-skip obvious mistakes, dialog the ambiguous middle one finding at a time, persist reasoning to a triage file.
+Spawn reviewers, verify, auto-fix obvious, auto-skip obvious mistakes,
+dialog the ambiguous middle one finding at a time, persist reasoning to a
+triage file.
+
+## Invariants
+
+These don't bend, regardless of step:
+
+- **Verify-first.** Articulate `Claim: / Code reality: / Verified:` in
+  the triage file before bucketing any finding. Missing those lines is
+  self-evident protocol violation.
+- **Triage file is the audit trail.** Every decision lands in
+  `.reviews/code/<timestamp>-<branch>-triage.md` with reasoning.
+- **Plan is the contract.** If a plan governs the diff, respect its
+  Decisions. Only challenge with specific new information (fresh API
+  change, security implication) — not a rephrased tradeoff.
+- **Hesitation → escalate.** Uncertain which auto-bucket fits (either
+  direction)? Surface it. Auto-buckets are for unambiguous cases.
+- **Edits only in Step 10 / Step 12.** All other steps are read-only.
 
 ## Step 1: Detect Scope and Reviewer Selection
 
-### Scope (first non-reviewer argument wins)
+_Figure out what to review and which reviewers to spawn._
 
-- `/review branch` → branch mode: `main..HEAD`
-- `/review pr` → PR mode: PR diff
-- `/review unreviewed` → unreviewed mode: uses `.last-reviewed.json` entry (fail if no entry for branch)
+### Scope
 
-Default precedence (no scope argument):
+Explicit arg (first non-reviewer argument wins):
+
+- `branch` → branch mode: `main..HEAD`
+- `pr` → PR mode: PR diff
+- `unreviewed` → diff since `.last-reviewed.json` entry (fail if no entry)
+
+Default precedence (no arg):
 
 1. Run `git status` and `git diff --stat`
-2. If uncommitted changes → local mode
-3. If clean → read `.reviews/code/.last-reviewed.json` and check for current branch entry
-4. If entry exists and `git log <sha>..HEAD` has commits → unreviewed mode
-5. Else → `gh pr view --json number,title,baseRefName,headRefName`
-6. If PR exists → PR mode
-7. Else → branch mode (`main..HEAD`)
-8. If on main with no changes → nothing to review
+2. Uncommitted changes → **local mode**
+3. Clean tree → read `.reviews/code/.last-reviewed.json`; if entry exists
+   and `git log <sha>..HEAD` has commits → **unreviewed mode**
+4. Else → `gh pr view --json number,title,baseRefName,headRefName`
+5. PR exists → **PR mode**
+6. Else → **branch mode** (`main..HEAD`)
+7. On main with no changes → nothing to review
 
-### PR-mode pre-check (branch match)
+### PR-mode pre-check
 
-In PR mode, before any other work: confirm `git branch --show-current` equals `gh pr view --json headRefName --jq .headRefName`. **Detached HEAD edge case:** if `git branch --show-current` returns empty (detached HEAD), surface: `Detached HEAD detected. Check out the PR's branch first.` and stop. Otherwise on mismatch, surface error and stop:
+Confirm `git branch --show-current` equals
+`gh pr view --json headRefName --jq .headRefName`.
 
-> `PR #<N> is on branch <X>; you're on <Y>. Switch branches first.`
+- Empty (detached HEAD) → surface
+  `Detached HEAD detected. Check out the PR's branch first.` and stop.
+- Mismatch → surface
+  `PR #<N> is on branch <X>; you're on <Y>. Switch branches first.`
+  and stop.
 
 Do NOT auto-switch.
 
 ### Reviewer selection
 
-Arguments can include reviewer names: `security`, `ux`, `ai`. These combine with scope arguments in any order.
+Args: `security`, `ux`, `ai` (any order; combinable with scope arg).
 
-- `/review ai` → auto-detect scope + force AI reviewer on (in addition to base + auto-detected)
-- `/review branch security ai` → branch mode + force security and AI on
-- `/review only ai` → auto-detect scope + run ONLY the AI reviewer
-- `/review only security ai` → run ONLY security and AI reviewers
-- `/review pr only ux` → PR mode + run ONLY the UX reviewer
-
-Rules:
-
-- Without `only`: named reviewers add to defaults (base always included, others auto-detected from diff)
-- With `only`: run ONLY the explicitly named reviewers — skip base and auto-detection
-- Reviewer arguments and scope arguments can appear in any order
+- Without `only`: named reviewers add to defaults (base always; others
+  auto-detected from the diff).
+- With `only`: run only the named reviewers; skip base and auto-detection.
 
 ## Step 2: Gather Context
 
-Read for the orchestrator's own use AND to pass to reviewers:
+_Read everything the orchestrator AND reviewers need before spawning._
 
-- `~/.claude/CLAUDE.md` and project `.claude/CLAUDE.md` (conventions)
-- **Intent context, in precedence order:**
-  1. Plan file matching the current branch slug, or the most recently modified plan touching files in the diff. Resolve plans directory per CLAUDE.md "Plans Directory Resolution".
-  2. PR body in PR mode: `gh pr view <number> --json body --jq .body`
-  3. Full commit message bodies on the branch: `git log main..HEAD --format=%B`
-  4. None found → include in Step 14's final summary: `No plan/PR/commit bodies — criteria applied with reduced confidence; more findings landed in needs-review.`
-- **Diff, per mode:**
+- `~/.claude/CLAUDE.md` and project `.claude/CLAUDE.md`
+- **Intent context**, in precedence order:
+  1. Plan file matching branch slug, or most recently modified plan
+     touching diff files (resolve plans dir per CLAUDE.md "Plans Directory
+     Resolution").
+  2. PR body in PR mode: `gh pr view <N> --json body --jq .body`
+  3. Commit message bodies: `git log main..HEAD --format=%B`
+  4. None found → note in Step 14's final summary:
+     `No plan/PR/commit bodies — reduced confidence; more findings landed in needs-review.`
+- **Diff** per mode:
+
   - Local: `git diff` + `git diff --cached`
-  - Unreviewed: `git diff <sha>..HEAD` (sha from `.last-reviewed.json`)
+  - Unreviewed: `git diff <sha>..HEAD`
   - Branch: `git diff main..HEAD`
   - PR: `gh pr diff <number>`
-- **Review preferences** (orchestrator-only, never passed to reviewers):
-  - `~/.claude/review-preferences.md` (user-scope, if it exists)
-  - `<project-root>/.claude/review-preferences.md` (project-scope, if it exists)
-- **Prior triage** for carry-over: scan `.reviews/code/` for the most recent file matching `<timestamp>-<branch>-triage.md` where the frontmatter `branch:` equals the current branch. Read it if found.
+
+  If the diff is >500 lines, tell the user and offer to focus on specific
+  files before continuing.
+
+- **Review preferences** (orchestrator-only, never sent to reviewers):
+  - `~/.claude/review-preferences.md` (user-scope, if exists)
+  - `<project-root>/.claude/review-preferences.md` (project-scope, if
+    exists)
+- **Prior triage** (for carry-over): scan `.reviews/code/` for the most
+  recent triage with frontmatter `branch:` matching current branch.
 
 ## Step 3: Spawn Reviewers (MUST use Agent tool — do NOT inline)
+
+_Run reviewers in parallel; each writes its own findings file._
 
 You MUST use the Agent tool. Do NOT perform the reviews yourself.
 
 ### Auto-detection (skip if `only` was used)
 
-Scan the diff to determine which reviewers to auto-include. Base is always included.
+Base is always included. Scan the diff for these signals to add others:
 
-**Security — include if the diff touches any of:**
+**Security — include if diff touches any of:**
 
-- Paths/filenames containing: `auth`, `login`, `session`, `token`, `credential`, `permission`, `policy`, `middleware`, `security`, `crypto`
-- Dependency manifests: `package.json`, `package-lock.json`, `*.csproj`, `pyproject.toml`, `requirements.txt`, `Gemfile`, `go.mod`
+- Paths/filenames containing: `auth`, `login`, `session`, `token`,
+  `credential`, `permission`, `policy`, `middleware`, `security`, `crypto`
+- Dependency manifests: `package.json`, `package-lock.json`, `*.csproj`,
+  `pyproject.toml`, `requirements.txt`, `Gemfile`, `go.mod`
 - Infrastructure: Dockerfiles, CI/CD workflows, deployment configs
-- Config: `.env*`, `appsettings*.json`, connection strings, CORS/CSP/header settings
+- Config: `.env*`, `appsettings*.json`, connection strings, CORS/CSP/header
+  settings
 - Database: migrations, schema changes
 - Middleware pipeline: `Program.cs`, `Startup.cs`
-- Diff text containing: `password`, `secret`, `api_key`, `encrypt`, `hash`, `salt`, `certificate`
-- Auth in diff: `[Authorize]`, `[AllowAnonymous]`, `ClaimsPrincipal`, `HttpContext.User`, `AddAuthentication`, `AddAuthorization`, `UseAuthentication`, `UseAuthorization`
-- Input handling in diff: `req.body`, `req.params`, `req.query`, `FromBody`, `FromQuery`, `request.form`, `request.json`, `IFormFile`
-- Unsafe patterns in diff: `innerHTML`, `dangerouslySetInnerHTML`, `v-html`, `Html.Raw`, `HtmlString`, `raw(`, `eval(`, `exec(`, `deserialize`, `pickle`
-- SQL in diff: `SqlCommand`, `FromSqlRaw`, `ExecuteSqlRaw`, `execute(`, raw query construction
-- File/URL handling in diff: `upload`, `multipart`, `redirect(`, `DataProtection`, path construction from user input
+- Diff text containing: `password`, `secret`, `api_key`, `encrypt`, `hash`,
+  `salt`, `certificate`
+- Auth attributes: `[Authorize]`, `[AllowAnonymous]`, `ClaimsPrincipal`,
+  `HttpContext.User`, `AddAuthentication`, `AddAuthorization`,
+  `UseAuthentication`, `UseAuthorization`
+- Input handling: `req.body`, `req.params`, `req.query`, `FromBody`,
+  `FromQuery`, `request.form`, `request.json`, `IFormFile`
+- Unsafe patterns: `innerHTML`, `dangerouslySetInnerHTML`, `v-html`,
+  `Html.Raw`, `HtmlString`, `raw(`, `eval(`, `exec(`, `deserialize`,
+  `pickle`
+- SQL: `SqlCommand`, `FromSqlRaw`, `ExecuteSqlRaw`, `execute(`, raw query
+  construction
+- File/URL handling: `upload`, `multipart`, `redirect(`, `DataProtection`,
+  path construction from user input
 
 **UX — include if any UI files in the diff:**
 
 `.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html`
 
-**AI — include if any AI files in the diff:**
+**AI — include if diff touches any of:**
 
-- Agent definitions (`agents/*.md`) or skill definitions (`skills/**/SKILL.md`)
-- Prompt templates: `.yaml`/`.yml` files with keys like `prompts:`, `system:`, `temperature:`, `max_tokens:`, `messages:`, `model:`
+- Agent definitions (`agents/*.md`) or skill definitions
+  (`skills/**/SKILL.md`)
+- Prompt templates: `.yaml`/`.yml` with keys like `prompts:`, `system:`,
+  `temperature:`, `max_tokens:`, `messages:`, `model:`
 - Files in directories named `prompt*`, `eval*`, `llm*`
-- Python/JS/TS files importing `openai`, `anthropic`, `claude_agent_sdk`
-- Files containing `response_format`, `structured_output`, or `ChatCompletion` in the diff
+- Python/JS/TS importing `openai`, `anthropic`, `claude_agent_sdk`
+- Files containing `response_format`, `structured_output`, or
+  `ChatCompletion`
 - LLM test case files (YAML/JSON with scoring assertions, tolerance bands)
 
 ### Spawn
 
-Subagent types: `base-reviewer`, `security-reviewer`, `ux-reviewer`, `ai-reviewer`.
-
-Spawn all selected reviewers in parallel (one message, multiple Agent calls).
+Subagent types (full strings): `base-reviewer`, `security-reviewer`,
+`ux-reviewer`, `ai-reviewer`. Spawn all selected in parallel (one message,
+multiple Agent calls).
 
 Each Agent prompt receives:
 
 - Branch name
-- Output path: `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-<type>.md` — run `date +%Y-%m-%d-%H%M%S` to get the timestamp; do NOT hardcode it
+- Output path:
+  `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-<type>.md`
+  (run `date +%Y-%m-%d-%H%M%S` for timestamp — never hardcode)
 - Full diff
 - CLAUDE.md contents
-- **Plan file PATH** (not content) if intent context found one — reviewer reads it directly to understand goals and respect Decisions
-- **Mandatory write rule** (verbatim, in every spawn prompt): `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
+- Plan file PATH (not content) if intent context found one — reviewer
+  reads it directly. Review-preferences are NEVER sent to reviewers; they
+  live orchestrator-only.
+- **Mandatory write rule** (verbatim):
+  `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
 
-Wait for all agents to complete.
+Wait for all agents.
 
 ## Step 4: Post-Spawn Enforcement (salvage-first)
 
-For each spawned reviewer, verify output before triage:
+_Verify each reviewer wrote a valid output file; salvage from text return
+if not; re-spawn or hard-fail._
+
+For each reviewer, in order:
 
 1. Read the expected output path.
-2. **File exists AND contains the required heading structure** (matches `^# .+ Review:` on a single line, OR contains a `## Findings` heading) → accept.
-3. **File missing/empty OR malformed**, but the Agent tool's return string (the orchestrator's previous Agent tool call result for this reviewer) contains the required heading structure → salvage: write that returned text to the expected path. Log in triage (buffer in memory; emit when triage file is initialized in Step 8 under `## Salvage / failure log`): `<reviewer> output salvaged from text return — did not call Write tool.`
-4. **Neither path has structure** → re-spawn ONCE. Compose the new Agent prompt as: **the original spawn prompt verbatim** (diff, CLAUDE.md, plan path, output path, all of it) **prepended** by this reminder: `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '^# .+ Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.` Do not send only the reminder — the agent needs the full original context to redo the review.
-5. **Still failing after re-spawn** → hard-fail that reviewer. Log in triage: `Reviewer <name> failed to produce output after retry; findings unavailable.` Continue with other reviewers.
+2. File has the required heading (`^# .+ Review:` on a single line OR
+   `## Findings` heading) → **accept**.
+3. File missing/malformed BUT the Agent's text return has the structure →
+   **salvage**: write that text to the path; buffer log line for Step 8:
+   `<reviewer> output salvaged from text return — did not call Write tool.`
+4. Neither has structure → **re-spawn ONCE**. New prompt = original spawn
+   prompt verbatim (diff, CLAUDE.md, plan path, output path) PREPENDED with:
+   `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '^# .+ Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.`
+5. Still failing after re-spawn → **hard-fail** that reviewer. Log:
+   `Reviewer <name> failed to produce output after retry; findings unavailable.`
+   Continue with others.
 
-Structure-presence is the discriminator, not byte count.
+Structure-presence is the discriminator, not byte count. Salvage log
+entries are monitoring data — if salvages recur across runs, the reviewer
+agent prompt needs tightening.
 
 ## Step 5: Build Atomic Findings
 
+_Extract bullets from reviewer reports; dedupe across reviewers._
+
 For each accepted reviewer output:
 
-1. Extract each bullet/finding. Capture the verbatim reviewer text alongside the atomic finding (Step 12's `c`-for-context reads from this, not from the reviewer file).
-2. **Composite split:** only when a bullet has 2+ distinct file:line refs AND the recommendations don't share a single fix. Otherwise treat as one.
-3. **Dedupe across reviewers:** same finding from multiple reviewers → one entry, attribute both `(security, base)`. Match by `same file + same root issue (paraphrase equivalence)`.
+1. Extract each bullet. Capture verbatim reviewer text alongside the
+   finding (Step 12's `c`-for-context reads from this).
+2. **Composite split**: only when 2+ distinct file:line refs AND
+   recommendations don't share a single fix. Otherwise one.
+3. **Dedupe across reviewers**: same finding → one entry, attribute both
+   `(security, base)`. Match by `same file + same root issue (paraphrase equivalence)`.
 
 ## Step 6: Verify-First Per Finding
 
-For every atomic finding, BEFORE assigning a bucket:
+_Open the cited code; confirm or deny the reviewer's claim before
+bucketing. Non-negotiable._
 
-1. Open the cited file at the cited line via Read.
+For every finding, BEFORE bucketing:
+
+1. Read the cited file at the cited line.
 2. Read enough surrounding code to verify the reviewer's factual claim.
-3. **Articulate in the triage file (mandatory):**
+3. **Articulate in the triage file (mandatory)**:
 
    ```text
    Claim: <reviewer's claim>
@@ -158,123 +228,237 @@ For every atomic finding, BEFORE assigning a bucket:
    Verified: yes | no
    ```
 
-4. **Invalid citation:** if the cited file does not exist, the line is out of range, or the cited code clearly does not match the claim's premise (reviewer hallucinated), set `Verified: no — citation invalid`. Auto-skip with reason `unverifiable citation` (this maps to Step 7's "Reviewer clearly wrong" auto-skip criterion). Do not re-spawn the reviewer; the log line itself signals reviewer unreliability for this run.
+4. **Invalid citation**: file/line doesn't exist, or the code doesn't
+   match the claim's premise → `Verified: no — citation invalid`;
+   auto-skip with reason `unverifiable citation` (maps to Step 7's
+   "Reviewer clearly wrong"). Don't re-spawn.
 
-The `Claim:` / `Verified:` lines are mandatory evidence. Missing them is self-evident protocol violation — never skip this step.
-
-**Verify-first self-check before Step 7:** scan the draft triage. If any finding lacks the `Claim:` / `Code reality:` / `Verified:` triplet, STOP and return to Step 6 for that finding before bucketing. This converts the "mandatory" norm into a checkable gate.
+Missing `Claim:` / `Verified:` lines = protocol violation. Self-check
+before Step 7: scan the draft triage; any finding missing the triplet →
+return to Step 6 before bucketing.
 
 ## Step 7: Bucket Each Finding
 
-For each verified finding, run pre-bucket skip checks first; on no match, apply bucket criteria; finally run second-pass flags.
+_Decide what to do with each finding: auto-fix, auto-skip, or surface
+to the user._
 
-### Pre-bucket skip checks (terminal — if matched, bucket is set, skip rest)
+Run in order: pre-bucket skip checks → bucket criteria → escalation
+rules → second-pass flags.
 
-Match by `same file + same root issue (paraphrase equivalence)`. Line number is a soft signal only.
+### Pre-bucket skip checks (terminal — if matched, bucket is set)
 
-- **Carry-over from prior triage:**
-  - User-driven skip (status `skipped (user redirected)` or `skipped (user accepted SKIP)`) → carry as auto-skip: `previously skipped by user: <reason>; reference: <prior-triage-path>`
-  - `auto-skipped` / `fixed` / `pending` → do NOT carry. Re-bucket fresh (auto-skipped reproduces deterministically; fixed re-surfacing means fix didn't stick; pending means user bailed)
-- **Preferences match** (rule in user or project `review-preferences.md`) → auto-skip with `matches review-preference: "<rule>"`
-- **CLAUDE.md / plan Decisions match** (finding contradicts an explicit rule or settled Decision) → auto-skip citing it. "New information" exception: if reviewer cites a fresh library API change or security implication the plan didn't consider, that's new info — proceed to bucket criteria. Restating a tradeoff the plan already discussed is NOT new info.
+Match by `same file + same root issue (paraphrase equivalence)`. Line
+number is a soft signal only.
+
+- **Carry-over from prior triage**: user-driven skip status
+  (`skipped (user redirected)` / `skipped (user accepted SKIP)`) → carry
+  as auto-skip with
+  `previously skipped by user: <reason>; reference: <prior-triage-path>`.
+  Other prior statuses (`auto-skipped` / `fixed` / `pending`) → do NOT
+  carry; re-bucket fresh.
+- **Preferences match** (rule in either `review-preferences.md`) →
+  auto-skip with `matches review-preference: "<rule>"`.
+- **CLAUDE.md / plan Decisions match**: finding contradicts an explicit
+  rule or settled Decision → auto-skip citing it. Exception: reviewer
+  cites a fresh library API change or implication the plan didn't
+  consider → that's new info, proceed to bucket criteria. Rephrasing a
+  tradeoff the plan already discussed is NOT new info.
 
 ### Bucket criteria
 
-- **Auto-fix** (ALL): verified yes; mechanical (typo, missing import, single-line correction, missing test case for a path the diff introduced, closing an unfenced code block adjacent to fenced ones in a file the diff already touches); no behavior change beyond the fix's scope; no test rewriting; doesn't substantively expand scope (small boyscouting OK); fixes a gap from current work OR addresses a clear UX risk. Multi-file fine if correct + aligned + small-scoped.
+**Auto-fix** — ALL of:
 
-- **Auto-skip** (ANY): reviewer clearly wrong (`unverifiable citation` from Step 6 counts here); diminishes plan goal with no alt path that preserves both; large architectural / maintenance / developer burden; significantly more complexity for little gain. Examples: reviewer cites nonexistent file:line; finding proposes rewriting an unrelated module as async; suggests adopting an alternative library that's a multi-day spike.
+- Verified yes
+- Mechanical (typo, missing import, single-line fix, missing test for a
+  path the diff introduced, closing an unfenced code block adjacent to
+  fenced ones in a touched file)
+- No behavior change beyond the fix's scope
+- No test rewriting
+- Doesn't substantively expand scope (small boyscouting OK)
+- Fixes a gap from current work OR addresses a clear UX risk
+- Multi-file fine if correct + aligned + small-scoped
 
-- **Needs-review** (everything else): close tradeoffs; diverts from plan approach; scope outside planned work exceeding boyscouting; important contract changes (API shape differs from plan); reviewer found new info shifting tradeoff weight; OR diminishes goal but a viable alt path exists. Examples: `IEnumerable` vs `List` return-type tradeoff; API contract drift from plan endpoint table; `Result<T>` instead of throwing for one function; rename of a method appearing in 6 other call sites; missing test requires mocking an external service or complex setup.
+_Examples:_ typo in error message; missing `using` directive; off-by-one
+in a comment; rename a misspelled local variable; small-boyscout
+markdown fix.
+
+**Auto-skip** — ANY of:
+
+- Reviewer clearly wrong (`unverifiable citation` counts)
+- Diminishes plan goal with no alt path that preserves both
+- Large architectural / maintenance / developer burden
+- Significantly more complexity for little gain
+
+_Examples:_ reviewer cites a nonexistent file:line; rewrite unrelated
+module as async; adopt alternative library (multi-day spike).
+
+**Needs-review** — everything else:
+
+- Close tradeoffs
+- Diverts from plan approach
+- Scope outside planned work exceeding boyscouting
+- Important contract changes (API shape differs from plan)
+- Reviewer found new info shifting tradeoff weight
+- Diminishes goal but viable alt path exists
+
+_Examples:_ `IEnumerable` vs `List` return-type tradeoff; API contract
+drift from plan endpoint table; `Result<T>` instead of throwing for one
+function; rename of a method in 6 call sites; missing test requires
+mocking an external service.
 
 ### Escalation rules (override auto-skip → force needs-review)
 
-If any apply, the finding goes to needs-review regardless of other reasoning. Better to ask one extra question than silently skip an important call.
+- **Hesitation → escalate.** Uncertain which auto-bucket fits (either
+  direction)? Escalate.
+- **Scope-creep hedging is hesitation.** Writing any of `"out of scope"`,
+  `"separate PR"`, `"pre-existing not our concern"`,
+  `"we'd be piggybacking"`, `"convention sweep deserves its own decision"`
+  in your reasoning → escalate. Two cases that LOOK like scope creep but
+  are small-boyscout when confident:
 
-- **Hesitation → escalate.** Uncertain whether a finding clearly belongs in one auto-bucket — either way? Escalate. Both directions count: hedging toward auto-fix and hedging toward auto-skip both warrant escalation. Auto-buckets are for unambiguous cases.
-- **Scope-creep hedging is a hesitation signal.** Operable trigger: if you have written or are about to write any of these phrases in your reasoning, escalate. "Out of scope", "separate PR", "pre-existing not our concern", "we'd be piggybacking", "convention sweep deserves its own decision." Two cases that LOOK like scope creep but are small-boyscout when you're confident:
+  - **Pre-existing mechanical defects in touched files** — unfenced code
+    blocks, typos, missing language tags, broken syntax. Confident →
+    auto-fix. Hedging → escalate with `My take: FIX`. Split judgment-laden
+    parts (heading restructures, content rewrites) into needs-review.
+  - **Convention sweeps with one obvious winner** — 80%+ of codebase or
+    the branch's own work already aligned. Confident → auto-fix. Hedging
+    → escalate. Reserve "separate PR for convention" for genuinely
+    contested choices.
 
-  - **Pre-existing mechanical defects in files the branch already touches** — unfenced code blocks next to fenced ones, clear typos, missing language tags, broken-by-construction syntax. Zero marginal cost; the file is already being edited. Confident → auto-fix; hedging → escalate with `My take: FIX`. Split judgment-laden parts (heading restructures, content rewrites) into needs-review.
-  - **Convention sweeps with one obvious canonical winner** — 80%+ of the relevant codebase uses one convention OR the branch's own work has already aligned with one variant. Confident → auto-fix the sweep; hedging → escalate. Reserve "separate PR for convention" for genuinely contested choices.
+  When escalating from hedging, render `Why surfacing this:` showing the
+  prior hesitation.
 
-  When escalating from hedging, render `Why surfacing this:` showing the prior hesitation.
+- **No thought-terminator labels.** `"cosmetic"`, `"defensible"`,
+  `"minor"`, `"stylistic"`, `"nit"` need a concrete harm-avoided
+  alongside. If none exists, escalate.
+- **Stale-name check.** Diff reshapes a URL / route / DTO / contract →
+  any identifier whose name embeds the removed concept → needs-review.
+  Stale names compound across siblings.
+- **Plan deviation.** Implementation diverges from plan's endpoint table
+  / Decisions / glossary / named contract → needs-review even if
+  defensible. Plan is the contract.
+- **Don't adopt reviewer hedges wholesale.** Reviewer's skip-reasoning
+  (`"not blocking"`, `"just cosmetic"`) is not your bucket call.
+  Re-verify; if it holds, document why; otherwise escalate.
 
-- **No thought-terminator labels.** "Cosmetic", "defensible", "minor", "stylistic", "nit" need a concrete harm-avoided named next to them. If none exists, escalate.
-- **Name-vs-meaning check.** Diff reshapes a URL/route/DTO/contract → any identifier whose name embeds the removed concept must surface as needs-review. Stale names compound across siblings — never auto-skip.
-- **Plan deviation → escalate.** Implementation diverges from plan's endpoint table / Decisions / glossary / named contract → needs-review, even if divergence looks defensible. Plan is the contract.
-- **Don't adopt reviewer hedges wholesale.** Reviewer's own skip-reasoning ("not blocking", "just cosmetic") is not your bucket call. Re-verify under your own analysis; if it holds, document why; if not, escalate.
+### Second-pass flags (after all findings bucketed)
 
-### Second-pass flags (after all findings are bucketed)
+- **Foundational**: mark `foundational: true` when accepting would moot
+  or reshape 2+ other findings. Signals: `"consider X instead"`,
+  `"could be replaced with"`, `"challenges the plan's approach"`. Changes
+  dialog order (Step 9 / Step 12); does NOT change bucket. Default false.
+  _Example:_ changing storage from JSON to YAML (moots all JSON-parsing
+  findings).
 
-- **Foundational** — mark `foundational: true` when accepting the finding would moot or reshape 2+ other findings in this run. Signals: "consider X instead", "could be replaced with", "challenges the plan's chosen approach". Changes dialog ordering (Step 9 / Step 12) and triggers re-evaluation after acceptance; does NOT change bucket. Default false when in doubt. _Anti-example:_ additional test case (no reshape). _Example:_ changing storage from JSON to YAML (moots all JSON-parsing findings).
+- **Pattern-wide**: only when reviewer's recommendation is a **rename**,
+  **pattern substitution** ("use X instead of Y"), or **convention change**
+  ("always parameterize queries"). Signals: `"rename"`, `"use X instead"`,
+  `"consistency"`, `"always"`, `"across"`, `"every occurrence"`. Local
+  fixes (missing null check, single-site bug) → skip.
 
-- **Pattern-wide** — runs only when the reviewer's recommendation is a **rename**, **pattern substitution** ("use X instead of Y"), or **convention change** ("always parameterize queries"). Phrasing signals: "rename", "use X instead", "consistency", "always", "across", "every occurrence". Local fixes (missing null check, single-site bug, off-by-one) → skip the check.
+  When triggered: grep the cited literal token (length ≥ 4, not in
+  denylist `if/for/get/set/var/let/null/true/false/new/use/try`), excluding
+  file/lines under review + `*/test/*`, `*/__snapshots__/*`,
+  `*/fixtures/*`, `vendor/`, `node_modules/`. 2+ other occurrences →
+  `pattern-wide: true`, force needs-review. Card carries
+  `Pattern: same token in N other places.`
 
-  When triggered: grep for the cited literal token (length ≥ 4, not in denylist `if/for/get/set/var/let/null/true/false/new/use/try`), excluding the file/lines under review and `*/test/*`, `*/__snapshots__/*`, `*/fixtures/*`, `vendor/`, `node_modules/`. 2+ other occurrences → `pattern-wide: true`, force needs-review even if criteria would otherwise auto-skip. Per-finding card carries `Pattern: same token in N other places.` User decides propagate / here-only / skip in dialog.
-
-  For semantic patterns (no literal token), use reviewer phrasing alone — if they wrote "this pattern appears elsewhere", treat as pattern-wide.
+  Semantic patterns (no literal token): use reviewer phrasing — "this
+  pattern appears elsewhere" → treat as pattern-wide.
 
 ## Step 8: Initialize Triage File
 
-Before any dialog or auto-fix, write the triage file at `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-triage.md` (same timestamp as Step 3). Use the canonical structure defined in Step 13 with these initial values:
+_Create the persistent audit file before any auto-fix or dialog._
 
-- Frontmatter: `snapshot-sha: null` (filled at Step 10), other fields populated
+Write `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-triage.md` (same
+timestamp as Step 3) using the canonical structure from Step 13 with these
+initial values:
+
+- Frontmatter: `snapshot-sha: null` (set at Step 10); other fields
+  populated
 - Summary: `pending: N-needs-review`, `fixed: 0`, `skipped: N-auto-skipped`
-- Auto-fixed section: empty placeholder
-- Auto-skipped section: full entries (already known from Step 7)
-- Needs-review section: full entries with `Status: pending`, foundational/pattern-wide flags set
-- Salvage / failure log: all buffered entries from Step 4 (empty if none)
+- Auto-skipped section: full entries (known from Step 7)
+- Needs-review section: full entries with `Status: pending`,
+  foundational/pattern-wide flags
+- Auto-fixed section: empty
+- Salvage log: buffered entries from Step 4 (empty if none)
 
-Steps 9, 10, and 12 update in place. Step 13 finalizes.
+Steps 9, 10, 12 update in place. Step 13 finalizes.
 
 ## Step 9: Foundational Dialog (if any)
 
-Foundational items must dialog with the user BEFORE any auto-fix is applied. Auto-fix is a commitment within a direction; don't commit while direction is in flux.
+_For findings that would reshape other findings, dialog with the user
+before auto-fix._
 
-For each foundational item (in severity order), present the per-finding card (see Step 12 format) with the addition:
+Foundational items dialog BEFORE auto-fix — direction is in flux; don't
+commit until it's settled. For each (severity order), present the Step-12
+card with this addition:
 
 ```text
 Heads up — this is foundational. If you take it, items #X, #Y, #Z may
 not apply; I'll re-evaluate them after your decision.
 ```
 
-After resolution:
+- **Accepted** → re-run verify-and-bucket on dependents; flip superseded
+  ones to auto-skip with reason `superseded by item #<N>`; update triage.
+- **Skipped** → dependents stay in original buckets.
 
-- **Accepted** → re-run verify-and-bucket on the listed dependent items. Some may flip to auto-skip with reason `superseded by item #<N>`. Update the triage file in place.
-- **Skipped** → dependent items stay in their original buckets.
-
-If no foundational items exist, skip directly to Step 10.
+No foundationals → skip to Step 10.
 
 ## Step 10: Apply Auto-Fixes
 
-The triage file already exists from Step 8; update it in place.
+_Apply mechanical fixes; verify each via build / targeted test._
 
-1. **Before the first fix lands**, update triage frontmatter with `snapshot-sha: <git rev-parse HEAD>`.
-2. **Resolve verifier commands once, upfront** (build for non-test fixes; targeted-test for test fixes). Resolution ladder, applied to both:
+1. Before the first fix, set triage frontmatter
+   `snapshot-sha: <git rev-parse HEAD>`.
+2. **Resolve verifier commands upfront** — build for non-test fixes,
+   targeted-test for test fixes. Resolution ladder, applied to both:
    1. Explicit `build-command:` / `test-command:` in CLAUDE.md
-   2. Detect by project marker: `package.json` → `npm run build --silent` / `npx vitest run <file>` (or similar); `*.csproj` → `dotnet build -v quiet` / `dotnet test --filter <TestClass>`; `pyproject.toml` → typically no compile; `pytest <path>` for tests; markdown-only diff → no build/test needed
-   3. None detected → **pause and ask the user before the first auto-fix:** `No <build|test> command detected. Options: (a) name a command, (b) skip and verify manually before commit, (c) abort auto-fix and review everything together. a/b/c?` Do NOT silent-skip — applies the hesitation → escalate rule to the safety net.
-3. **Test-fix detection:** file path contains `/test`, `_test.`, `.spec.`, `.test.`, `Tests/`, `tests/`, or matches the project's test conventions → test fix; else non-test.
+   2. Project marker detection:
+      - `package.json` → `npm run build --silent` /
+        `npx vitest run <file>` (or similar)
+      - `*.csproj` → `dotnet build -v quiet` /
+        `dotnet test --filter <TestClass>`
+      - `pyproject.toml` → no compile typically; `pytest <path>` for tests
+      - markdown-only diff → no build/test needed
+   3. None detected → pause and ask:
+      `No <build|test> command detected. Options: (a) name a command, (b) skip and verify manually, (c) abort auto-fix. a/b/c?`
+      Do NOT silent-skip — applies the hesitation → escalate rule to the
+      safety net.
+3. **Test-fix detection**: file path contains `/test`, `_test.`,
+   `.spec.`, `.test.`, `Tests/`, `tests/`, or matches project conventions
+   → test fix; else non-test.
 4. For each auto-fix:
    - Apply via `Edit` (writes unstaged).
-   - Move finding into the triage's `## Auto-fixed` section with `Status: fixed (auto)`.
-   - Run the matching verifier (build for non-test; targeted-test for test fixes).
-   - **On failure:** `git checkout -- <file>`, re-bucket as needs-review with reason `auto-fix failed build/test: <summary>`, move the entry to the Needs-review section.
+   - Move finding into triage `## Auto-fixed` with `Status: fixed (auto)`.
+   - Run the matching verifier.
+   - On failure: `git checkout -- <file>`, re-bucket as needs-review with
+     reason `auto-fix failed build/test: <summary>`, move entry to
+     Needs-review.
 
-Do not run the full test suite — the end-of-review reminder cues that.
+Do not run the full test suite — Step 14 reminder cues that.
 
 ## Step 11: Dialog Intro (only when needs-review items exist)
 
-If `N` needs-review items > 0, print the dialog intro:
+_Brief intro before the per-finding dialog. Skipped when no items
+need review._
+
+If `N` needs-review items > 0, print:
 
 ```text
 Needs your review: <N> findings. Starting with #<first>.
 ```
 
-If `N` = 0, skip directly to Step 13 — no opener here. The final summary at Step 14 is the user's only chat output for this run.
+If `N` = 0, skip directly to Step 13. The final summary at Step 14 is the
+user's only chat output for this run.
 
-## Step 12: Needs-Review Dialog (One at a Time)
+## Step 12: Needs-Review Dialog (one at a time)
 
-Present findings in this order: critical → important → suggestions. Within each tier, pattern-wide candidates ordered by codebase-echo count (highest first). Foundational items were already dialogged in Step 9; any that the user left undecided there reach this step as ordinary needs-review items at their natural severity.
+_Walk findings with the user, one at a time, applying chosen fixes._
+
+Order: critical → important → suggestions. Within each tier, pattern-wide
+candidates first (by codebase-echo count). Foundational items already
+handled in Step 9; user-undecided ones land here at natural severity.
 
 ### Per-finding card format
 
@@ -293,79 +477,113 @@ Risk if skipped: <one line, ONLY when not self-evident from Claim>
 
 My take: <FIX | SKIP> — <reasoning>
 
-[Why surfacing this: <one line>]   <-- ONLY when My take is SKIP but item is surfaced anyway (foundational or pattern-wide)
+[Why surfacing this: <one line>]   <-- ONLY when surfacing despite a SKIP take (foundational, pattern-wide, or escalated-from-hedging)
 
 y fix / n skip / c more / or type
 ```
 
 ### Input parsing
 
-- `y` → accept the recommendation (whichever was proposed — fix or skip).
-- `n` → take the opposite. If `My take: SKIP`, ask the user how to fix (or accept their inline freeform fix); if `My take: FIX`, mark skipped with the user's reason.
-- `c` → expanded context (see below); re-prompt the menu after.
-- **Any input containing `c` (`c`, `yc`, `nc`)** → show expanded context first; then re-prompt the menu with the user's leaning noted (e.g., `Context shown. Still leaning y/n? — re-prompt y/n/c.`). This honors the user's CLAUDE.md preference for combination answers.
-- Anything else → freeform. Orchestrator answers, then re-offers `y/n/c`.
-- `yn` / `ny` (no `c`) → invalid (no coherent meaning); re-prompt.
+- `y` → accept the recommendation (whichever was proposed).
+- `n` → take the opposite:
+  - Against `SKIP`: ask how to fix or accept inline freeform.
+  - Against `FIX`: mark skipped with the user's reason.
+- Any input containing `c` (`c`, `yc`, `nc`) → show expanded context
+  first, then re-prompt with the user's leaning noted. Honors CLAUDE.md
+  combination-answer preference.
+- Anything else → freeform; orchestrator answers, re-offers `y/n/c`.
+- `yn` / `ny` (no `c`) → invalid; re-prompt.
 
 ### `c` for context
 
-Cap response at ~40 lines. Priority order if space is tight:
+Cap ~40 lines. Priority order if space is tight:
 
-1. Verbatim reviewer quote (from the reviewer's report file)
+1. Verbatim reviewer quote (from Step 5 capture)
 2. ~20-line code window around the cited line
 3. Tradeoffs: fix-as-recommended / alternative / skip
-4. Related findings in same file (if any)
+4. Related findings in same file
 
 If user needs more, they ask freeform.
 
-### After resolution
+### After resolution (Status updates)
 
-For each item:
-
-- **User-confirmed fix** (user pressed `y` against `My take: FIX`): apply via Edit, build/test as in Step 10, update triage `Status: fixed (user-confirmed)`.
-- **User-redirected to skip** (user pressed `n` against `My take: FIX`): update triage `Status: skipped (user redirected: "<reason>")`.
-- **User accepted skip** (user pressed `y` against `My take: SKIP`): update triage `Status: skipped (user accepted SKIP)`.
-- **Fixed via freeform** (user proposed a different fix): apply via Edit; update triage `Status: fixed (user freeform)` with the user's reasoning.
+- `y` against `FIX` → apply via Edit, run verifier per Step 10,
+  `Status: fixed (user-confirmed)`.
+- `n` against `FIX` → `Status: skipped (user redirected: "<reason>")`.
+- `y` against `SKIP` → `Status: skipped (user accepted SKIP)`.
+- Freeform fix → apply via Edit, `Status: fixed (user freeform)` with the
+  user's reasoning captured in the entry.
 
 ### Opt-in preference capture (on user redirect)
 
-**Trigger condition (AND of):** (1) user redirected the orchestrator's recommendation — EITHER `n` against `My take: FIX` (now skipped) OR `n` against `My take: SKIP` (now redirected toward fix). Both directions count: a fix-to-skip redirect generates a "don't flag this category" preference; a skip-to-fix redirect generates a "lean toward FIX for this category" preference. AND (2) the redirect reason contains a generalizing signal. **OR**: user explicitly typed `remember` / `capture`. Ask ONCE per finding only when these hold.
+**Trigger** (AND of):
 
-Generalizing signals: "we always", "this codebase prefers", "we lean toward", "don't flag this category", "treat X as Y", or a clear pattern phrase. For one-off / case-specific redirects, do not offer — the reasoning lives only in the triage file.
+1. User redirected — EITHER `n` against `FIX` OR `n` against `SKIP`. Both
+   directions count:
+   - FIX→SKIP generates a "don't flag this category" preference
+   - SKIP→FIX generates a "lean toward FIX for this category" preference
+2. Redirect reason contains a generalizing signal: `"we always"`,
+   `"this codebase prefers"`, `"we lean toward"`,
+   `"don't flag this category"`, `"treat X as Y"`.
 
-**Always propose the drafted rule upfront** — never ask "want to save as preference?" without showing the text. If the user edits the draft inline, use their text as the rule body.
+**OR** user typed `remember` / `capture` explicitly.
+
+Ask ONCE per finding. For one-off / case-specific redirects, do not
+offer — reasoning stays in triage only.
+
+Always propose the drafted rule upfront — never ask without showing text.
+If user edits the draft inline, use their text.
 
 ```text
 Capture as preference?
 
-Drafted: "<rule based on the user's redirect reason>"
+Drafted: "<rule>"
 Why: <project pattern / user redirect>; captured <date>.
 
 Save to project / user / no? p / u / n
 ```
 
-**Scope guidance** (use to recommend a default before asking):
+**Scope guidance** (recommend a default before asking):
 
-- **Project** (`<project-root>/.claude/review-preferences.md`): rule is specific to THIS codebase's conventions, technology choices, architectural patterns, naming, or stack ("we always validate at middleware", "models use TableName attribute"). Tied to the repo.
-- **User** (`~/.claude/review-preferences.md`): rule is a general process or bucketing calibration that applies across all projects ("bias toward FIX for pre-existing mechanical defects in touched files", "treat plan deviations as needs-review even if defensible"). Tied to the user's style.
+- **Project** (`<project-root>/.claude/review-preferences.md`): specific
+  to this codebase's conventions, technology, or patterns. Examples:
+  `"we always validate at middleware"`,
+  `"models use TableName attribute"`.
+- **User** (`~/.claude/review-preferences.md`): general process or
+  bucketing calibration that applies across projects. Examples:
+  `"bias toward FIX for pre-existing mechanical defects in touched files"`,
+  `"treat plan deviations as needs-review even if defensible"`.
 
-On `p`: append to project file via Edit. On `u`: append to user file via Edit. On `n`: skip; reasoning stays in triage only.
+Actions: `p` → append to project file via Edit. `u` → append to user
+file via Edit. `n` → skip.
 
 ### Abort / pause
 
-If the user types `stop`, `pause`, `quit`, or sends an interrupt mid-dialog: update remaining items as `Status: pending` in the triage file (the file already exists from Step 8, so this update lands cleanly), print:
+User types `stop` / `pause` / `quit` / interrupt → mark remaining items
+`Status: pending` in triage, print:
 
 ```text
-Paused at item #<i>/<N>. Resume with /review — re-invocation reads the latest triage and resumes from pending items.
+Paused at item #<i>/<N>. Resume with /review — re-invocation reads the
+latest triage and resumes from pending items.
 ```
 
-Then exit cleanly. Re-invocation of `/review` on the same branch will find this triage in Step 2's prior-triage scan and (when pending items exist) offer to resume the dialog from where it stopped before re-running reviewers.
+Exit cleanly. Re-invocation finds the triage via Step 2's prior-triage
+scan; if pending items exist, offer to resume the dialog before re-running
+reviewers.
 
 ## Step 13: Finalize Triage File
 
-The triage file was created in Step 8 and updated in place during Steps 9, 10, and 12. Finalize now: recompute the Summary section's counts, ensure the Salvage / failure log section is present (even if empty), confirm every needs-review entry has a terminal `Status:` (no leftover `pending` unless the user aborted in Step 12).
+_Recompute summary counts; ensure structure is complete._
 
-Path: `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-triage.md` (same timestamp as Step 3).
+Triage was created Step 8, updated Steps 9/10/12. Finalize:
+
+- Recompute Summary counts
+- Ensure Salvage / failure log section is present (empty if none)
+- Confirm every needs-review entry has a terminal `Status:` (no leftover
+  `pending` unless user aborted)
+
+Path: `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-triage.md` (same
+timestamp as Step 3).
 
 Frontmatter:
 
@@ -409,7 +627,7 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 - Code reality: ...
 - Verified: <yes | no — citation invalid | ...>
 - Action: SKIP
-- Reasoning: <which auto-skip criterion applied; cite CLAUDE.md/preference/Decision if relevant>
+- Reasoning: <which criterion; cite CLAUDE.md/preference/Decision if relevant>
 
 (... more entries ...)
 
@@ -433,15 +651,21 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 - Reviewer <name> failed after retry; findings unavailable. (if any)
 ```
 
-Single continuous numbering across all sections (matches the dialog ordering).
+Single continuous numbering across all sections.
 
 ## Step 14: Update Review Marker + Final Summary
 
-Do silent file ops first, then print one combined summary at the end.
+_Silent file updates first, then one combined summary as the last chat
+output._
 
-1. Update `.reviews/code/.last-reviewed.json` — single JSON object mapping branch names to SHAs. Read existing file if present (parse mentally; no trailing commas, no comments), add or update current branch's entry, write back as one well-formed JSON object. Create if missing.
-2. PR mode additionally: check `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` and note any failures for the summary below.
-3. Print the final summary as the LAST chat output (no further chat from this skill after this):
+1. Update `.reviews/code/.last-reviewed.json` — single JSON object mapping
+   branch → SHA. Read existing if present (parse mentally; no trailing
+   commas / comments), add or update current branch's entry, write back as
+   one well-formed JSON object. Create if missing.
+2. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
+   note any failures for the summary.
+3. Print the final summary as the LAST chat output (no further chat from
+   this skill after this):
 
    ```text
    Auto-fixed: <N> | Auto-skipped: <N> | Needs-review: <N> (fixed: <x>, skipped: <y>)
@@ -457,12 +681,3 @@ Do silent file ops first, then print one combined summary at the end.
    Auto-fixes applied locally. Commit+push to update PR; CI will re-run.
    Failed checks: <list> (or "none")
    ```
-
-## Rules
-
-- Edits to code/markdown ONLY during Step 10 (eager auto-fix, including foundational-acceptance edits initiated from Step 9) and Step 12 (user-confirmed fix or user-proposed freeform fix). All other steps are read-only.
-- Do NOT run mkdir for output directories — Write creates intermediate directories.
-- If diff >500 lines, tell user and offer to focus on specific files.
-- Triage file's `Claim:` / `Verified:` lines per finding are mandatory evidence — never skip the verify-first step.
-- Reviewer agents receive plan file PATH (not content); review-preferences are orchestrator-only (never passed to reviewers).
-- Salvage log lines in triage are monitoring data — recurring salvages indicate the reviewer agent prompt needs further tightening.
