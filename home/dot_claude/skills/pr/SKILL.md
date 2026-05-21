@@ -116,9 +116,13 @@ relevant test plan section.
 1. **Re-verify checks complete.** `gh pr checks <number>` — one-shot read
    (not `--watch`; need result inline). Confirm all passed/skipped; if any
    still running, transition to CI_RUNNING.
-2. All pre-merge items verified (or no pre-merge section). Announce with
-   full pre-merge summary (PR #N `<title>`; target `<base>`; squash;
-   delete `<head>`), then run `gh pr merge <number> --squash --delete-branch`.
+2. Check `~/.claude/skills/pr/ask-before-merge.txt` (one `owner/repo` per
+   line; `#` for comments; skip if missing). If current repo
+   (`gh repo view --json nameWithOwner --jq .nameWithOwner`) is listed,
+   ask in chat ("Merge PR #N? y/n") and wait for `y` before proceeding.
+   Announce with full pre-merge summary (PR #N `<title>`; target `<base>`;
+   squash; delete `<head>`), then run
+   `gh pr merge <number> --squash --delete-branch`.
 3. Re-run state detection.
 
 ### MERGED_CI_RUNNING
