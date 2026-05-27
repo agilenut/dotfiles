@@ -24,7 +24,9 @@ These don't bend, regardless of step:
   change, security implication) — not a rephrased tradeoff.
 - **Hesitation → escalate.** Uncertain which auto-bucket fits (either
   direction)? Surface it. Auto-buckets are for unambiguous cases.
-- **Edits only in Step 10 / Step 12.** All other steps are read-only.
+- **Code edits only in Step 10 / Step 12.** All other steps are
+  read-only with respect to the codebase. Triage / audit file writes
+  (Step 8 init, Step 13 finalize) are part of the protocol.
 
 ## Step 1: Detect Scope and Reviewer Selection
 
@@ -219,19 +221,29 @@ bucketing. Non-negotiable._
 For every finding, BEFORE bucketing:
 
 1. Read the cited file at the cited line.
-2. Read enough surrounding code to verify the reviewer's factual claim.
+2. Read enough surrounding code to verify both the **factual claim**
+   AND the **interpretive premise** (does the reviewer's framing hold
+   in this context — what is the artifact actually trying to
+   accomplish?). A reviewer can be factually correct (the code does X)
+   but argumentatively wrong (the framing that says X is a problem
+   assumes a constraint that doesn't apply, or critiques scope the
+   artifact isn't trying to address).
 3. **Articulate in the triage file (mandatory)**:
 
    ```text
-   Claim: <reviewer's claim>
-   Code reality: <what the code actually does>
-   Verified: yes | no
+   Claim: <reviewer's claim + interpretive premise>
+   Code reality: <what the code does + what it's trying to do in context>
+   Verified: yes | no — <fact-check + premise-check>
    ```
 
-4. **Invalid citation**: file/line doesn't exist, or the code doesn't
-   match the claim's premise → `Verified: no — citation invalid`;
-   auto-skip with reason `unverifiable citation` (maps to Step 7's
-   "Reviewer clearly wrong"). Don't re-spawn.
+4. **`Verified: no` covers two cases** — both map to Step 7's "Reviewer
+   clearly wrong" auto-skip; don't re-spawn in either case:
+   - **Invalid citation**: file/line doesn't exist, or code doesn't
+     match the factual claim → `Verified: no — citation invalid`.
+   - **Premise doesn't hold**: claim is factually accurate but the
+     reviewer's framing assumes a constraint that doesn't apply, or
+     critiques scope the artifact isn't trying to address → `Verified:
+no — premise doesn't hold: <one-line reason>`.
 
 Missing `Claim:` / `Verified:` lines = protocol violation. Self-check
 before Step 7: scan the draft triage; any finding missing the triplet →
@@ -284,13 +296,19 @@ markdown fix.
 
 **Auto-skip** — ANY of:
 
-- Reviewer clearly wrong (`unverifiable citation` counts)
+- Reviewer clearly wrong — covers both citation issues (`Verified: no —
+citation invalid`) and interpretive misfires (`Verified: no — premise
+doesn't hold`); see Step 6.
 - Diminishes plan goal with no alt path that preserves both
 - Large architectural / maintenance / developer burden
 - Significantly more complexity for little gain
 
-_Examples:_ reviewer cites a nonexistent file:line; rewrite unrelated
-module as async; adopt alternative library (multi-day spike).
+_Examples:_ reviewer cites a nonexistent file:line; reviewer evaluates
+an artifact against criteria it isn't trying to address (e.g., critiques
+a focused comment for scope outside the comment's purpose; applies
+in-test framing to a hydration-time artifact whose job isn't temporal
+anchoring); rewrite unrelated module as async; adopt alternative library
+(multi-day spike).
 
 **Needs-review** — everything else:
 
@@ -375,8 +393,8 @@ Write `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-triage.md` (same
 timestamp as Step 3) using the canonical structure from Step 13 with these
 initial values:
 
-- Frontmatter: `snapshot-sha: null` (set at Step 10); other fields
-  populated
+- Frontmatter: populate all fields (branch, mode, reviewers-ran,
+  plan-file, timestamp)
 - Summary: `pending: N-needs-review`, `fixed: 0`, `skipped: N-auto-skipped`
 - Auto-skipped section: full entries (known from Step 7)
 - Needs-review section: full entries with `Status: pending`,
@@ -410,9 +428,7 @@ No foundationals → skip to Step 10.
 
 _Apply mechanical fixes; verify each via build / targeted test._
 
-1. Before the first fix, set triage frontmatter
-   `snapshot-sha: <git rev-parse HEAD>`.
-2. **Resolve verifier commands upfront** — build for non-test fixes,
+1. **Resolve verifier commands upfront** — build for non-test fixes,
    targeted-test for test fixes. Resolution ladder, applied to both:
    1. Explicit `build-command:` / `test-command:` in CLAUDE.md
    2. Project marker detection:
@@ -426,10 +442,10 @@ _Apply mechanical fixes; verify each via build / targeted test._
       `No <build|test> command detected. Options: (a) name a command, (b) skip and verify manually, (c) abort auto-fix. a/b/c?`
       Do NOT silent-skip — applies the hesitation → escalate rule to the
       safety net.
-3. **Test-fix detection**: file path contains `/test`, `_test.`,
+2. **Test-fix detection**: file path contains `/test`, `_test.`,
    `.spec.`, `.test.`, `Tests/`, `tests/`, or matches project conventions
    → test fix; else non-test.
-4. For each auto-fix:
+3. For each auto-fix:
    - Apply via `Edit` (writes unstaged).
    - Move finding into triage `## Auto-fixed` with `Status: fixed (auto)`.
    - Run the matching verifier.
@@ -470,7 +486,7 @@ Review item <i> of <N> — needs your call
 
 Claim: <one short paragraph quoting / paraphrasing the reviewer>
 
-Verified: <yes | no> — <one-line code-reality summary>
+Verified: <yes | no> — <one-line check summary>
 
 Risk if skipped: <one line, ONLY when not self-evident from Claim>
 
@@ -592,7 +608,6 @@ Frontmatter:
 ---
 branch: <branch>
 mode: <local | branch | unreviewed | pr>
-snapshot-sha: <sha> # captured before first auto-fix
 reviewers-ran: [base, security, ux, ai]
 plan-file: <path or null>
 timestamp: <iso>
@@ -614,7 +629,7 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 - Claim: ...
 - Code reality: ...
-- Verified: yes
+- Verified: yes — <fact-check + premise-check>
 - Action: FIX — <one-line summary of change>
 - Reasoning: <why this met auto-fix criteria>
 
@@ -626,7 +641,7 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 - Claim: ...
 - Code reality: ...
-- Verified: <yes | no — citation invalid | ...>
+- Verified: <yes — <fact-check + premise-check> | no — citation invalid | no — premise doesn't hold: <reason>>
 - Action: SKIP
 - Reasoning: <which criterion; cite CLAUDE.md/preference/Decision if relevant>
 
@@ -638,7 +653,7 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 - Claim: ...
 - Code reality: ...
-- Verified: yes
+- Verified: yes — <fact-check + premise-check>
 - Recommendation: <FIX | SKIP>
 - Foundational: <true | false>
 - Pattern-wide: <true | false; if true, N occurrences>
@@ -665,7 +680,26 @@ output._
    one well-formed JSON object. Create if missing.
 2. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
    note any failures for the summary.
-3. Print the final summary as the LAST chat output (no further chat from
+3. **Evaluate re-run trigger.** Reflect on fixes applied this run
+   (auto-fixes from Step 10 + user-confirmed / freeform fixes from
+   Step 12). Did any introduce new behavior, branches, error handling,
+   or change an architectural approach?
+
+   Skip the trigger if any of:
+
+   - No fixes were applied this run.
+   - All fixes were mechanical (deletions, renames, typos, imports,
+     fence repairs, formatting).
+
+   Otherwise, append to the final summary block (recommend `y`):
+
+   ```text
+   Fixes introduced [<one-line summary of new surface or approach
+   change>] — re-run `/review` on the updated state before committing?
+   y/n
+   ```
+
+4. Print the final summary as the LAST chat output (no further chat from
    this skill after this). Per-item enriched format with counts and item
    numbers so the user can reference items by number for follow-up (e.g.,
    "actually fix #4"):
