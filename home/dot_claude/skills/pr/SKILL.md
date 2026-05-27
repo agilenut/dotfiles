@@ -58,13 +58,23 @@ relevant test plan section.
   - `documentation` — docs-only changes (if label exists)
   - No label if none of the above apply
 - Draft PR: short title (<70 chars), `## Summary` bullets
-- `## Test Plan` — only include if there are items. Items are things not
-  already covered by CI (don't list "tests pass", "build succeeds", "deploy
-  succeeds").
-  - `### Pre-merge` — only include if there are pre-merge items
-  - `### Post-merge` — only include if there are post-merge items
-  - Omit `## Test Plan` entirely if neither section has items
-- Link issue: "Part of #N" (NEVER Closes/Fixes)
+- `## Test Plan` — only include if there are items. Items must be
+  not already covered by CI (don't list "tests pass", "build succeeds",
+  "deploy succeeds"). For each candidate, walk this decision tree:
+
+  - Runnable now in this session? → run it, list under `### Pre-merge`
+    as checked
+  - Needs deploy or post-merge state? → list under `### Post-merge`
+    unchecked
+  - Manual but pre-merge possible (human action, no automation)? →
+    list under `### Pre-merge` unchecked
+  - None of the above (e.g., Linux-only check on a macOS-only
+    machine, or "verify on next clean install") → omit
+
+  Include `### Pre-merge` / `### Post-merge` only if they have items;
+  omit `## Test Plan` entirely if neither section has items.
+
+- Link issue per CLAUDE.md `## Git` issue-reference rules.
 - `gh pr create` (include `--label <label>` if a label was selected), then
   re-run state detection
 
@@ -79,7 +89,9 @@ relevant test plan section.
 ### CI_FAILED
 
 1. `gh pr checks <number>` and `gh run view <run-id> --log-failed` to
-   identify failures and read logs.
+   identify failures and read logs. **Don't reach for `gh run rerun`
+   as a first response** — flakes are confirmed by evidence (compare
+   logs to prior runs, check timestamps), not assumed.
 2. Diagnose root cause; apply the fix via Edit/Write. **One attempt.**
    Stop (end turn; user re-invokes `/pr`) if: log doesn't name a touched
    file; fix would touch >1 conceptual area; multiple plausible causes;

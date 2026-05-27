@@ -126,6 +126,8 @@ This repo is public. Never commit PII:
 
 Applies to launchd labels, comments, examples, template defaults, test fixtures, scripts — anything that gets committed.
 
+**Encrypted files:** when committing them (`chezmoi add --encrypt`), describe by **role** not **content** (e.g., "tack staging + prod aliases" rather than "tack-staging (1.2.3.4) + tack-prod (5.6.7.8)"). Commit messages are part of the public history; leaking decrypted values into the message undoes the encryption.
+
 ## Gotchas
 
 - The `.tmpl` suffix is stripped from target filenames
