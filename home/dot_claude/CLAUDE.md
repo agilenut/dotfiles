@@ -266,6 +266,16 @@ _Branching, committing, PRs, post-merge cleanup._
   surface that and ask before falling back to native hooks — the user
   may want to install the runner first.
 
+- **Stale-index gate — check before every `git commit`.** `git commit`
+  records the index, not the working tree, so anything that edits a file
+  _after_ you staged it — a `/review` fix, a second pre-commit pass, a
+  manual tweak — is silently dropped. Don't trust memory: run
+  `git status --short` right before committing and read the second
+  (working-tree) column. A staged file with later edits shows a mark in
+  BOTH columns (`MM`, `AM`, `MD`, `RM`) — re-`git add` it, re-run
+  pre-commit until clean, then commit. A bare `M` (first column blank)
+  is deliberately unstaged — leave it.
+
 - Before committing, consider if a review is warranted. If a plan
   governs the work, follow its review tag. Otherwise, run `/review`
   for non-trivial changes (new behavior, multi-file refactors); skip

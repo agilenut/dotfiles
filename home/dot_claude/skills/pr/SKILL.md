@@ -39,7 +39,11 @@ relevant test plan section.
 ### DIRTY
 
 - Show `git diff --stat`. `git add` the relevant files; run `pre-commit`
-  and re-stage until clean. Craft a commit message; announce, then run
+  and re-stage until clean. Apply the stale-index gate before committing
+  (CLAUDE.md `## Git`): `git status --short`, re-`git add` any file with a
+  second-column change (`MM`/`AM`/`MD`/`RM`) even if it looks already staged — a
+  prior `/review` may have edited the working tree after staging. Craft a
+  commit message; announce, then run
   `git commit -m "<message>" && git push` as one Bash call (add
   `-u origin <branch>` if no upstream) — one prompt covers commit and push.
 - Re-run state detection.
@@ -104,7 +108,9 @@ relevant test plan section.
 4. Post a summary block — sections in this order, use `(none)` /
    `(unavailable)` for empty (never omit): **What failed** /
    **Root cause** / **Fix** / **Files** / **Local verification**.
-5. Announce, then run `git commit -m "<message>" && git push` as one Bash
+5. Apply the stale-index gate (CLAUDE.md `## Git`): `git status --short`,
+   re-`git add` any second-column change so the Edit's fix is in the index.
+   Announce, then run `git commit -m "<message>" && git push` as one Bash
    call — one prompt covers commit and push.
 6. Re-run state detection. Expect CI_RUNNING; if `gh pr checks` still
    shows the old failed run, look for a newer run id.

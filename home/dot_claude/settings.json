@@ -353,6 +353,13 @@
       "Read(//opt/homebrew/**)",
       "Read(//private/tmp/**)",
       "Read(//tmp/**)",
+      "Skill(pdf)",
+      "Skill(plan)",
+      "Skill(plans)",
+      "Skill(pr)",
+      "Skill(recap)",
+      "Skill(review)",
+      "Skill(review-plan)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs"
     ],
