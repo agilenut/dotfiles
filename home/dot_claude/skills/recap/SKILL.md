@@ -42,14 +42,14 @@ Determine the date range from the argument (relative to today's local date):
 | Argument     | Range                                                             |
 | ------------ | ----------------------------------------------------------------- |
 | (none)       | Today only                                                        |
-| `week`       | Monday of current week through today                              |
-| `last week`  | Monday through Friday of previous week                            |
-| Day names    | Resolve to current week: `mon-fri`, `tue-thu`, `wed` (single day) |
+| `week`       | Sunday of current week through today                              |
+| `last week`  | Sunday through Saturday of previous week                          |
+| Day names    | Resolve to current week: `sun-sat`, `tue-thu`, `wed` (single day) |
 | `M/D`        | Specific date (current year): `3/20`                              |
 | `M/D-M/D`    | Date range: `3/18-3/20`                                           |
 | `YYYY-MM-DD` | ISO date, also supports ranges with `-` between two dates         |
 
-All date boundaries are in the user's local timezone.
+All date boundaries are in the user's local timezone. **Billing weeks run Sunday–Saturday** — `week` and `last week` both anchor on Sunday, not Monday.
 
 **Detect the local timezone first** — required for every subsequent date calculation (range parsing, transcript clustering, midnight splitting). In headless `--print` mode there is no implicit local time, so this must be explicit:
 
@@ -69,9 +69,10 @@ If the argument is ambiguous, ask for clarification.
 Repos come from two sources — never from filesystem walks:
 
 1. **Configured sections** from `[sections]` in `recap.toml`.
-2. **Other (auto-discovered)** from `~/.claude/projects/<encoded-cwd>/*.jsonl` directories with files modified in the date range. Read the authoritative `cwd` from any transcript file in the directory (the `cwd` field on any message) — do NOT decode the directory name, which is lossy for repo names containing literal hyphens (`-` in a name becomes `/` on decode). Then assign:
-   - Longest-prefix match against section paths → that section. Normalize both sides first: expand `~` and resolve via `realpath`. Match on path-segment boundaries only — `~/work/acme` does NOT match `~/work/acme-platform`.
-   - Else `git -C <cwd> rev-parse --path-format=absolute --git-common-dir 2>/dev/null`. If it resolves under a section repo's `.git` (or `.git/worktrees/...`), assign to that section. Auto-picks up ad-hoc sibling worktrees. `--path-format=absolute` is required — bare `--git-common-dir` returns a relative path inside the repo and the prefix-match fails.
+2. **Other (auto-discovered)** from `~/.claude/projects/<encoded-cwd>/*.jsonl` directories holding any turn in the date range. **Locating files — never bound mtime on the high side.** A transcript's mtime is its _last-write_ time and a single session file can be appended to for weeks, so its mtime can fall far after the in-range turns it contains (observed: a file with turns on May 8 whose mtime is May 27). A two-sided `find -newermt "<start>" ! -newermt "<end>"` therefore silently drops long-running sessions that touched the date — the single worst attribution bug in this skill. Use a **one-sided lower bound only** (`find ~/.claude/projects -name '*.jsonl' -newermt "<range-start> 00:00"`, no upper bound) as a coarse pre-filter — safe because mtime ≥ the file's last turn ≥ any in-range turn — then let the **per-turn content-timestamp filter (Step 3h) be authoritative**. When in doubt, scan all dirs and content-filter; mtime is only an optimization, never a correctness boundary. Read the authoritative `cwd` from any transcript file in the directory (the `cwd` field on any message) — do NOT decode the directory name, which is lossy for repo names containing literal hyphens (`-` in a name becomes `/` on decode). Then assign:
+   - Longest-prefix match against section paths → that section. Normalize both sides first: expand `~`, and resolve via `realpath` when the path exists (fall back to lexical normalization when it doesn't — see next bullet). Match on path-segment boundaries only — `~/work/acme` does NOT match `~/work/acme-platform`.
+   - **No match? Canonicalize worktree paths and retry the prefix match.** Worktrees follow two conventions: sibling `<base>--<slug>` (double-dash) and in-repo `<base>/.claude/worktrees/<slug>`. Strip a trailing `--<slug>` from the final path segment, or a trailing `/.claude/worktrees/<slug>`, to recover a `<base>` candidate, then re-run the longest-prefix match against section paths. **The strip is gated on success: accept the canonicalized `<base>` only if it produces a section match; otherwise discard it and leave the original path intact** (fall through to the `git` step below). This fails closed — a real repo whose own directory name legitimately contains `--` is never mis-attributed, because a strip that doesn't land on a configured section is thrown away. It also removes any greedy-vs-lazy ambiguity when the slug itself contains `--`: try the strip, and if it matches a section, use it; if not, the path is unchanged. This is pure string work, so it resolves a worktree even when its directory was deleted after the session — the common case, since worktrees are ephemeral and usually gone by recap time (which is also why the `git` step below can't help). Only the `--` (double-dash) form is a worktree; a single-dash sibling like `<base>-foo` is a distinct repo and must be listed in `recap.toml` explicitly.
+   - Else `git -C <cwd> rev-parse --path-format=absolute --git-common-dir 2>/dev/null` (only resolves when `<cwd>` still exists). If it resolves under a section repo's `.git` (or `.git/worktrees/...`), assign to that section. Catches non-conventional live worktrees. `--path-format=absolute` is required — bare `--git-common-dir` returns a relative path inside the repo and the prefix-match fails.
    - Else if `git rev-parse` succeeded → **Other**, full pipeline using `<cwd>` as the repo.
    - Else (not a git repo) → **Other** as a conversation folder. Skip git/gh; transcript-derived bullets only.
 
@@ -134,6 +135,8 @@ Read the first heading of each matching plan for context.
 
 Transcripts live at `~/.claude/projects/<encoded-cwd>/*.jsonl`, where `<encoded-cwd>` is the repo path with every `/` replaced by `-` (so the leading `/` becomes a leading `-`). Example: `/Users/me/work/acme-platform` → `-Users-me-work-acme-platform`. The cwd field in transcripts is matched literally; symlinked or worktree-different paths may not match.
 
+Read **every** `*.jsonl` in each section's dirs and decide membership by per-turn content timestamp — do NOT pre-filter the file list by mtime with a high-side bound (see Step 3's "never bound mtime on the high side": one session file can span weeks, so a tight `! -newermt` drops days of in-range turns). A one-sided `-newermt "<range-start>"` is the only safe mtime optimization.
+
 **Important — timestamp parsing:** transcripts use millisecond-precision ISO timestamps like `2026-05-02T12:34:56.789Z`. jq's `fromdateiso8601` only accepts second-precision and returns `null` for fractional seconds, silently zeroing every duration. **Strip the fraction before converting**:
 
 ```jq
@@ -142,28 +145,50 @@ Transcripts live at `~/.claude/projects/<encoded-cwd>/*.jsonl`, where `<encoded-
 
 Without this, the entire window-clustering step produces empty output. The `[:19] + "Z"` form is correct for the common `...Z` shape; if you ever see `+00:00`-style timestamps, use `sub("\\.[0-9]+"; "")` instead.
 
+**Window each section independently.** This is the core of billing accuracy: when two clients are worked concurrently (e.g. acme fitted in around widgets), each client's windows are clustered from _only its own_ turns, so both get credited for the wall-clock they actually consumed. Two sections' windows may overlap — that is an intentional double-count of genuine multitasking, not an error (see step 5). The old single-global-timeline approach squashed concurrent work onto one section and starved the other; do not reintroduce it.
+
 **Procedure (run in this exact order — order matters):**
 
-1. **Filter** turns from each transcript file in the section's matching `<encoded-cwd>` directories:
+1. **Filter** turns from every section's transcript directories:
 
    - `.cwd` matches one of the section's paths via **longest-prefix match** (see Step 1)
    - `.timestamp` falls within the date's local-timezone window (convert the local-day boundaries `00:00`–`24:00` to UTC using the offset detected in Step 2, then compare epoch-to-epoch)
    - `.isMeta != true`, `.isSidechain != true`
+   - `.cwd != "/"` — a cwd of exactly `/` is never billable client work. It marks a session launched outside any repo: the scheduled `recap` job (its launchd agent inherits cwd `/`) or a manual `/recap` rerun from a non-repo shell. These recap-tool meta-sessions otherwise pile up as phantom `Other` time (hours per day), so drop them before windowing.
    - `.type == "user"` or `"assistant"`
 
-2. **Sort** filtered turns by timestamp ascending.
+2. **Tag** each turn with its section using the **full Step 3 "Identify repos" assignment chain** — longest-prefix match, then worktree canonicalization (`--<slug>` / `.claude/worktrees/<slug>`), then git fallback, then Other — not a bare prefix match. A bare-prefix shortcut silently misfiles every worktree / ephemeral-dir turn into Other and under-bills the real client. Keep a per-section sorted timestamp list. You will need every section's timeline available when crediting another section's offline gaps (step 6), so compute all sections before windowing any.
 
-3. **Cluster** into windows: a gap > 30 minutes between consecutive turns starts a new window. Window start = first turn's timestamp; end = last turn's timestamp.
+3. **Sort** each section's turns by timestamp ascending.
 
-4. **Split at local midnight** (do this BEFORE rounding): if a window spans local midnight, cut it into two halves at the midnight boundary. The first half stays on its original date; the second half is labeled `(continued)` and routes to the **next** date's output file.
+4. **Cluster** each section's turns into base windows independently: a gap **> 10 minutes** between consecutive turns of that section starts a new window. Window start = first turn's timestamp; end = last turn's timestamp. (10 minutes is the base idle threshold — it is an attention-shift detector, deliberately conservative for billing. Same threshold for every section; per-client differences are handled by the cross-check in step 6, not by tuning the threshold.)
 
-5. **Round** each (possibly-split) half's start/end to the nearest `:00 / :15 / :30 / :45` in local time.
+5. **Content scrub — resolve each window's true section.** A window's section is still provisional: step 2 tagged it by `cwd`, but its _primary subject_ governs. Reassign now, before the offline allowance, so step 6 credits the right client.
 
-6. **Drop** any rounded half that is under 5 minutes. (Note: this can drop both halves of a tiny midnight-spanning window — that's correct, the activity was negligible.)
+   - **Move on primary subject.** A window whose primary subject is a different billable client moves wholesale to that client — e.g. a window in acme's cwd that is actually widgets work counts to widgets, never acme. The duration follows the subject; the cwd-origin section does **not** also count it. Move on _primary subject_, not on a single passing reference — a brief mention of another client inside an otherwise-on-cwd-client window does not move it. If the subject maps to no configured section, move it to Other.
+   - **Move vs. keep-both — the test to apply.** Each section was clustered from _only its own_ turns (step 4), so a window exists for a section only if that section had turns in the span. So: if one section's own turns were actually about another client → **move** (scrub) — that section's turns belonged elsewhere. If _each_ section had its own turns in the span → **keep both** — genuine concurrency, real multitasking that correctly bills both (the intentional double-count). Decide which case you are in before resolving the window.
+   - After this step the window's section is **final**. Steps 6–10 (and Step 4 Synthesize) all operate on the destination section, never the cwd-origin one — the offline allowance in particular credits the client who owns the work, never a section that only held the window by cwd.
 
-7. **Label** each surviving window: find the first `user` turn in it whose content is a real prompt (not a `<command-name>`, `<bash-input>`, `<local-command-stdout>`, or tool_result wrapping). Use it only as a hint when synthesizing bullets — not as the final label.
+6. **Offline allowance** — extend a window's end into the trailing gap (the gap between this window's last turn and the section's next turn) **only** when an offline trigger is present. The window's section is already final from step 5, so the trigger, the trailing gap, and the dominance cut are all computed against that (destination) section's timeline. The last window of a section's day has no next turn — that's fine: the trailing gap is open-ended and bounded only by the 30-minute cap below (so an end-of-day offline trigger credits up to +30 min):
 
-**Bash-call note:** the `jq -s` filter for this step uses `|` extensively as jq's pipe operator. That's allowed — the no-chaining rule (see Rules) is about **shell-level** chaining between processes, not operators inside a single tool's argument.
+   - **Trigger from an assistant ask**: the assistant's last turn before the gap asks the user to do something offline that legitimately consumes time the transcript can't see — check a cloud dashboard / deployment, run manual smoke tests, or verify in a browser. Signal phrases: "can you check", "please test / verify", "run the", "take a look", "let me know what you see".
+   - **Trigger from a user self-report**: the user's first turn after the gap reports having done such work unprompted — "I just tested", "I manually checked / ran / verified", "I read through". This counts even without a preceding assistant ask.
+   - **The phrase lists above are representative of intent, not exhaustive.** Match a turn when it clearly expresses the same intent (an offline ask, or an offline self-report), even if the exact wording differs. But this is the one place the skill bills time it cannot see in the transcript, so it **fails closed**: if you are unsure whether a turn is a genuine offline trigger — borderline phrasing or ambiguous intent — **do not credit**. A missed credit under-bills by at most the gap; a wrong credit invents time. Resolve every ambiguous case toward zero credit.
+   - **No trigger (or ambiguous trigger)** → the window simply ends at its last turn; the gap is not credited.
+   - **With a trigger**, credit forward from the last turn up to a **30-minute cap**, but cut earlier if **any other section** becomes dominant in the gap. Test dominance against the **union of every other section's turns** inside the gap span (not just one section — a day can have many), then classify:
+     - **Dominant / sustained** (those other-section turns form a run whose internal gaps are all < 10 min and whose run spans **≥ 10 min** of wall-clock) → attention genuinely shifted; stop this window's credit at the start of that sustained run.
+     - **Sporadic** (anything that does not meet the dominant test — isolated turns, or a run shorter than 10 min) → the offline work is still the dominant activity; keep crediting to the cap. Those other-section turns also get their own credit (intended double-count).
+   - The 30-minute cap is hard — a long offline gap with light nudging elsewhere never credits more than +30 min.
+
+7. **Split at local midnight** (do this BEFORE rounding): if a window spans local midnight, cut it into two halves at the midnight boundary. The first half stays on its original date; the second half is labeled `(continued)` and routes to the **next** date's output file.
+
+8. **Round** each (possibly-split) half's start/end to the nearest `:00 / :15 / :30 / :45` in local time.
+
+9. **Drop** any rounded half that is under 5 minutes. (Note: this can drop both halves of a tiny midnight-spanning window — that's correct, the activity was negligible.)
+
+10. **Label** each surviving window: find the first `user` turn in it whose content is a real prompt (not a `<command-name>`, `<bash-input>`, `<local-command-stdout>`, or tool_result wrapping). Use it only as a hint when synthesizing bullets — not as the final label.
+
+**Bash-call note:** the `jq -s` filter for this step uses `|` extensively as jq's pipe operator. That's allowed — the no-chaining rule (see Rules) is about **shell-level** chaining between processes, not operators inside a single tool's argument. A 10-minute clustering reduce looks like: `reduce .[] as $e ([]; if length==0 or ($e - .[-1][1]) > 600 then . + [[$e,$e]] else .[:-1] + [[.[-1][0],$e]] end)` — illustrative of the gap-clustering math only. The real pass must carry each turn's payload alongside its timestamp, since step 5 (content scrub), step 6 (offline cross-check), and step 10 (labeling) all need turn content, not just the `[start, end]` epochs.
 
 ## Step 4: Synthesize
 
@@ -214,7 +239,7 @@ The bar: **someone who doesn't know your codebase should understand what changed
 
 **Grounding (prevent topic confusion / hallucination):**
 
-- Ground bullets in transcript content, not the section's typical work. Group windows by actual subject, not just `cwd` — a single explicit reference to another section's repo, PR, or issue is enough to reassign the window to that section. Side discussions count. If the subject doesn't map to any configured section, reassign to Other. Don't leave windows under the wrong section heading. **A reassigned window's full duration counts toward the destination section's total (and the day-header total stays unchanged); the cwd-origin section does not also count it.**
+- Ground bullets in transcript content, not the section's typical work. Each window's section was already resolved by content in Step 3h step 5 (content scrub), so write the bullet for that final section — don't re-derive attribution here.
 - Don't expand transcript terms into branded products you can't point to in this window's content. Use the transcript's term verbatim.
 - Sparse window: write a short generic bullet rather than fabricate specifics.
 
@@ -255,6 +280,7 @@ Surface:
 - Gotchas or surprising behavior discovered
 - Important past decisions with brief rationale
 - Things that took unexpectedly long, and why
+- **Offline-credit audit (mandatory when offline allowance fired).** For every window that received an offline-allowance extension (Step 3h step 6), emit one note recording it — this is the only internal record of billed-but-unobserved time, since the time block itself folds the extension into its duration silently. Format: `~<N>m of the <HH:MM> block is offline-review credit (trigger: "<phrase or self-report>" — <what was asked / done>).` These notes do not count against the 5–7 cap and are never omitted; they are the audit trail that lets you defend or sanity-check the number. Client-facing time blocks stay untouched.
 
 ### Follow-ups
 
@@ -280,7 +306,7 @@ Create `<output_dir>` if it doesn't exist.
 
 ### Day header
 
-The file starts with `# <Day>, <Month> <DD> <YYYY> (<Xh Ym> total)` where the total is the **sum of all section durations** for the day. Example: `# Mon, April 21 2026 (8h 45m total)`.
+The file starts with `# <Day>, <Month> <DD> <YYYY> (<Xh Ym> total)` where the total is the **sum of all section durations** for the day. Example: `# Mon, April 21 2026 (8h 45m total)`. Because concurrent work double-counts across clients (Step 3h), this billable total **can exceed wall-clock hours** on heavy multitasking days — that is correct and expected, not a bug to "fix."
 
 ### File format
 
