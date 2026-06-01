@@ -713,7 +713,10 @@ output._
 
    Triage: .reviews/code/<timestamp>-<branch>-triage.md
 
-   Build green. Stage, run `pre-commit run`, re-stage if modified, then commit.
+   Build green. Fixes above are unstaged — re-stage every file the fixes
+   touched (even if already staged), run `pre-commit run`, re-stage, then
+   commit. Skipping the re-stage commits the pre-review blob and drops the
+   fixes.
    Re-build and run full test suite if pre-commit touched code.
    ```
 
