@@ -379,6 +379,21 @@ _How to write, in chat and in docs._
   Simple words, simple sentences, direct phrasing.
 - **Use plain language; avoid unnecessary jargon.** Pick the plain word
   over the insider term. Insider labels are fast to write, slow to read.
+- **Borrowed metaphors pass a 3-part test.** Correct technical jargon
+  for a real concept is fine (composability, cohesion, idiomatic when
+  truly applicable). For a word with a domain-native meaning used as
+  metaphor, all three must hold: (a) common outside its source domain
+  so a non-specialist recognizes it, (b) explicit enough to convey the
+  specific point not vaguely, (c) more concise than the literal phrase.
+  "Foundational" passes all three. "Load-bearing argument" is borderline
+  on (a). "Sharp edge" fails (b) - vague: risk? subtle? severe?
+  "North star" fails (c) - just say "goal." When the topic itself is
+  language or writing, watch for linguistics jargon specifically
+  (register, corpus): use "patterns by context" / "samples" / "history"
+  / "collection" instead.
+- **Never use em-dashes (—).** User doesn't type them; em-dash presence
+  is a reliable AI tell in his writing. Use a single hyphen with spaces
+  ( - ), commas, parentheses, or rephrase.
 - **Coin terms deliberately.** Don't turn a repeated phrase into a label
   (`ask in chat`, not `chat-ask`). Coining is fine when deliberate and
   reused — glossary, API surface, ubiquitous language.
