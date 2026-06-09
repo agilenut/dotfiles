@@ -496,20 +496,15 @@ My take: <FIX | SKIP> — <reasoning>
 
 [Why surfacing this: <one line>]   <-- ONLY when surfacing despite a SKIP take (foundational, pattern-wide, or escalated-from-hedging)
 
-y fix / n skip / c more / or type
+(f)ix / (s)kip / (c)ontext
 ```
 
 ### Input parsing
 
-- `y` → accept the recommendation (whichever was proposed).
-- `n` → take the opposite:
-  - Against `SKIP`: ask how to fix or accept inline freeform.
-  - Against `FIX`: mark skipped with the user's reason.
-- Any input containing `c` (`c`, `yc`, `nc`) → show expanded context
-  first, then re-prompt with the user's leaning noted. Honors CLAUDE.md
-  combination-answer preference.
-- Anything else → freeform; orchestrator answers, re-offers `y/n/c`.
-- `yn` / `ny` (no `c`) → invalid; re-prompt.
+- `f` → fix
+- `s` → skip
+- `c` → show expanded context
+- Anything else → freeform; orchestrator answers, re-offers `f/s/c`.
 
 ### `c` for context
 
@@ -524,10 +519,11 @@ If user needs more, they ask freeform.
 
 ### After resolution (Status updates)
 
-- `y` against `FIX` → apply via Edit, run verifier per Step 10,
+- `f` against `FIX` recommendation → apply via Edit, run verifier per Step 10,
   `Status: fixed (user-confirmed)`.
-- `n` against `FIX` → `Status: skipped (user redirected: "<reason>")`.
-- `y` against `SKIP` → `Status: skipped (user accepted SKIP)`.
+- `s` against `FIX` recommendation → `Status: skipped (user redirected: "<reason>")`.
+- `f` against `SKIP` recommendation → `Status: skipped (user redirected: "<reason>")`.
+- `s` against `SKIP` recommendation → `Status: skipped (user accepted SKIP)`.
 - Freeform fix → apply via Edit, `Status: fixed (user freeform)` with the
   user's reasoning captured in the entry.
 
@@ -535,7 +531,7 @@ If user needs more, they ask freeform.
 
 **Trigger** (AND of):
 
-1. User redirected — EITHER `n` against `FIX` OR `n` against `SKIP`. Both
+1. User redirected — EITHER `s` against `FIX` OR `f` against `SKIP`. Both
    directions count:
    - FIX→SKIP generates a "don't flag this category" preference
    - SKIP→FIX generates a "lean toward FIX for this category" preference
