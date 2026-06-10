@@ -7,8 +7,5 @@
 # @raycast.icon 💻
 # @raycast.packageName Terminals
 
-exec open -na Alacritty --args \
-  --config-file "$HOME/.config/alacritty/tack.toml" \
-  --title "Tack" \
-  --working-directory "$HOME/repos/tack" \
-  -e tmux new -A -s tack
+exec "$HOME/.local/bin/term-launch" tack \
+  "$HOME/.config/alacritty/tack.toml" "$HOME/repos/tack" "Tack"
