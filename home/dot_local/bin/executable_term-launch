@@ -1,0 +1,31 @@
+#!/bin/bash
+# term-launch: shared cold-start handler for Alacritty + tmux launchers.
+# Usage: term-launch <session> <config> <cwd> <title>
+#
+# Cold start: boot a detached placeholder so continuum's auto-restore
+# (@continuum-restore 'on') can run its trailing `switch-client` against
+# no attached client. Otherwise it yanks us off the requested session
+# onto whichever was active at save time. Once restore settles we kill
+# the placeholder and attach to the target.
+
+set -euo pipefail
+
+session=$1
+config=$2
+cwd=$3
+title=$4
+
+if ! tmux has-session 2>/dev/null; then
+  tmux new-session -d -s __boot
+  sleep 2 # no "restore complete" signal; 2s covers pane-content capture
+  tmux kill-session -t __boot 2>/dev/null || true
+fi
+
+tmux has-session -t "$session" 2>/dev/null \
+  || tmux new-session -d -s "$session"
+
+exec open -na Alacritty --args \
+  --config-file "$config" \
+  --title "$title" \
+  --working-directory "$cwd" \
+  -e tmux attach -t "$session"
