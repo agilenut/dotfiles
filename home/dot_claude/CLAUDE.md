@@ -58,6 +58,10 @@ _How to write, in chat, docs, comments, and communications._
   - DO NOT enumerate non-issues. Listing what something ISN'T answers a
     question nobody asked. "It's not a security issue, but..." is fluff
     unless it prevents a likely misread.
+  - DO NOT include implementation details that don't change the
+    recommendation. "Renders synchronously" / "eager-loaded relations"
+    describe how something runs. If they don't change what the reader
+    needs to decide, drop them. Keep the user-facing impact.
 - **Know your audience**
   - Tailor content to the reader.
   - DO give them critical information they need to understand and decide.
@@ -90,6 +94,9 @@ _How to write, in chat, docs, comments, and communications._
     API route, glossary, ubiquitous language).
   - Role-based terms like "admin" are interpreted to be a
     user. "the admin" is awkward for an app or section.
+  - Borrowed terms only when they're idiomatic in the reader's domain
+    (e.g., "drill down" is fine in nav UX; bare "drill" is not).
+    When in doubt, use the plain word.
 - **Avoid AI tells**
   - NEVER use em-dashes. Use " - ", commas, parentheses, or rephrase.
     Reserve " - " for cases where it's genuinely the cleanest separator
@@ -100,32 +107,41 @@ _How to write, in chat, docs, comments, and communications._
 Scan output against this list before sending. Each row is a phrase
 to drop or translate.
 
-| Don't use                                                 | Use instead                                         |
-| --------------------------------------------------------- | --------------------------------------------------- |
-| fails open / fails closed                                 | describe the actual consequence                     |
-| footgun                                                   | "easy to misuse" or name the specific pitfall       |
-| Chesterton's fence                                        | "this might exist for a reason we don't see"        |
-| north star                                                | "goal"                                              |
-| escape hatch                                              | name what specifically; "vague" otherwise           |
-| sharp catch / sharp point / sharp observation             | "good" or "great"                                   |
-| sharp edge                                                | "risk" / "gotcha" / name what breaks                |
-| to summarize / in summary                                 | just state it                                       |
-| Certainly! / Looking at this / Based on the above         | drop                                                |
-| Suggesting... (gerund as subject)                         | "I'd suggest..."                                    |
-| tighten / tightened (text or code)                        | "fix" / "update" / "make accurate"                  |
-| in-flight (tasks/work)                                    | "in progress" / "running"                           |
-| worth noting                                              | "Note:" or just state it                            |
-| register / corpus (linguistics jargon for language topic) | "patterns by context" / "samples" / "history"       |
-| the admin / the user / the editor (as section labels)     | name the section: "admin app", or the specific file |
-| honestly / honest answer / honest softness                | just state it                                       |
-| the floor (as minimum)                                    | "at a minimum"                                      |
-| rule of thumb                                             | "guideline"                                         |
-| neat (re code)                                            | "clean"                                             |
-| orthogonal                                                | "separate" / "unrelated"                            |
-| ergonomic (re code)                                       | drop or rephrase concretely                         |
-| modern (generic)                                          | drop unless about actual recency                    |
-| ceremony (non-agile context)                              | drop                                                |
-| wedged (broken)                                           | "broken" or say what is broken specifically         |
+| Don't use                                                 | Use instead                                             |
+| --------------------------------------------------------- | ------------------------------------------------------- |
+| fails open / fails closed                                 | describe the actual consequence                         |
+| footgun                                                   | "easy to misuse" or name the specific pitfall           |
+| Chesterton's fence                                        | "this might exist for a reason we don't see"            |
+| north star                                                | "goal"                                                  |
+| escape hatch                                              | name what specifically; "vague" otherwise               |
+| sharp catch / sharp point / sharp observation             | "good" or "great"                                       |
+| sharp edge                                                | "risk" / "gotcha" / name what breaks                    |
+| to summarize / in summary                                 | just state it                                           |
+| Certainly! / Looking at this / Based on the above         | drop                                                    |
+| Suggesting... (gerund as subject)                         | "I'd suggest..."                                        |
+| tighten / tightened (text or code)                        | "fix" / "update" / "make accurate"                      |
+| in-flight (tasks/work)                                    | "in progress" / "running"                               |
+| worth noting                                              | "Note:" or just state it                                |
+| register / corpus (linguistics jargon for language topic) | "patterns by context" / "samples" / "history"           |
+| the admin / the user / the editor (as section labels)     | name the section: "admin app", or the specific file     |
+| honestly / honest answer / honest softness                | just state it                                           |
+| the floor (as minimum)                                    | "at a minimum"                                          |
+| rule of thumb                                             | "guideline"                                             |
+| neat (re code)                                            | "clean"                                                 |
+| orthogonal                                                | "separate" / "unrelated"                                |
+| ergonomic (re code)                                       | drop or rephrase concretely                             |
+| modern (generic)                                          | drop unless about actual recency                        |
+| ceremony (non-agile context)                              | drop                                                    |
+| wedged (broken)                                           | "broken" or say what is broken specifically             |
+| load-bearing                                              | "foundational" + name the dependencies                  |
+| second-order effects                                      | "secondary effects"                                     |
+| ergonomic (re UX)                                         | "good" or "solid UX"                                    |
+| drill (as noun for navigation without down/into suffix)   | describe the navigation directly                        |
+| when this does land                                       | more specific and context appropriate word than land    |
+| half-wired / unwired / stranded (re code)                 | dead or unreachable code                                |
+| this sheet / sheet (as shorthand for stylesheet)          | stylesheet                                              |
+| cap on the span / span (re date range)                    | "max duration" / "duration"                             |
+| Not trying for X / We're not chasing X                    | "We don't need to fix all the X but let's at least [Y]" |
 
 ## Bash
 
