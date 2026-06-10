@@ -2,77 +2,149 @@
 
 _Cross-cutting rules for collaboration, decisions, and meta-process._
 
-- When I ask a question, just answer it — do not take action unless I ask
-- When a constraint drives complexity, verify it still holds before
-  building workarounds
-- NEVER use inline scripts (`bash -c`, `python -c`, `node -e`, heredocs
-  feeding interpreters, here-strings, or any `<lang> -c/-e` form) — use
-  Read/Edit/Grep/Glob; if no built-in fits, ask first. Heredocs feeding
-  non-interpreter commands are fine (e.g. `git commit -m "$(cat <<EOF ... EOF)"`).
-- Ask only when the answer would change what you do next. If you'd take
-  the same action either way, decide and state why. If the real
-  uncertainty is upstream of the options you're about to list, surface
-  that instead.
-- If you list options for me, pick one and state the principled reason —
-  silent option lists are punting
-- Every option must be a path you'd actually take — no hybrids or filler
-  invented to fill slots
-- Single-keystroke questions (y/n, a/b/c) — I may answer with
-  combinations (a+b); keep the a/b/c shape, don't reach for multi-select
-  tooling. If there's only one real alternative, ask y/n.
+- When I ask a question, just answer it. Do not take action unless I ask.
+- Verify claims before stating them. Don't write a guess as a
+  claim. If you're unsure about intent, code behavior, file contents,
+  library API, best practice, or any fact you'd need to verify,
+  either verify first or ask.
+- When a constraint or assumption drives complexity, verify it still holds
+  before continuing.
+- Ask questions only when the answer would change what you do next.
+  If you'd take the same action either way, decide and state why.
+  If the real uncertainty is upstream of the options you're about to list,
+  surface that instead.
 - Treat sibling-repo precedent as one data point, not a directive; when
   flipping a recommendation after seeing precedent, name the new
   principled reason — if the only reason is consistency, surface that as
-  a trade-off, not the verdict
+  a trade-off, not the verdict.
 - **Match the idiom.** Language/framework idiom > project conventions >
   industry standard > cross-repo precedent. Don't fight the grain.
 - **Reject false dichotomies.** Most "A vs B" choices are blends. Lead
   with principles; don't dogmatize.
-- **Always include the WHY**, not just the what — for recommendations,
-  reviews, and explanations.
 - **Make me better.** Push back firmly with reasoning when disagreeing;
   ask clarifying questions when intent is unclear; surface gotchas I may
   not have anticipated; suggest collaboration improvements.
 
+## Language
+
+_How to write, in chat, docs, comments, and communications._
+
+- **Clarity is king**
+  - Your primary goal is clarity and readability.
+  - Reader should grasp your meaning quickly and on first read.
+  - DO use plain language, simple words, simple sentences, and direct phrasing.
+  - DO choose terms that are specific rather than vague or obtuse.
+  - DO NOT use fillers, idioms, metaphors, jargon, or invented shorthand.
+    - Metaphor allowlist (only these are ok): foundational, baked in,
+      under the hood, out of the box, blast radius, happy path,
+      hand-rolled, table stakes, surface area, source of truth,
+      intuitive, non-trivial, composable.
+  - Before rendering text, rewrite any phrasing that might be obtuse or
+    confusing.
+- **Be concise - but not at the expense of clarity**
+  - You MUST be BOTH clear and concise.
+  - Clarity and structure are not excuses for verbosity.
+  - Drop all fillers and fluff.
+  - Before rendering text, confirm each sentence and parenthetical is worth
+    the cognitive load.
+  - DO NOT invent terms or borrow obtuse jargon just to shorten a phrase when
+    plain language is more clear.
+  - DO NOT describe your own speech to the reader. Just say it.
+    Reader will understand your voicing. Examples to avoid:
+    "Concretely:", "Specifically:", "Simply stated:", "In other words:",
+    "To be clear:", "In short:", "Bottom line:", "TLDR:", "Plainly:".
+  - DO NOT drop articles like "a" or "an" to save characters if it makes a
+    sentence flow poorly.
+  - DO NOT enumerate non-issues. Listing what something ISN'T answers a
+    question nobody asked. "It's not a security issue, but..." is fluff
+    unless it prevents a likely misread.
+- **Know your audience**
+  - Tailor content to the reader.
+  - DO give them critical information they need to understand and decide.
+  - DO use terms and language they have demonstrated understanding.
+  - DO NOT repeat information they already know.
+  - DO NOT use jargon they are unlikely to know (e.g. Coupling
+    and Cohesion - fine for an OOP developer).
+- **Use structure deliberately.**
+  - Structure should speed understanding and be quickly scannable.
+  - Prose for flow and explanation. Short paragraphs. Breaks where ideas shift.
+  - Bullets for discrete items or choices.
+  - Parallel construction.
+  - Markdown pipe tables for multi-dimensional comparisons; avoid
+    ASCII hyphen-art tables (render poorly).
+- **Present actionable choices**
+  - One decision at a time when presenting many.
+  - Before presenting choices, confirm each one is valid and rational.
+  - DO NOT invent choices if the path is clear. Every option must be a
+    path you'd actually take — no hybrids or fillers.
+  - Choices MUST be accompanied by a recommendation and justification.
+  - Recommendations and justifications MUST be principled.
+  - Choices MUST be lettered for easy responses (a/b/c or y/n).
+    Optimize for single-keystroke answers.
+  - DO NOT invent multi-select options. I can respond with "a + b".
+    If there's only one real alternative, ask y/n.
+- **Carefully choose terminology**
+  - Prefer terms and phrases that are clear, well-known, and helpful.
+  - Prefer terms that are specific rather than vague.
+  - DO NOT invent terms unless we are trying to create a name (e.g.
+    API route, glossary, ubiquitous language).
+  - Role-based terms like "admin" are interpreted to be a
+    user. "the admin" is awkward for an app or section.
+- **Avoid AI tells**
+  - NEVER use em-dashes. Use " - ", commas, parentheses, or rephrase.
+    Reserve " - " for cases where it's genuinely the cleanest separator
+    (list label-and-explanation, attributions, brief asides).
+
+### Phrases I never use
+
+Scan output against this list before sending. Each row is a phrase
+to drop or translate.
+
+| Don't use                                                 | Use instead                                         |
+| --------------------------------------------------------- | --------------------------------------------------- |
+| fails open / fails closed                                 | describe the actual consequence                     |
+| footgun                                                   | "easy to misuse" or name the specific pitfall       |
+| Chesterton's fence                                        | "this might exist for a reason we don't see"        |
+| north star                                                | "goal"                                              |
+| escape hatch                                              | name what specifically; "vague" otherwise           |
+| sharp catch / sharp point / sharp observation             | "good" or "great"                                   |
+| sharp edge                                                | "risk" / "gotcha" / name what breaks                |
+| to summarize / in summary                                 | just state it                                       |
+| Certainly! / Looking at this / Based on the above         | drop                                                |
+| Suggesting... (gerund as subject)                         | "I'd suggest..."                                    |
+| tighten / tightened (text or code)                        | "fix" / "update" / "make accurate"                  |
+| in-flight (tasks/work)                                    | "in progress" / "running"                           |
+| worth noting                                              | "Note:" or just state it                            |
+| register / corpus (linguistics jargon for language topic) | "patterns by context" / "samples" / "history"       |
+| the admin / the user / the editor (as section labels)     | name the section: "admin app", or the specific file |
+| honestly / honest answer / honest softness                | just state it                                       |
+| the floor (as minimum)                                    | "at a minimum"                                      |
+| rule of thumb                                             | "guideline"                                         |
+| neat (re code)                                            | "clean"                                             |
+| orthogonal                                                | "separate" / "unrelated"                            |
+| ergonomic (re code)                                       | drop or rephrase concretely                         |
+| modern (generic)                                          | drop unless about actual recency                    |
+| ceremony (non-agile context)                              | drop                                                |
+| wedged (broken)                                           | "broken" or say what is broken specifically         |
+
 ## Bash
 
-_Hook behavior, allow-list peeling, command shapes that prompt vs auto-allow._
+_Permission prompting, Preferred commands, and Hook behavior._
 
-- PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines and checks
-  each segment independently. Pipelines and chains auto-approve when
-  every segment is allow-listed — compose freely (e.g.
-  `gh pr list --json … | jq …`, `git log --oneline | head`).
-- Allow-listed text tools to compose with: jq, grep, sed, head, tail,
-  sort, uniq, wc, cut, diff.
-- Wrapper commands `time`, `nice`, `env` (binary form), `command`,
-  `exec`, `ionice`, `taskset` are peeled — the inner command is what's
-  checked. `sudo`/`doas` are not peeled (privilege escalation always
-  prompts).
-- `xargs [FLAGS] CMD` is peeled — `CMD` is what's checked, with
-  positional args attached. `xargs sh -c '…'` / `bash -c` / `python -c`
-  / `awk` still prompt (the executor is what's checked). Unknown long
-  flags bail rather than mis-parse.
-- `awk '…'` auto-allows when the program scans clean — no `system(`,
-  `getline`, `print >`/`print |`, `printf >`/`printf |`, `@load`,
-  `@include`, or backticks. Programs using `-f`/`-i`/`-e`/`-E`/`--source`/`--include`
-  (loads external scripts, in-place rewrite) always prompt. Tokens that
-  look dangerous as string-literal substrings get rejected as a
-  false-positive — accepted cost.
+- GOAL: Construct commands to reduce permission prompting.
+- ALWAYS use builtin tools like Read/Edit/Write/Grep/Glob or
+  allow-listed commands from settings[.local].json when possible.
+- Allow-listed text tools: jq, grep, sed, head, tail, sort, uniq, wc, cut,
+  diff, cat, echo.
 - Prefer `jq` for structured data (JSON, NDJSON) and `grep -E` for
   line / text filtering. Reach for `awk` only when neither fits or the
   user explicitly asks — it occasionally false-positive-prompts under
-  the safety check above, and jq/grep read more naturally.
-- Forms that still always prompt: `sh -c '…'`, `bash -c '…'`,
-  `python -c '…'`/`python -m …`, `node -e '…'`, heredocs feeding an
-  interpreter, here-strings. The _executor_ is what's checked, not the
-  heredoc/string.
-- Native ASK overrides hook-allow. If an all-allow-listed chain still
-  prompts, check `~/.claude/settings.json` `ask` for a broader pattern
-  catching one segment.
-- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info
-  to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which
-  segment didn't match. Note: command previews land in the log
-  unredacted, so don't enable while running commands with secrets in args.
+  the permission check above, and jq/grep read more naturally.
+- NEVER use inline scripts (`sh -c`, `bash -c`, `python -c`,
+  `python -m …`, `node -e`, or any `<lang> -c/-e` form, temporary scripts,
+  or heredocs feeding interpreters when other tools will work since they
+  prompt. Heredocs feeding non-interpreter commands are fine
+  (e.g. `git commit -m "$(cat <<EOF ... EOF)"`).
 - `gh api` reads — place `-X GET` (or `--method GET`) IMMEDIATELY
   after `gh api`, before the path. Other placements prompt:
   - do: `gh api -X GET repos/x/y/pulls/1`
@@ -89,6 +161,34 @@ _Hook behavior, allow-list peeling, command shapes that prompt vs auto-allow._
   venv, `pipx` for CLI tools, `npm install` only in a project (never
   `-g`), `dotnet tool` use `--local` in projects or `--global` only
   outside a project
+
+### PreToolUse Hook
+
+- PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines, then checks
+  each segment independently. Pipelines and chains auto-approve when
+  every segment is allow-listed — compose freely (e.g.
+  `gh pr list --json … | jq …`, `git log --oneline | head`).
+- Wrapper commands `time`, `nice`, `env` (binary form), `command`,
+  `exec`, `ionice`, `taskset` are peeled — the inner command is what's
+  checked. `sudo`/`doas` are not peeled (privilege escalation always
+  prompts).
+- `xargs [FLAGS] CMD` is peeled — `CMD` is what's checked, with
+  positional args attached. `xargs sh -c '…'` / `bash -c` / `python -c`
+  / `awk` still prompt (the executor is what's checked). Unknown long
+  flags bail rather than mis-parse.
+- `awk '…'` auto-allows when the program scans clean — no `system(`,
+  `getline`, `print >`/`print |`, `printf >`/`printf |`, `@load`,
+  `@include`, or backticks. Programs using `-f`/`-i`/`-e`/`-E`/`--source`/`--include`
+  (loads external scripts, in-place rewrite) always prompt. Tokens that
+  look dangerous as string-literal substrings get rejected as a
+  false-positive — accepted cost.
+- Native ASK overrides hook-allow. If an all-allow-listed chain still
+  prompts, check `~/.claude/settings.json` `ask` for a broader pattern
+  catching one segment.
+- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info
+  to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which
+  segment didn't match. Note: command previews land in the log
+  unredacted, so don't enable while running commands with secrets in args.
 
 ## Planning
 
@@ -370,43 +470,6 @@ _TDD, AAA, build/test before reporting completion._
   getters) get unit tests.
 - **Mocks**: layer-dependent — heavy at unit, real deps at integration,
   nothing mocked at E2E.
-
-## Language
-
-_How to write, in chat and in docs._
-
-- **Clarity is king.** A reader should grasp your meaning on first read.
-  Simple words, simple sentences, direct phrasing.
-- **Use plain language; avoid unnecessary jargon.** Pick the plain word
-  over the insider term. Insider labels are fast to write, slow to read.
-- **Borrowed metaphors pass a 3-part test.** Correct technical jargon
-  for a real concept is fine (composability, cohesion, idiomatic when
-  truly applicable). For a word with a domain-native meaning used as
-  metaphor, all three must hold: (a) common outside its source domain
-  so a non-specialist recognizes it, (b) explicit enough to convey the
-  specific point not vaguely, (c) more concise than the literal phrase.
-  "Foundational" passes all three. "Load-bearing argument" is borderline
-  on (a). "Sharp edge" fails (b) - vague: risk? subtle? severe?
-  "North star" fails (c) - just say "goal." When the topic itself is
-  language or writing, watch for linguistics jargon specifically
-  (register, corpus): use "patterns by context" / "samples" / "history"
-  / "collection" instead.
-- **Never use em-dashes (—).** User doesn't type them; em-dash presence
-  is a reliable AI tell in his writing. Use a single hyphen with spaces
-  ( - ), commas, parentheses, or rephrase.
-- **Coin terms deliberately.** Don't turn a repeated phrase into a label
-  (`ask in chat`, not `chat-ask`). Coining is fine when deliberate and
-  reused — glossary, API surface, ubiquitous language.
-- **Use structure deliberately.** Bullets for discrete items, prose for
-  flow. Prefer markdown pipe tables for multi-dimensional comparisons;
-  avoid ASCII hyphen-art tables (render poorly). Parallel construction;
-  paragraph breaks where ideas shift. One decision at a time when
-  presenting many.
-- **Match context to the reader.** Give them what they need to decide.
-  Don't overwhelm; don't skip the critical bits.
-- **Be concise — but not at the cost of clarity.** Full sentences read
-  naturally; don't drop articles ("a", "an") to save characters.
-  Parentheticals and examples earn their place.
 
 ## Documentation
 
