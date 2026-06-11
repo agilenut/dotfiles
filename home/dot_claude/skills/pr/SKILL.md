@@ -85,10 +85,16 @@ relevant test plan section.
 ### CI_RUNNING
 
 1. **Fire-and-forget; do not poll.** `gh pr checks <number> --watch` via
-   Bash with `run_in_background: true` — the system notifies on process
-   exit; you stay free to chat.
-2. On notification: exit 0 → CI_PASSED/PRE_MERGE_TESTING (includes "no
-   checks reported" — treat as no CI). Non-zero → CI_FAILED.
+   Bash with `run_in_background: true`. System notifies on exit.
+2. **Read the verdict, not the exit code.** On notification, run
+   `gh pr checks <number> --json bucket --jq '[.[].bucket] | unique'`.
+   The watch is a wake-up trigger only.
+   - `[]` (no checks) → CI_PASSED (treat as no CI)
+   - Contains `fail` or `cancel` → CI_FAILED
+   - Contains `pending` → re-fire the watch. After 3 consecutive pending
+     re-fires, surface to user.
+   - Only `pass` / `skipping` → CI_PASSED/PRE_MERGE_TESTING
+   - Anything else (unrecognized values, read errors) → surface to user
 
 ### CI_FAILED
 
@@ -145,19 +151,27 @@ relevant test plan section.
 
 ### MERGED_CI_RUNNING
 
-1. `gh run list --branch main --created '><mergedAt>' --json databaseId,name`
-   — substitute `<mergedAt>` with the ISO timestamp from step 1's JSON
+1. `gh run list --branch main --created '><mergedAt>' --json databaseId,name` —
+   substitute `<mergedAt>` with the ISO timestamp from step 1's JSON
    (post-merge workflows don't show in `gh pr checks`).
-2. No runs → transition to POST_MERGE_TESTING or MERGED_DONE (no post-merge
-   workflows configured).
+2. No runs → transition to POST_MERGE_TESTING or MERGED_DONE.
 3. **Fire-and-forget; do not poll.** For each `databaseId` from step 1:
-   `gh run watch <id> --exit-status` via Bash with `run_in_background: true`
-   — spawn in parallel. System notifies per process exit.
-4. Track outstanding watches by `databaseId`. On each notification:
-   - Non-zero exit → MERGED_CI_FAILED. Other watches keep running in
-     background; their notifications can be ignored (already failed).
-   - Zero exit → remove from pending set. When set is empty, transition
-     to POST_MERGE_TESTING or MERGED_DONE.
+   `gh run watch <id> --exit-status` via Bash with `run_in_background: true`.
+   Spawn in parallel; system notifies per process exit.
+4. **Read the verdict, not the exit code.** On each notification, run
+   `gh run view <id> --json status,conclusion --jq '{status,conclusion}'`.
+   The watch is a wake-up trigger only.
+   - `status != "completed"` → re-fire the watch. After 3 consecutive
+     re-fires, surface to user.
+   - `conclusion` is `success`, `skipped`, or `neutral` → remove from
+     pending. When empty, transition to POST_MERGE_TESTING or MERGED_DONE.
+   - `conclusion` is `failure`, `cancelled`, `timed_out`, `startup_failure`,
+     or `stale` → MERGED_CI_FAILED. Other watches keep running; their
+     notifications can be ignored. Dump per-job conclusions to name the
+     failure:
+     `gh run view <id> --json jobs --jq '.jobs[] | select(.conclusion != "skipped") | {name, conclusion}'`
+   - Anything else (`action_required`, unknown values, read errors) →
+     surface to user
 
 ### MERGED_CI_FAILED
 
