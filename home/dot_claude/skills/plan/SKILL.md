@@ -101,9 +101,9 @@ State explicitly which criterion triggered file-tier. Conversation-only otherwis
 
 ## Step 8: Plan File (file-tier only)
 
-Path: `<plansDirectory>/<YYYY-MM-DD>-<brief-description>.md` per CLAUDE.md "Plan Naming". Resolve `<plansDirectory>` per CLAUDE.md "Plans Directory Resolution".
+Path: `<plansDirectory>/<YYYY-MM-DD>-<brief-description>.md` - date plus a brief description; no story numbers in the filename, never auto-generated or random. Resolve `<plansDirectory>` per CLAUDE.md "Plans Directory Resolution".
 
-Frontmatter (matches CLAUDE.md "Plan Frontmatter"):
+Frontmatter:
 
 ```yaml
 ---
@@ -129,11 +129,14 @@ Sections, in order (single-PR default):
 
 - **Manual test (PR-level)** — when applicable
 - **Edges / risks** — items to weigh
+- **Open items / Next** (living) - follow-ups, discoveries, and loose threads surfaced during the walk or implementation; keep current as work proceeds.
 
-Multi-PR variant — replace `## Commits` with `## PRs`. Use when: foundational refactor + feature on top; scope too large for one review; can't test until PR + CI runs (common for CI / infra work).
+Multi-PR variant — replace `## Commits` with `## PRs`. Use when: foundational refactor + feature on top; scope too large for one review; can't test until PR + CI runs (common for CI / infra work). Open the `## PRs` section with the worktree note below, substituting the real work-stream and branch names (no literal placeholders), so any later session follows it without this skill loaded.
 
 ```markdown
 ## PRs
+
+Worktree: run all PRs from ONE working tree (substitute the real `work:` name). Do NOT call EnterWorktree per PR; for each PR, fetch then `git switch -c <pr-branch> origin/main`.
 
 ### PR 1: <title> (branch: <name>)
 
@@ -151,7 +154,7 @@ No "considered / rejected" section in the file — that lives in chat.
 
 After Step 8 (or after Step 6 for conversation-only), execute:
 
-- **Worktree.** Set `worktree: true` if any of: uncommitted changes in main tree, or in-flight feature branch you'd want to keep separate; Docker / port conflict with main-tree services; exploratory work that may be abandoned; user says so.
+- **Worktree.** Set `worktree: true` if any of: uncommitted changes in main tree, or in-flight feature branch you'd want to keep separate; Docker / port conflict with main-tree services; exploratory work that may be abandoned; user says so. (Multi-PR plans carry their own worktree note in the `## PRs` section - follow it.)
 
   When `true`:
 
