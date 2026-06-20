@@ -224,23 +224,11 @@ _How to scope, sequence, and pause work for non-trivial tasks._
 - Plan Commits row tags drive review cadence: `review: per-commit`
   forces `/review` before each commit. `end-of-PR` runs once before
   pushing (typically before `gh pr create`).
-
-### Plan Naming
-
-- Format: `{YYYY-MM-DD}-{brief-description}.md`
-- Never include story numbers in filenames
-- Never use auto-generated or random filenames
-
-### Plan Frontmatter
-
-```yaml
----
-work: "<work-stream-name>"
-branch: "<branch-name-or-null>"
-stories: [82, 86]
-worktree: false
----
-```
+- Keep the plan current as work proceeds, not just at the start. When a
+  step completes or a follow-up / discovery surfaces, update the plan in
+  the same commit (tracked plans) or save immediately (gitignored).
+  Maintain a living "Open items / Next" section so loose threads land in
+  the file, not session memory (lost when the session ends).
 
 ## Workflow
 
