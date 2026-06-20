@@ -348,6 +348,15 @@ _File-per-type convention._
 _Branching, committing, PRs, post-merge cleanup._
 
 - Never work on main — create a feature branch first
+- Branch name: `<type>/<issue?>-<slug>`. Type: any standard Conventional
+  Commits type, in its canonical form (e.g. `feat` not `feature`, `fix`
+  not `bugfix`) - don't coin types outside the standard. Issue number
+  optional: a bare number when a tracked story exists
+  (`feat/39-rate-limit`), else omit (`chore/dep-sweep`). Slug kebab-case,
+  1-3 words, the fewest that stay unambiguous - a present issue number
+  lets the slug lean short. The whole branch becomes the worktree leaf
+  (`<repo>--<branch-slug>`), so keep it tight; `EnterWorktree({name})`
+  and a multi-PR plan's short `work:` value follow the same convention.
 - Never commit/push/merge/amend/force-push unless asked
 - When the user signals PR-lifecycle work (creating, merging, "is CI
   done", "open the PR", bare "pr"), invoke `/pr` first — don't run
@@ -398,7 +407,7 @@ _Branching, committing, PRs, post-merge cleanup._
   board review). Use "Closes #N" / "Fixes #N" only when explicitly
   asked.
 - Only reference an issue when the number is known — from the plan's
-  `stories:` frontmatter, branch name (e.g. `feat/123-foo`), commits,
+  `stories:` frontmatter, branch name (e.g. `feat/123-add-auth`), commits,
   or the user. Don't fabricate; ask which issue if the convention
   seems to require one.
 - Before opening a new tracking issue for related work, check for an
