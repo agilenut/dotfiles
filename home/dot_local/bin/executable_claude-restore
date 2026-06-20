@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# claude-restore
+# =============================================================================
+# Re-launches the Claude session that was running in this tmux pane before a
+# reboot. Invoked by tmux-resurrect via the inline strategy
+#   set -g @resurrect-processes 'claude->claude-restore'
+# On restore, resurrect re-sets the pane title (which claude wrote as
+# `<glyph> <session-name>`) and then types `claude-restore` into the pane. This
+# reads that restored title and resumes the named session, or leaves a plain
+# shell when the session was unnamed or the title is unrecognized.
+#
+# Title-parse contract (shared with tmux.conf's automatic-rename-format): a
+# claude pane title is `<glyph> <session-name>`, where the glyph is a single
+# non-ASCII character and the name may contain spaces. Strip the glyph + first
+# space, then classify the remainder.
+
+set -euo pipefail
+
+# Classify a pane title into a restore action. Echoes one of:
+#   resume<TAB><name>   resume the named session
+#   shell               leave the pane as a shell (unnamed or unrecognized)
+# Side-effect-free and sourceable, so tests can assert it without tmux/claude.
+claude_restore_classify() {
+  local title="$1"
+  local first rest
+  # Pin C locale so the ASCII bracket ranges below match byte-wise rather than
+  # by locale collation. Scoped to this function, so the `claude` child started
+  # in claude_restore_main still runs in the user's UTF-8 locale.
+  local LC_ALL=C
+
+  # A claude title is `<glyph> <name>`. No space → not a claude title.
+  if [ "${title#* }" = "$title" ]; then
+    echo shell
+    return 0
+  fi
+
+  first="${title%% *}" # the glyph token
+  rest="${title#* }"   # everything after the first space (the session name)
+
+  # The glyph is non-ASCII. If the first token is plain ASCII text, the title
+  # isn't claude's `<glyph> <name>` shape (manually renamed, or no glyph) — be
+  # safe and leave the shell rather than resume a misparsed name.
+  if [[ "$first" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+    echo shell
+    return 0
+  fi
+
+  # Stripped remainder: the unnamed sentinel, or empty, means leave the shell.
+  if [ -z "$rest" ] || [ "$rest" = "Claude Code" ]; then
+    echo shell
+    return 0
+  fi
+
+  printf 'resume\t%s\n' "$rest"
+}
+
+claude_restore_main() {
+  local title action name
+  title="$(tmux display-message -p '#{pane_title}' 2>/dev/null || true)"
+  action="$(claude_restore_classify "$title")"
+  case "$action" in
+    resume$'\t'*)
+      name="${action#resume$'\t'}"
+      # Child process (not exec): if the resume fails (stale name, claude not
+      # yet on PATH, version mismatch), control returns to a usable shell
+      # instead of leaving a dead pane.
+      claude -r "$name"
+      ;;
+    *)
+      : # leave the shell
+      ;;
+  esac
+}
+
+# Run only when executed directly — sourcing (e.g. from tests) just defines the
+# functions above.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  claude_restore_main "$@"
+fi
