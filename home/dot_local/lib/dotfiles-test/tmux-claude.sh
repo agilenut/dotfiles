@@ -90,4 +90,19 @@ test_claude_restore() {
   else
     fail "glyph + empty remainder should leave shell: '$result'"
   fi
+
+  # ---- resurrect strategy keeps the embedded double quotes ----
+  # The inline strategy must be '"claude->claude-restore"' (double quotes inside
+  # single). resurrect runs `eval set $(restore_list)`, so without the inner
+  # quotes the `>` is parsed as a shell redirect and the match silently fails -
+  # panes never replay. This guards that exact shape against edit/format churn,
+  # since the failure mode is silent (no error, panes just don't come back).
+  local tmux_conf="${HOME}/.config/tmux/tmux.conf"
+  if [ ! -f "$tmux_conf" ]; then
+    skip "tmux.conf not installed"
+  elif grep -qF "@resurrect-processes '\"claude->claude-restore\"'" "$tmux_conf"; then
+    pass "resurrect strategy keeps embedded double quotes"
+  else
+    fail "resurrect strategy missing embedded double quotes (silent resume break)"
+  fi
 }
