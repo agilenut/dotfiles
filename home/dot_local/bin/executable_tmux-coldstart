@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# tmux-coldstart
+# =============================================================================
+# Ensure a cold-started tmux server has finished restoring before the caller
+# attaches, so resurrect's end-of-restore `switch-client` fires against a
+# detached placeholder instead of the user's real client.
+#
+# Usage: tmux-coldstart <session>
+#   Ensures the server is up, any continuum auto-restore has completed, and
+#   <session> exists (created detached if needed). The caller then attaches
+#   however it likes - a new Alacritty (`term-launch`) or in-place
+#   `new-session -A` (`tmux.zsh`).
+#
+# The race it closes: resurrect ends every restore with
+# `restore_active_and_alternate_sessions`, a `switch-client` to whatever
+# session was active at save time. If your client is already attached when
+# that fires, you get yanked onto the wrong session. On a true cold start
+# (no server) with a save present, we start a detached `__boot` session -
+# this boots the server, which triggers continuum's auto-restore - and wait
+# until restore signals completion via the `@restore-complete` option (set by
+# `@resurrect-hook-post-restore-all`, which fires AFTER the switch-client).
+# While only the detached `__boot` exists there is no attached client to yank.
+# Then we kill `__boot`; the caller attaches afterward and lands where it asked.
+
+set -euo pipefail
+
+session=$1
+
+readonly boot_session=__boot
+readonly resurrect_last="$HOME/.local/share/tmux/resurrect/last"
+# Generous ceiling: clears a large multi-pane restore with pane-content capture
+# (the old fixed `sleep 2` was the bug), yet never hangs on a failed/absent
+# restore - on timeout we attach anyway.
+readonly restore_timeout=20
+readonly poll_interval=0.2
+
+# All tmux calls here use the default socket (no -L/-S). `@restore-complete` is
+# set on THIS server by the restore hook, so this poll and the hook must share
+# the socket - do not add -L/-S without setting it on the hook side too.
+
+wait_for_restore() {
+  # check-then-sleep: a restore that already finished is caught on the first
+  # read, and an already-set option can never be structurally missed.
+  local deadline=$((SECONDS + restore_timeout))
+  while [ "$(tmux show-option -gv @restore-complete 2>/dev/null)" != 1 ]; do
+    [ "$SECONDS" -ge "$deadline" ] && break
+    sleep "$poll_interval"
+  done
+}
+
+# Wait for a cold-start restore to finish before creating/attaching the target.
+# CONCURRENCY: macOS app-restore (and a burst of Raycast launches) brings several
+# Alacritty windows up at once, each running this helper. Every launcher must
+# wait - not just the one that boots the server - because if a follower creates
+# its target session while restore is still in flight, resurrect treats those
+# panes as pre-existing (is_pane_registered_as_existing) and skips replaying
+# the saved command into them. So gate on @restore-complete, NOT "did I start
+# the server": one launcher boots `__boot` and becomes the leader, others
+# silently no-op on the duplicate name and wait alongside it.
+#
+# `-f` matches resurrect's own check_saved_session_exists (`[ ! -f $file ]`), so
+# a dangling `last` symlink is treated as "no restore" - the same decision
+# resurrect makes. `show-option` on a not-yet-started server errors to empty
+# (!= 1), so a true cold start correctly enters the branch and boots the server.
+if [ -f "$resurrect_last" ] \
+  && [ "$(tmux show-option -gv @restore-complete 2>/dev/null)" != 1 ]; then
+  tmux new-session -d -s "$boot_session" 2>/dev/null || true
+  wait_for_restore
+  tmux kill-session -t "$boot_session" 2>/dev/null || true
+fi
+
+# Ensure the target session exists (restore may not have brought it back, or
+# there was no restore at all - this also boots the server when the no-save
+# path skipped __boot).
+tmux has-session -t "$session" 2>/dev/null \
+  || tmux new-session -d -s "$session"
