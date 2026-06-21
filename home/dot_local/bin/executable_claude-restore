@@ -64,10 +64,12 @@ claude_restore_main() {
   case "$action" in
     resume$'\t'*)
       name="${action#resume$'\t'}"
-      # Child process (not exec): if the resume fails (stale name, claude not
-      # yet on PATH, version mismatch), control returns to a usable shell
-      # instead of leaving a dead pane.
-      claude -r "$name"
+      # exec, so tmux reports the pane's command as `claude` (not the bash
+      # wrapper) and the automatic-rename-format shows the session name. Safe:
+      # this wrapper runs as a child of the pane's shell (send-keys'd in), so
+      # exec replaces THIS subprocess, not the shell - when claude exits, or if
+      # the resume fails, control returns to a usable shell, not a dead pane.
+      exec claude -r "$name"
       ;;
     *)
       : # leave the shell
