@@ -59,7 +59,15 @@ claude_restore_classify() {
 
 claude_restore_main() {
   local title action name
-  title="$(tmux display-message -p '#{pane_title}' 2>/dev/null || true)"
+  # `-t "$TMUX_PANE"` is REQUIRED. Without it, display-message reads the active
+  # pane of the attached client, NOT the pane this wrapper is running in. That
+  # worked accidentally in the single-client restore case (resurrect's per-pane
+  # switch-client moved the attached client's focus to each pane in turn), but
+  # fails during a multi-client cold start where no client is attached during
+  # process replay - then display-message defaults to some other pane and every
+  # wrapper invocation reads the wrong title, classifying as "shell" and leaving
+  # the pane at zsh. TMUX_PANE is always set by tmux for send-keys'd children.
+  title="$(tmux display-message -p -t "$TMUX_PANE" '#{pane_title}' 2>/dev/null || true)"
   action="$(claude_restore_classify "$title")"
   case "$action" in
     resume$'\t'*)
