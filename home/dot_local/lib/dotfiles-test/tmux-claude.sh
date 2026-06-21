@@ -116,4 +116,15 @@ test_claude_restore() {
   else
     fail "resurrect strategy missing lazygit (full-pane lazygit won't restore)"
   fi
+
+  # The post-restore-all hook signals cold-start launchers (tmux-coldstart) that
+  # restore - and its end-of-restore switch-client - has finished. Guard the full
+  # contract: the hook is present AND sets @restore-complete. A dropped hook or a
+  # wrong option name silently reintroduces the launch race (no error, the client
+  # just lands on the wrong session).
+  if grep -qE '@resurrect-hook-post-restore-all .*@restore-complete' "$tmux_conf"; then
+    pass "restore-complete hook signals cold-start launchers"
+  else
+    fail "missing @resurrect-hook-post-restore-all -> @restore-complete (cold-start race returns)"
+  fi
 }
