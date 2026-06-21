@@ -91,18 +91,29 @@ test_claude_restore() {
     fail "glyph + empty remainder should leave shell: '$result'"
   fi
 
-  # ---- resurrect strategy keeps the embedded double quotes ----
-  # The inline strategy must be '"claude->claude-restore"' (double quotes inside
-  # single). resurrect runs `eval set $(restore_list)`, so without the inner
-  # quotes the `>` is parsed as a shell redirect and the match silently fails -
-  # panes never replay. This guards that exact shape against edit/format churn,
-  # since the failure mode is silent (no error, panes just don't come back).
+  # ---- resurrect replay strategy (tmux.conf @resurrect-processes) ----
   local tmux_conf="${HOME}/.config/tmux/tmux.conf"
   if [ ! -f "$tmux_conf" ]; then
     skip "tmux.conf not installed"
-  elif grep -qF "@resurrect-processes '\"claude->claude-restore\"'" "$tmux_conf"; then
+    return
+  fi
+
+  # The claude entry must be wrapped in double quotes ("claude->claude-restore").
+  # resurrect runs `eval set $(restore_list)`, so without the inner quotes the `>`
+  # is parsed as a shell redirect and the match silently fails - panes never
+  # replay. Match the double-quoted token regardless of what follows (other
+  # entries like lazygit may trail it), since the failure mode is silent.
+  if grep -qE '@resurrect-processes .*"claude->claude-restore"' "$tmux_conf"; then
     pass "resurrect strategy keeps embedded double quotes"
   else
     fail "resurrect strategy missing embedded double quotes (silent resume break)"
+  fi
+
+  # lazygit must be in the replay list so a full-pane lazygit reopens on its repo
+  # (it's a plain word - resurrect re-runs it in the restored cwd, no wrapper).
+  if grep -qE "@resurrect-processes .*\blazygit\b" "$tmux_conf"; then
+    pass "resurrect replays lazygit panes"
+  else
+    fail "resurrect strategy missing lazygit (full-pane lazygit won't restore)"
   fi
 }
