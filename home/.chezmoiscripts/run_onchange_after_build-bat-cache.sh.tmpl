@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Rebuild bat's theme cache when the custom theme changes. bat reads a compiled
+# cache (~/.cache/bat/themes.bin), not the .tmTheme directly, so a chezmoi apply
+# that updates the theme needs this to take effect. delta reads bat's cached
+# themes too, so this also refreshes git/lazygit diffs.
+#
+# The hash below makes chezmoi re-run this only when the theme content changes:
+# theme hash: {{ include "dot_config/bat/themes/vscode_dark_modern.tmTheme" | sha256sum }}
+
+set -euo pipefail
+
+# bat is `batcat` on Debian/Ubuntu (binary-name clash). Skip silently if neither
+# is installed — the cache is only relevant where bat exists.
+if command -v bat >/dev/null 2>&1; then
+  bat cache --build
+elif command -v batcat >/dev/null 2>&1; then
+  batcat cache --build
+fi

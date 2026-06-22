@@ -389,6 +389,11 @@ do
   vim.pack.add { gh 'Mofiqul/vscode.nvim' }
   require('vscode').setup {
     italic_comments = false,
+    -- Transparent bg so the terminal's per-project background tint shows
+    -- through instead of vscode.nvim's own #1F1F1F.
+    transparent = true,
+    -- Dim the default editor foreground to match the terminal text (#c6c6c6).
+    color_overrides = { vscFront = '#c6c6c6' },
   }
   vim.cmd.colorscheme 'vscode'
 
