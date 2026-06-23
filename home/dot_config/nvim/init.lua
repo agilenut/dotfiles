@@ -393,6 +393,7 @@ do
       { '<leader>tg', group = '[G]it' },
       { '<leader>g', group = '[G]it' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
+      { '<leader>x', group = 'Diagnostics (Trouble)' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
   }
@@ -450,6 +451,13 @@ do
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
   require('todo-comments').setup { signs = false }
+
+  -- Trouble: a VS Code-style "Problems" panel for diagnostics (also quickfix,
+  -- LSP references, symbols). <leader>xx = workspace, <leader>xX = this buffer.
+  vim.pack.add { gh 'folke/trouble.nvim' }
+  require('trouble').setup {}
+  vim.keymap.set('n', '<leader>xx', '<cmd>Trouble diagnostics toggle<cr>', { desc = 'Diagnostics list (Trouble)' })
+  vim.keymap.set('n', '<leader>xX', '<cmd>Trouble diagnostics toggle filter.buf=0<cr>', { desc = 'Buffer diagnostics (Trouble)' })
 
   -- [[ mini.nvim ]]
   --  A collection of various small independent plugins/modules
