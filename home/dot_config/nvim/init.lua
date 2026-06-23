@@ -377,6 +377,9 @@ do
     },
   }
 
+  -- Toggle full-line highlight for changed lines (gitsigns linehl, off by default).
+  vim.keymap.set('n', '<leader>tgh', '<cmd>Gitsigns toggle_linehl<cr>', { desc = 'Toggle git line highlight' })
+
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
   require('which-key').setup {
@@ -387,6 +390,7 @@ do
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
+      { '<leader>tg', group = '[G]it' },
       { '<leader>g', group = '[G]it' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
@@ -426,6 +430,22 @@ do
   end
   fix_statusline_mode_contrast()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_statusline_mode_contrast })
+
+  -- Align gitsigns with the muted delta diff palette so nvim's gutter signs and
+  -- changed-line highlights match the terminal/lazygit diffs (add=green,
+  -- change=blue, delete=red, all muted). Ln backgrounds reuse delta's exact
+  -- plus/minus line tints; fg left unset so syntax colors show through.
+  local function fix_gitsigns_palette()
+    local set = vim.api.nvim_set_hl
+    set(0, 'GitSignsAdd', { fg = '#55805f' })
+    set(0, 'GitSignsChange', { fg = '#5a7ba6' })
+    set(0, 'GitSignsDelete', { fg = '#7d5159' })
+    set(0, 'GitSignsAddLn', { bg = '#1a2620' })
+    set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
+    set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
+  end
+  fix_gitsigns_palette()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
