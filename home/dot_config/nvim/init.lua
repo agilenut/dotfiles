@@ -101,6 +101,21 @@ do
   -- Set to true if you have a Nerd Font installed and selected in the terminal
   vim.g.have_nerd_font = false
 
+  -- Highlight chezmoi `.tmpl` files as their underlying type: strip the
+  -- `.tmpl` suffix and re-run filetype detection on the remaining name
+  -- (alacritty.toml.tmpl -> toml, git/config.tmpl -> gitconfig, etc.).
+  vim.filetype.add {
+    pattern = {
+      ['.*%.tmpl'] = function(path)
+        return vim.filetype.match { filename = (path:gsub('%.tmpl$', '')) }
+      end,
+      -- Extensionless configs whose type is path-based don't survive the strip
+      -- above (chezmoi's source path is dot_config/, not .config/). Map them
+      -- explicitly, higher priority than the generic .tmpl rule.
+      ['.*/git/config%.tmpl'] = { 'gitconfig', { priority = 10 } },
+    },
+  }
+
   -- [[ Setting options ]]
   --  See `:help vim.o`
   -- NOTE: You can change these options as you wish!
@@ -396,6 +411,21 @@ do
     color_overrides = { vscFront = '#c6c6c6' },
   }
   vim.cmd.colorscheme 'vscode'
+
+  -- vscode.nvim gives the mini.statusline mode blocks a light background but
+  -- no foreground, so the mode text is unreadable. Force a dark fg while
+  -- keeping each mode's color. Re-applied whenever the colorscheme changes.
+  local function fix_statusline_mode_contrast()
+    for _, mode in ipairs { 'Normal', 'Insert', 'Visual', 'Command', 'Replace', 'Other' } do
+      local group = 'MiniStatuslineMode' .. mode
+      local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
+      if hl.bg then
+        vim.api.nvim_set_hl(0, group, { fg = '#1f1f1f', bg = string.format('#%06x', hl.bg), bold = true })
+      end
+    end
+  end
+  fix_statusline_mode_contrast()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_statusline_mode_contrast })
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
