@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Pick a git repo (or worktree) under ~/repos with fzf and open lazygit in it.
+# Bound to tmux `prefix G` for when the pane's cwd isn't the repo you want.
+set -euo pipefail
+
+# Match .git as a dir (main repos) OR a file (linked worktrees) so both show up.
+repo=$(
+  fd -H -g '.git' "$HOME/repos" --max-depth 5 2>/dev/null \
+    | sed -E 's#/\.git/?$##' \
+    | sort -u \
+    | fzf --reverse --prompt='lazygit repo> '
+) || exit 0
+
+[ -n "${repo:-}" ] && exec lazygit -p "$repo"
