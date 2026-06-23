@@ -1,6 +1,7 @@
-# ~/.config/alacritty/elenkis.toml
+# ~/.config/alacritty/tack.toml
 [general]
   import = [ "~/.config/alacritty/alacritty.toml" ]
 
 [colors.primary]
-  background = "#161b17" # subtle green tint
+  background = "#1b201b" # subtle green tint
+  foreground = "#b3b3b3" # dimmer than base to calm text on this bg

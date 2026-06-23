@@ -101,6 +101,21 @@ do
   -- Set to true if you have a Nerd Font installed and selected in the terminal
   vim.g.have_nerd_font = false
 
+  -- Highlight chezmoi `.tmpl` files as their underlying type: strip the
+  -- `.tmpl` suffix and re-run filetype detection on the remaining name
+  -- (alacritty.toml.tmpl -> toml, git/config.tmpl -> gitconfig, etc.).
+  vim.filetype.add {
+    pattern = {
+      ['.*%.tmpl'] = function(path)
+        return vim.filetype.match { filename = (path:gsub('%.tmpl$', '')) }
+      end,
+      -- Extensionless configs whose type is path-based don't survive the strip
+      -- above (chezmoi's source path is dot_config/, not .config/). Map them
+      -- explicitly, higher priority than the generic .tmpl rule.
+      ['.*/git/config%.tmpl'] = { 'gitconfig', { priority = 10 } },
+    },
+  }
+
   -- [[ Setting options ]]
   --  See `:help vim.o`
   -- NOTE: You can change these options as you wish!
@@ -362,6 +377,9 @@ do
     },
   }
 
+  -- Toggle full-line highlight for changed lines (gitsigns linehl, off by default).
+  vim.keymap.set('n', '<leader>tgh', '<cmd>Gitsigns toggle_linehl<cr>', { desc = 'Toggle git line highlight' })
+
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
   require('which-key').setup {
@@ -372,6 +390,7 @@ do
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
+      { '<leader>tg', group = '[G]it' },
       { '<leader>g', group = '[G]it' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
@@ -389,8 +408,44 @@ do
   vim.pack.add { gh 'Mofiqul/vscode.nvim' }
   require('vscode').setup {
     italic_comments = false,
+    -- Transparent bg so the terminal's per-project background tint shows
+    -- through instead of vscode.nvim's own #1F1F1F.
+    transparent = true,
+    -- Dim the default editor foreground to match the terminal text (#c6c6c6).
+    color_overrides = { vscFront = '#c6c6c6' },
   }
   vim.cmd.colorscheme 'vscode'
+
+  -- vscode.nvim gives the mini.statusline mode blocks a light background but
+  -- no foreground, so the mode text is unreadable. Force a dark fg while
+  -- keeping each mode's color. Re-applied whenever the colorscheme changes.
+  local function fix_statusline_mode_contrast()
+    for _, mode in ipairs { 'Normal', 'Insert', 'Visual', 'Command', 'Replace', 'Other' } do
+      local group = 'MiniStatuslineMode' .. mode
+      local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
+      if hl.bg then
+        vim.api.nvim_set_hl(0, group, { fg = '#1f1f1f', bg = string.format('#%06x', hl.bg), bold = true })
+      end
+    end
+  end
+  fix_statusline_mode_contrast()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_statusline_mode_contrast })
+
+  -- Align gitsigns with the muted delta diff palette so nvim's gutter signs and
+  -- changed-line highlights match the terminal/lazygit diffs (add=green,
+  -- change=blue, delete=red, all muted). Ln backgrounds reuse delta's exact
+  -- plus/minus line tints; fg left unset so syntax colors show through.
+  local function fix_gitsigns_palette()
+    local set = vim.api.nvim_set_hl
+    set(0, 'GitSignsAdd', { fg = '#55805f' })
+    set(0, 'GitSignsChange', { fg = '#5a7ba6' })
+    set(0, 'GitSignsDelete', { fg = '#7d5159' })
+    set(0, 'GitSignsAddLn', { bg = '#1a2620' })
+    set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
+    set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
+  end
+  fix_gitsigns_palette()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
