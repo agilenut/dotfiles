@@ -981,6 +981,30 @@ do
 end
 
 -- ============================================================
+-- SECTION 6c: FILE EXPLORER
+-- neo-tree — a VS Code-style tree with git status + diagnostic badges
+-- ============================================================
+do
+  vim.pack.add {
+    gh 'MunifTanjim/nui.nvim', -- plenary + devicons already added above
+    gh 'nvim-neo-tree/neo-tree.nvim',
+  }
+  require('neo-tree').setup {
+    close_if_last_window = true,
+    filesystem = {
+      follow_current_file = { enabled = true }, -- reveal the open file in the tree
+      use_libuv_file_watcher = true, -- auto-refresh on external changes
+      filtered_items = {
+        hide_dotfiles = false, -- we edit dotfiles
+        hide_gitignored = true,
+      },
+    },
+    -- git status + diagnostic badges show on files by default.
+  }
+  vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[E]xplorer (Neo-tree)' })
+end
+
+-- ============================================================
 -- SECTION 7: AUTOCOMPLETE & SNIPPETS
 -- blink.cmp and luasnip setup
 -- ============================================================
