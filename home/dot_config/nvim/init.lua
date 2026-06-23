@@ -870,6 +870,8 @@ do
     'prettier',
     'shfmt',
     'pint',
+    -- Linters with no LSP (run via nvim-lint, reading the repo's config)
+    'markdownlint-cli2',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -937,6 +939,30 @@ do
     vim.g.disable_autoformat = not vim.g.disable_autoformat
     vim.notify('Format on save ' .. (vim.g.disable_autoformat and 'disabled' or 'enabled'))
   end, { desc = '[T]oggle [F]ormat on save' })
+end
+
+-- ============================================================
+-- SECTION 6b: LINTING (non-LSP)
+-- nvim-lint for linters with no language server (e.g. markdownlint)
+-- ============================================================
+do
+  vim.pack.add { gh 'mfussenegger/nvim-lint' }
+  local lint = require 'lint'
+  -- markdownlint-cli2 reads the repo's .markdownlint-cli2.* or .markdownlint.*,
+  -- so nvim's markdown diagnostics match pre-commit. LSP-backed languages
+  -- (eslint, ruff, etc.) don't need nvim-lint — their server reports diagnostics.
+  lint.linters_by_ft = {
+    markdown = { 'markdownlint-cli2' },
+  }
+
+  vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
+    group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
+    callback = function()
+      if vim.bo.modifiable then
+        lint.try_lint()
+      end
+    end,
+  })
 end
 
 -- ============================================================
