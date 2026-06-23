@@ -448,6 +448,21 @@ do
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
 
+  -- Mute diagnostic colors to the project palette (vscode.nvim defaults to the
+  -- bright #f44747 we dropped). Covers inline text/signs/underline, Trouble, and
+  -- neo-tree badges, which all read the Diagnostic* groups.
+  local function fix_diagnostic_palette()
+    local colors = { Error = '#d16969', Warn = '#d1b072', Info = '#6e8bb0', Hint = '#6e7681' }
+    for sev, c in pairs(colors) do
+      vim.api.nvim_set_hl(0, 'Diagnostic' .. sev, { fg = c })
+      vim.api.nvim_set_hl(0, 'DiagnosticSign' .. sev, { fg = c })
+      vim.api.nvim_set_hl(0, 'DiagnosticVirtualText' .. sev, { fg = c })
+      vim.api.nvim_set_hl(0, 'DiagnosticUnderline' .. sev, { sp = c, undercurl = true })
+    end
+  end
+  fix_diagnostic_palette()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_diagnostic_palette })
+
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
   require('todo-comments').setup { signs = false }
@@ -1002,6 +1017,22 @@ do
     -- git status + diagnostic badges show on files by default.
   }
   vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[E]xplorer (Neo-tree)' })
+  -- Tree of only git-changed files, for navigating what changed.
+  vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = '[G]it changed files ([E]xplorer)' })
+end
+
+-- ============================================================
+-- SECTION 6d: GIT REVIEW
+-- diffview.nvim — review branch/PR diffs in nvim (LSP, diagnostics, jumps)
+-- ============================================================
+do
+  vim.pack.add { gh 'sindrets/diffview.nvim' } -- plenary already added (telescope)
+  require('diffview').setup {}
+  -- <leader>gd: review working tree; for a branch/PR use :DiffviewOpen main or
+  -- :DiffviewOpen origin/main...HEAD. <leader>gh: history of the current file.
+  vim.keymap.set('n', '<leader>gd', '<cmd>DiffviewOpen<cr>', { desc = '[G]it [D]iff review (Diffview)' })
+  vim.keymap.set('n', '<leader>gh', '<cmd>DiffviewFileHistory %<cr>', { desc = '[G]it file [H]istory' })
+  vim.keymap.set('n', '<leader>gq', '<cmd>DiffviewClose<cr>', { desc = '[G]it diff [Q]uit' })
 end
 
 -- ============================================================
