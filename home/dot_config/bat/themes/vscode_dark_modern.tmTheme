@@ -14,15 +14,15 @@
 				<key>background</key>
 				<string>#1E1E1E</string>
 				<key>caret</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 				<key>invisibles</key>
 				<string>#FFFFFF40</string>
 				<key>lineHighlight</key>
 				<string>#0F0F0F</string>
 				<key>selection</key>
-				<string>#264F78</string>
+				<string>#37373D</string>
 			</dict>
 		</dict>
 		<dict>
@@ -36,7 +36,7 @@
 				<string></string>
 				<key>foreground</key>
 				<!-- <string>#808080</string> -->
-				<string>#608B4E</string>
+				<string>#6A9955</string>
 			</dict>
 		</dict>
 		<dict>
@@ -75,7 +75,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -88,7 +88,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -101,7 +101,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -318,7 +318,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -331,7 +331,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -357,7 +357,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -390,7 +390,7 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#ff3333</string>
+				<string>#5C3A3A</string>
 			</dict>
 		</dict>
 		<dict>
@@ -516,7 +516,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -527,7 +527,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#DCDCDC</string>
+				<string>#C6C6C6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -615,7 +615,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#608B4E</string>
+				<string>#6A9955</string>
 			</dict>
 		</dict> -->
     <!--<dict>
@@ -652,20 +652,6 @@
           <string>#FF0000</string>
         </dict>
     </dict> -->
-    <dict>
-      <key>name</key>
-      <string>C# XML Doc Tag</string>
-      <key>scope</key>
-      <string>
-          entity.other.attribute-name.documentation,
-        meta.tag.documentation entity.other.attribute-name
-      </string>
-      <key>settings</key>
-      <dict>
-          <key>foreground</key>
-          <string>#FF0000</string> <!-- VS Code blue -->
-      </dict>
-    </dict>
 		<dict>
 			<key>name</key>
 			<string>GitGutter deleted</string>
@@ -674,7 +660,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#F92672</string>
+				<string>#7D5159</string>
 			</dict>
 		</dict>
 		<dict>
@@ -685,7 +671,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#A6E22E</string>
+				<string>#55805F</string>
 			</dict>
 		</dict>
 		<dict>
@@ -740,7 +726,7 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#275822</string>
+				<string>#1A2620</string>
 			</dict>
 		</dict>
 		<dict>
@@ -751,7 +737,7 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#A72822</string>
+				<string>#26191C</string>
 			</dict>
 		</dict>
 	</array>

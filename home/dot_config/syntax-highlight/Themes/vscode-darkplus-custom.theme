@@ -2,7 +2,7 @@ Description="vscode darkplus (custom)"
 
 Categories = {"dark"}
 
-Default = { Colour="#9cdcfe" }
+Default = { Colour="#c6c6c6" }
 Canvas = { Colour="#1e1e1e" }
 Number = { Colour="#b5cea8" }
 String = { Colour="#d7ba7d" }
@@ -15,8 +15,8 @@ LineNum = { Colour="#808080" }
 Operator = { Colour="#d4d4d4" }
 Interpolation = { Colour="#569cd6" }
 Hover = { Colour="", Custom = { { Format = "html", Style = "cursor:help;", Override = false } } }
-Error = { Colour="#ff0000" }
-ErrorMessage = { Colour="#ff0000", Custom = { { Format = "html", Style = "border:solid 1px red; margin-left: 3em;", Override = false } } }
+Error = { Colour="#d16969" }
+ErrorMessage = { Colour="#d16969", Custom = { { Format = "html", Style = "border:solid 1px red; margin-left: 3em;", Override = false } } }
 
 Keywords = {
 	{ Colour="#c58ec0" },

@@ -1,0 +1,40 @@
+promptToReturnFromSubprocess: false
+os:
+  editPreset: "nvim"
+gui:
+  sidePanelWidth: 0.25
+  scrollHeight: 4
+  nerdFontsVersion: "3"
+  # Match delta's filename header (named ANSI blue) so accents share one palette.
+  theme:
+    activeBorderColor:
+      - blue
+    inactiveBorderColor:
+      - "#6e7681"
+    selectedLineBgColor:
+      - "#37373d"
+    selectedRangeBgColor:
+      - "#37373d"
+    optionsTextColor:
+      - blue
+  authorColors:
+    "agilenut": "#569cd6" # your commits in the theme blue
+    "*": "#6e7681" # everyone else muted
+  branchColorPatterns:
+    "^feat/": "green"
+    "^fix/": "red"
+    "^refactor/": "magenta"
+    "^perf/": "magenta"
+    "^docs/": "blue"
+    "^test/": "yellow"
+    "^ci/": "cyan"
+    "^build/": "cyan"
+    "^chore/": "#6e7681"
+    "^style/": "#6e7681"
+git:
+  diffContextSize: 10
+{{- if lookPath "delta" }}
+  pagers:
+    - colorArg: always
+      pager: delta --paging=never
+{{- end }}

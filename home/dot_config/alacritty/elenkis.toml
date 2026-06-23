@@ -4,3 +4,4 @@
 
 [colors.primary]
   background = "#1f2127" # subtle blue tint
+  foreground = "#b3b3b3" # dimmer than base to calm text on this bg

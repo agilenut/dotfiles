@@ -31,7 +31,6 @@
 {{- else }}
 	autocrlf = input
 {{- end }}
-	editor = code
 {{- if lookPath "delta" }}
 	pager = delta
 {{- end }}
@@ -70,6 +69,16 @@
 	line-numbers = true
 	side-by-side = false
 	syntax-theme = vscode_dark_modern
+	; Muted diff backgrounds; `syntax` keeps foreground highlighting.
+	; emph styles brighten the exact changed words within a line.
+	plus-style = syntax "#1a2620"
+	minus-style = syntax "#26191c"
+	plus-emph-style = syntax "#274a30"
+	minus-emph-style = syntax "#42272d"
+	; Calmer line-number gutter; muted tint instead of saturated green/red.
+	line-numbers-plus-style = "#55805f"
+	line-numbers-minus-style = "#7d5159"
+	line-numbers-zero-style = "#4b5263"
 {{- end }}
 
 [merge]
