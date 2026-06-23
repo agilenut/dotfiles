@@ -802,7 +802,13 @@ do
     },
 
     -- Python: basedpyright for types, ruff for lint (+ format via conform)
-    basedpyright = {},
+    basedpyright = {
+      settings = {
+        -- Analyze the whole project (not just open files) so Trouble shows
+        -- problems across the project. Heavier on large repos.
+        basedpyright = { analysis = { diagnosticMode = 'workspace' } },
+      },
+    },
     ruff = {},
     -- PHP
     intelephense = {},
@@ -885,6 +891,15 @@ do
   -- Attaches on .sln/.csproj; server installed from mason (Crashdummyy registry).
   vim.pack.add { gh 'seblyng/roslyn.nvim' }
   require('roslyn').setup {}
+  -- Whole-solution diagnostics so problems from unopened C# files show in Trouble.
+  vim.lsp.config('roslyn', {
+    settings = {
+      ['csharp|background_analysis'] = {
+        dotnet_analyzer_diagnostics_scope = 'fullSolution',
+        dotnet_compiler_diagnostics_scope = 'fullSolution',
+      },
+    },
+  })
 end
 
 -- ============================================================
