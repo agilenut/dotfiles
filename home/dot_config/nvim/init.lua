@@ -848,7 +848,13 @@ do
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
-  require('mason').setup {}
+  require('mason').setup {
+    -- Crashdummyy registry provides roslyn-language-server (for roslyn.nvim).
+    registries = {
+      'github:mason-org/mason-registry',
+      'github:Crashdummyy/mason-registry',
+    },
+  }
 
   -- Ensure the servers and tools above are installed
   --
@@ -859,7 +865,7 @@ do
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
+    'roslyn-language-server', -- C# server for roslyn.nvim (Crashdummyy registry)
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -868,6 +874,11 @@ do
     vim.lsp.config(name, server)
     vim.lsp.enable(name)
   end
+
+  -- C# via roslyn.nvim — the Roslyn LSP (same engine as VS Code's C# Dev Kit).
+  -- Attaches on .sln/.csproj; server installed from mason (Crashdummyy registry).
+  vim.pack.add { gh 'seblyng/roslyn.nvim' }
+  require('roslyn').setup {}
 end
 
 -- ============================================================
