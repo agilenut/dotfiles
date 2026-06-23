@@ -814,6 +814,30 @@ do
     taplo = {},
     -- Markdown navigation (markdownlint comes later via nvim-lint)
     marksman = {},
+
+    -- TypeScript / JavaScript / React + the Vue SFC <script> layer (vtsls).
+    -- The @vue/typescript-plugin gives Vue files TS support in hybrid mode.
+    vtsls = {
+      filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
+      settings = {
+        vtsls = {
+          tsserver = {
+            globalPlugins = {
+              {
+                name = '@vue/typescript-plugin',
+                location = vim.fn.stdpath 'data' .. '/mason/packages/vue-language-server/node_modules/@vue/language-server',
+                languages = { 'vue' },
+                configNamespace = 'typescript',
+              },
+            },
+          },
+        },
+      },
+    },
+    -- Vue templates/styles (Volar v3, hybrid mode — vtsls handles the script layer)
+    vue_ls = {},
+    -- ESLint diagnostics (reads the repo's flat or legacy eslint config)
+    eslint = {},
   }
 
   vim.pack.add {
