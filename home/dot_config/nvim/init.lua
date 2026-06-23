@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- Highlight chezmoi `.tmpl` files as their underlying type: strip the
   -- `.tmpl` suffix and re-run filetype detection on the remaining name
@@ -444,6 +444,11 @@ do
     set(0, 'GitSignsAddLn', { bg = '#1a2620' })
     set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
     set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
+    -- diffview / vimdiff use the Diff* groups — match the muted delta palette.
+    set(0, 'DiffAdd', { bg = '#1a2620' })
+    set(0, 'DiffChange', { bg = '#1c2333' })
+    set(0, 'DiffDelete', { bg = '#26191c' })
+    set(0, 'DiffText', { bg = '#2f3d5c' })
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
@@ -1033,6 +1038,16 @@ do
   vim.keymap.set('n', '<leader>gd', '<cmd>DiffviewOpen<cr>', { desc = '[G]it [D]iff review (Diffview)' })
   vim.keymap.set('n', '<leader>gh', '<cmd>DiffviewFileHistory %<cr>', { desc = '[G]it file [H]istory' })
   vim.keymap.set('n', '<leader>gq', '<cmd>DiffviewClose<cr>', { desc = '[G]it diff [Q]uit' })
+end
+
+-- ============================================================
+-- SECTION 6e: MARKDOWN RENDERING
+-- render-markdown — pretty in-buffer markdown; <leader>tm toggles raw vs rendered
+-- ============================================================
+do
+  vim.pack.add { gh 'MeanderingProgrammer/render-markdown.nvim' } -- treesitter + icons already present
+  require('render-markdown').setup {}
+  vim.keymap.set('n', '<leader>tm', '<cmd>RenderMarkdown toggle<cr>', { desc = '[T]oggle [M]arkdown render' })
 end
 
 -- ============================================================
