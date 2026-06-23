@@ -800,6 +800,20 @@ do
         },
       },
     },
+
+    -- Python: basedpyright for types, ruff for lint (+ format via conform)
+    basedpyright = {},
+    ruff = {},
+    -- PHP
+    intelephense = {},
+    -- Shell (bash/sh; zsh has no language server)
+    bashls = {},
+    -- Config files
+    yamlls = {},
+    jsonls = {},
+    taplo = {},
+    -- Markdown navigation (markdownlint comes later via nvim-lint)
+    marksman = {},
   }
 
   vim.pack.add {
