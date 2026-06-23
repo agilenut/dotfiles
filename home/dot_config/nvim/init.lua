@@ -866,6 +866,10 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     'roslyn-language-server', -- C# server for roslyn.nvim (Crashdummyy registry)
+    -- Formatters for conform (stylua/ruff/taplo already installed as servers/tools)
+    'prettier',
+    'shfmt',
+    'pint',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -891,32 +895,48 @@ do
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function(bufnr)
-      -- You can specify filetypes to autoformat on save here:
-      local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
-      }
-      if enabled_filetypes[vim.bo[bufnr].filetype] then
-        return { timeout_ms = 500 }
-      else
+      -- Format on save unless toggled off globally or per-buffer (<leader>tf).
+      if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
         return nil
       end
+      return { timeout_ms = 1000, lsp_format = 'fallback' }
     end,
     default_format_opts = {
-      lsp_format = 'fallback', -- Use external formatters if configured below, otherwise use LSP formatting. Set to `false` to disable LSP formatting entirely.
+      -- Use the external formatter below if set; otherwise fall back to the LSP
+      -- (e.g. C# via roslyn, which formats from .editorconfig).
+      lsp_format = 'fallback',
     },
-    -- You can also specify external formatters in here.
+    -- External formatters run the same binaries as pre-commit, reading the repo's
+    -- .editorconfig / .prettierrc / etc. Project-local installs are preferred.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
-      -- Conform can also run multiple formatters sequentially
-      -- python = { "isort", "black" },
-      --
-      -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      lua = { 'stylua' },
+      python = { 'ruff_organize_imports', 'ruff_format' },
+      javascript = { 'prettier' },
+      javascriptreact = { 'prettier' },
+      typescript = { 'prettier' },
+      typescriptreact = { 'prettier' },
+      vue = { 'prettier' },
+      css = { 'prettier' },
+      scss = { 'prettier' },
+      html = { 'prettier' },
+      json = { 'prettier' },
+      jsonc = { 'prettier' },
+      yaml = { 'prettier' },
+      markdown = { 'prettier' },
+      sh = { 'shfmt' },
+      bash = { 'shfmt' },
+      toml = { 'taplo' },
+      php = { 'pint' },
+      -- C#: no entry — roslyn's editorconfig-based LSP formatting (lsp_format fallback).
     },
   }
 
   vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[F]ormat buffer' })
+  -- Toggle format-on-save globally.
+  vim.keymap.set('n', '<leader>tf', function()
+    vim.g.disable_autoformat = not vim.g.disable_autoformat
+    vim.notify('Format on save ' .. (vim.g.disable_autoformat and 'disabled' or 'enabled'))
+  end, { desc = '[T]oggle [F]ormat on save' })
 end
 
 -- ============================================================
