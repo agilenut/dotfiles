@@ -375,6 +375,21 @@ do
       topdelete = { text = '‾' }, ---@diagnostic disable-line: missing-fields
       changedelete = { text = '~' }, ---@diagnostic disable-line: missing-fields
     },
+    on_attach = function(bufnr)
+      local gs = require 'gitsigns'
+      local function map(l, r, desc) vim.keymap.set('n', l, r, { buffer = bufnr, desc = desc }) end
+      -- Jump between changed hunks (falls back to native nav in diff mode).
+      map(']c', function() if vim.wo.diff then vim.cmd.normal { ']c', bang = true } else gs.nav_hunk 'next' end end, 'Next git hunk')
+      map('[c', function() if vim.wo.diff then vim.cmd.normal { '[c', bang = true } else gs.nav_hunk 'prev' end end, 'Prev git hunk')
+      -- See the old vs new lines in a popup, or act on the hunk.
+      map('<leader>hp', gs.preview_hunk, 'Preview hunk (old vs new)')
+      map('<leader>hs', gs.stage_hunk, 'Stage hunk')
+      map('<leader>hr', gs.reset_hunk, 'Reset hunk')
+      map('<leader>hb', function() gs.blame_line { full = true } end, 'Blame line')
+      -- Toggles: show removed lines inline; per-line blame.
+      map('<leader>td', gs.toggle_deleted, 'Toggle deleted lines inline')
+      map('<leader>tb', gs.toggle_current_line_blame, 'Toggle line blame')
+    end,
   }
 
   -- Toggle full-line highlight for changed lines (gitsigns linehl, off by default).
@@ -449,6 +464,10 @@ do
     set(0, 'DiffChange', { bg = '#1c2333' })
     set(0, 'DiffDelete', { bg = '#26191c' })
     set(0, 'DiffText', { bg = '#2f3d5c' })
+    -- neo-tree: transparent bg to match the other windows.
+    for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer' } do
+      set(0, g, { bg = 'none' })
+    end
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
@@ -1011,6 +1030,22 @@ do
   }
   require('neo-tree').setup {
     close_if_last_window = true,
+    window = {
+      mappings = {
+        ['<space>'] = 'none', -- free Space so <leader> maps work inside neo-tree
+        ['l'] = 'open',
+        ['h'] = 'close_node',
+      },
+    },
+    default_component_configs = {
+      -- Plain single-char git markers instead of cryptic/box glyphs.
+      git_status = {
+        symbols = {
+          added = '+', modified = '~', deleted = '-', renamed = '»',
+          untracked = '?', ignored = '◌', unstaged = '✗', staged = '✓', conflict = '!',
+        },
+      },
+    },
     filesystem = {
       follow_current_file = { enabled = true }, -- reveal the open file in the tree
       use_libuv_file_watcher = true, -- auto-refresh on external changes
