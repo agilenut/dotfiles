@@ -1,0 +1,11 @@
+#!/bin/bash
+# ~/bin/term-uperix
+
+# @raycast.schemaVersion 1
+# @raycast.title Uperix Terminal
+# @raycast.mode silent
+# @raycast.icon 💻
+# @raycast.packageName Terminals
+
+exec "$HOME/.local/bin/term-launch" uperix \
+  "$HOME/.config/alacritty/uperix.toml" "$HOME/workspaces/work/uperix" "Uperix"
