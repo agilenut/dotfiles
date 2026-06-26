@@ -464,10 +464,6 @@ do
     set(0, 'DiffChange', { bg = '#1c2333' })
     set(0, 'DiffDelete', { bg = '#26191c' })
     set(0, 'DiffText', { bg = '#2f3d5c' })
-    -- neo-tree: transparent bg to match the other windows.
-    for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer' } do
-      set(0, g, { bg = 'none' })
-    end
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
@@ -1056,6 +1052,16 @@ do
     },
     -- git status + diagnostic badges show on files by default.
   }
+  -- neo-tree sets its own window bg on load; re-apply transparency (incl. the
+  -- float preview) whenever a neo-tree buffer opens, so it matches other windows.
+  vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'neo-tree',
+    callback = function()
+      for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer', 'NeoTreeFloatNormal', 'NeoTreeFloatBorder' } do
+        vim.api.nvim_set_hl(0, g, { bg = 'none' })
+      end
+    end,
+  })
   vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[E]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
   vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = '[G]it changed files ([E]xplorer)' })
