@@ -152,6 +152,9 @@ do
   -- Keep signcolumn on by default
   vim.o.signcolumn = 'yes'
 
+  -- Rounded border on all floats — delineates the transparent popups.
+  vim.o.winborder = 'rounded'
+
   -- Decrease update time
   vim.o.updatetime = 250
 
@@ -464,6 +467,10 @@ do
     set(0, 'DiffChange', { bg = '#1c2333' })
     set(0, 'DiffDelete', { bg = '#26191c' })
     set(0, 'DiffText', { bg = '#2f3d5c' })
+    -- Transparent floats (neo-tree preview, telescope, hover, which-key); the
+    -- rounded winborder above delineates them.
+    set(0, 'NormalFloat', { bg = 'none' })
+    set(0, 'FloatBorder', { bg = 'none' })
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
