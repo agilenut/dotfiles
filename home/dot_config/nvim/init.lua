@@ -1038,7 +1038,7 @@ do
       git_status = {
         symbols = {
           added = '+', modified = '~', deleted = '-', renamed = '»',
-          untracked = '?', ignored = '◌', unstaged = '✗', staged = '✓', conflict = '!',
+          untracked = '?', ignored = '◌', unstaged = '○', staged = '✓', conflict = '!',
         },
       },
     },
@@ -1057,8 +1057,21 @@ do
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'neo-tree',
     callback = function()
-      for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer', 'NeoTreeFloatNormal', 'NeoTreeFloatBorder' } do
+      for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer', 'NeoTreeFloatNormal', 'NeoTreeFloatBorder', 'NeoTreePreview' } do
         vim.api.nvim_set_hl(0, g, { bg = 'none' })
+      end
+      -- Mute neo-tree's git marker/filename colors to the project palette.
+      local git = {
+        NeoTreeGitAdded = '#55805f',
+        NeoTreeGitStaged = '#55805f',
+        NeoTreeGitModified = '#d1b072',
+        NeoTreeGitUnstaged = '#d1b072',
+        NeoTreeGitUntracked = '#c08552',
+        NeoTreeGitConflict = '#d16969',
+        NeoTreeGitDeleted = '#7d5159',
+      }
+      for g, c in pairs(git) do
+        vim.api.nvim_set_hl(0, g, { fg = c })
       end
     end,
   })
