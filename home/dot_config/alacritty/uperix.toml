@@ -1,0 +1,7 @@
+# ~/.config/alacritty/uperix.toml
+[general]
+  import = [ "~/.config/alacritty/alacritty.toml" ]
+
+[colors.primary]
+  background = "#251f2d" # subtle purple tint
+  foreground = "#b3b3b3" # dimmer than base to calm text on this bg
