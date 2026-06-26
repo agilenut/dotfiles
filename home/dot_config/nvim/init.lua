@@ -1062,20 +1062,6 @@ do
 end
 
 -- ============================================================
--- SECTION 6d: GIT REVIEW
--- diffview.nvim — review branch/PR diffs in nvim (LSP, diagnostics, jumps)
--- ============================================================
-do
-  vim.pack.add { gh 'sindrets/diffview.nvim' } -- plenary already added (telescope)
-  require('diffview').setup {}
-  -- <leader>gd: review working tree; for a branch/PR use :DiffviewOpen main or
-  -- :DiffviewOpen origin/main...HEAD. <leader>gh: history of the current file.
-  vim.keymap.set('n', '<leader>gd', '<cmd>DiffviewOpen<cr>', { desc = '[G]it [D]iff review (Diffview)' })
-  vim.keymap.set('n', '<leader>gh', '<cmd>DiffviewFileHistory %<cr>', { desc = '[G]it file [H]istory' })
-  vim.keymap.set('n', '<leader>gq', '<cmd>DiffviewClose<cr>', { desc = '[G]it diff [Q]uit' })
-end
-
--- ============================================================
 -- SECTION 6e: MARKDOWN RENDERING
 -- render-markdown — pretty in-buffer markdown; <leader>tm toggles raw vs rendered
 -- ============================================================
