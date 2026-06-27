@@ -15,6 +15,13 @@
   # pbcopy directly, so disabling OSC 52 doesn't break explicit copies.
   osc52 = "Disabled"
 
+# Send 0x1F (ASCII Unit Separator) for Ctrl+/ so fzf etc. can bind `ctrl-/`.
+# Alacritty emits no distinct code for Ctrl+/ by default, so it would type "/".
+[[keyboard.bindings]]
+key = "Slash"
+mods = "Control"
+chars = "\u001F"
+
 [window]
 
   dynamic_title = true
