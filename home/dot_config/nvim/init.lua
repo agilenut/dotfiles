@@ -467,7 +467,7 @@ do
     set(0, 'GitSignsAddLn', { bg = '#1a2620' })
     set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
     set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
-    -- diffview / vimdiff use the Diff* groups — match the muted delta palette.
+    -- vimdiff / :diffthis use the Diff* groups — match the muted delta palette.
     set(0, 'DiffAdd', { bg = '#1a2620' })
     set(0, 'DiffChange', { bg = '#1c2333' })
     set(0, 'DiffDelete', { bg = '#26191c' })
@@ -1095,7 +1095,7 @@ do
 end
 
 -- ============================================================
--- SECTION 6e: MARKDOWN RENDERING
+-- SECTION 6d: MARKDOWN RENDERING
 -- render-markdown — pretty in-buffer markdown; <leader>tm toggles raw vs rendered
 -- ============================================================
 do
