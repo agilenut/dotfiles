@@ -2,14 +2,16 @@
 # =============================================================================
 # Setup zoxide.
 
-# TODO: Better way to dry this up with the FZF versions while still having them decoupled?
+# cdi (zoxide interactive) reads _ZO_FZF_OPTS only; it does NOT inherit
+# FZF_DEFAULT_OPTS. Reuse the shared bind/color vars (set in fzf.zsh, sourced
+# first) so cdi's preview toggle/scroll + colors match every other fzf.
 export _ZO_FZF_OPTS="--reverse \
+  --bind '$FZF_PREVIEW_BIND' \
   --preview 'fzf-preview {2}' \
   --preview-window hidden \
-  --bind '?:toggle-preview,ctrl-a:select-all,ctrl-f:preview-page-down,ctrl-b:preview-page-up' \
   --height 80% \
   --nth 2 \
-  --color=fg:7,fg+:12,pointer:4,hl:5,hl+:5,prompt:6,info:3"
+  $FZF_COLOR_OPTS"
 
 # Initialize zoxide
 eval "$(zoxide init zsh --cmd=cd)"
