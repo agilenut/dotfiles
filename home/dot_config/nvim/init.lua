@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- Highlight chezmoi `.tmpl` files as their underlying type: strip the
   -- `.tmpl` suffix and re-run filetype detection on the remaining name
@@ -152,6 +152,9 @@ do
   -- Keep signcolumn on by default
   vim.o.signcolumn = 'yes'
 
+  -- Rounded border on all floats — delineates the transparent popups.
+  vim.o.winborder = 'rounded'
+
   -- Decrease update time
   vim.o.updatetime = 250
 
@@ -178,6 +181,9 @@ do
 
   -- Show which line your cursor is on
   vim.o.cursorline = true
+  -- Highlight only the line NUMBER, not a full-width gray bar — the bar's fixed
+  -- bg clashes with the transparent, tinted terminal backgrounds.
+  vim.o.cursorlineopt = 'number'
 
   -- Minimal number of screen lines to keep above and below the cursor.
   vim.o.scrolloff = 10
@@ -375,6 +381,21 @@ do
       topdelete = { text = '‾' }, ---@diagnostic disable-line: missing-fields
       changedelete = { text = '~' }, ---@diagnostic disable-line: missing-fields
     },
+    on_attach = function(bufnr)
+      local gs = require 'gitsigns'
+      local function map(l, r, desc) vim.keymap.set('n', l, r, { buffer = bufnr, desc = desc }) end
+      -- Jump between changed hunks (falls back to native nav in diff mode).
+      map(']c', function() if vim.wo.diff then vim.cmd.normal { ']c', bang = true } else gs.nav_hunk 'next' end end, 'Next git hunk')
+      map('[c', function() if vim.wo.diff then vim.cmd.normal { '[c', bang = true } else gs.nav_hunk 'prev' end end, 'Prev git hunk')
+      -- See the old vs new lines in a popup, or act on the hunk.
+      map('<leader>hp', gs.preview_hunk_inline, 'Preview hunk inline (old vs new)')
+      map('<leader>hs', gs.stage_hunk, 'Stage hunk')
+      map('<leader>hr', gs.reset_hunk, 'Reset hunk')
+      map('<leader>hb', function() gs.blame_line { full = true } end, 'Blame line')
+      -- Toggles: show removed lines inline; per-line blame.
+      map('<leader>td', gs.toggle_deleted, 'Toggle deleted lines inline')
+      map('<leader>tb', gs.toggle_current_line_blame, 'Toggle line blame')
+    end,
   }
 
   -- Toggle full-line highlight for changed lines (gitsigns linehl, off by default).
@@ -386,6 +407,8 @@ do
     -- Delay between pressing a key and opening which-key (milliseconds)
     delay = 0,
     icons = { mappings = vim.g.have_nerd_font },
+    win = { border = 'rounded' }, -- which-key ignores the global winborder
+
     -- Document existing key chains
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
@@ -393,6 +416,7 @@ do
       { '<leader>tg', group = '[G]it' },
       { '<leader>g', group = '[G]it' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
+      { '<leader>x', group = 'Diagnostics (Trouble)' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
   }
@@ -443,13 +467,46 @@ do
     set(0, 'GitSignsAddLn', { bg = '#1a2620' })
     set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
     set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
+    -- vimdiff / :diffthis use the Diff* groups — match the muted delta palette.
+    set(0, 'DiffAdd', { bg = '#1a2620' })
+    set(0, 'DiffChange', { bg = '#1c2333' })
+    set(0, 'DiffDelete', { bg = '#26191c' })
+    set(0, 'DiffText', { bg = '#2f3d5c' })
+    -- Transparent floats (neo-tree preview, telescope, hover, which-key); the
+    -- rounded winborder above delineates them.
+    set(0, 'NormalFloat', { bg = 'none' })
+    set(0, 'FloatBorder', { bg = 'none' })
+    -- Bold the current-line number so it marks the line without a bg bar.
+    set(0, 'CursorLineNr', { fg = '#c6c6c6', bold = true })
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
 
+  -- Mute diagnostic colors to the project palette (vscode.nvim defaults to the
+  -- bright #f44747 we dropped). Covers inline text/signs/underline, Trouble, and
+  -- neo-tree badges, which all read the Diagnostic* groups.
+  local function fix_diagnostic_palette()
+    local colors = { Error = '#d16969', Warn = '#d1b072', Info = '#6e8bb0', Hint = '#6e7681' }
+    for sev, c in pairs(colors) do
+      vim.api.nvim_set_hl(0, 'Diagnostic' .. sev, { fg = c })
+      vim.api.nvim_set_hl(0, 'DiagnosticSign' .. sev, { fg = c })
+      vim.api.nvim_set_hl(0, 'DiagnosticVirtualText' .. sev, { fg = c })
+      vim.api.nvim_set_hl(0, 'DiagnosticUnderline' .. sev, { sp = c, undercurl = true })
+    end
+  end
+  fix_diagnostic_palette()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_diagnostic_palette })
+
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
   require('todo-comments').setup { signs = false }
+
+  -- Trouble: a VS Code-style "Problems" panel for diagnostics (also quickfix,
+  -- LSP references, symbols). <leader>xx = workspace, <leader>xX = this buffer.
+  vim.pack.add { gh 'folke/trouble.nvim' }
+  require('trouble').setup {}
+  vim.keymap.set('n', '<leader>xx', '<cmd>Trouble diagnostics toggle<cr>', { desc = 'Diagnostics list (Trouble)' })
+  vim.keymap.set('n', '<leader>xX', '<cmd>Trouble diagnostics toggle filter.buf=0<cr>', { desc = 'Buffer diagnostics (Trouble)' })
 
   -- [[ mini.nvim ]]
   --  A collection of various small independent plugins/modules
@@ -792,6 +849,50 @@ do
         },
       },
     },
+
+    -- Python: basedpyright for types, ruff for lint (+ format via conform)
+    basedpyright = {
+      settings = {
+        -- Analyze the whole project (not just open files) so Trouble shows
+        -- problems across the project. Heavier on large repos.
+        basedpyright = { analysis = { diagnosticMode = 'workspace' } },
+      },
+    },
+    ruff = {},
+    -- PHP
+    intelephense = {},
+    -- Shell (bash/sh; zsh has no language server)
+    bashls = {},
+    -- Config files
+    yamlls = {},
+    jsonls = {},
+    taplo = {},
+    -- Markdown navigation (markdownlint comes later via nvim-lint)
+    marksman = {},
+
+    -- TypeScript / JavaScript / React + the Vue SFC <script> layer (vtsls).
+    -- The @vue/typescript-plugin gives Vue files TS support in hybrid mode.
+    vtsls = {
+      filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
+      settings = {
+        vtsls = {
+          tsserver = {
+            globalPlugins = {
+              {
+                name = '@vue/typescript-plugin',
+                location = vim.fn.stdpath 'data' .. '/mason/packages/vue-language-server/node_modules/@vue/language-server',
+                languages = { 'vue' },
+                configNamespace = 'typescript',
+              },
+            },
+          },
+        },
+      },
+    },
+    -- Vue templates/styles (Volar v3, hybrid mode — vtsls handles the script layer)
+    vue_ls = {},
+    -- ESLint diagnostics (reads the repo's flat or legacy eslint config)
+    eslint = {},
   }
 
   vim.pack.add {
@@ -802,7 +903,13 @@ do
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
-  require('mason').setup {}
+  require('mason').setup {
+    -- Crashdummyy registry provides roslyn-language-server (for roslyn.nvim).
+    registries = {
+      'github:mason-org/mason-registry',
+      'github:Crashdummyy/mason-registry',
+    },
+  }
 
   -- Ensure the servers and tools above are installed
   --
@@ -813,7 +920,13 @@ do
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
+    'roslyn-language-server', -- C# server for roslyn.nvim (Crashdummyy registry)
+    -- Formatters for conform (stylua/ruff/taplo already installed as servers/tools)
+    'prettier',
+    'shfmt',
+    'pint',
+    -- Linters with no LSP (run via nvim-lint, reading the repo's config)
+    'markdownlint-cli2',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -822,6 +935,20 @@ do
     vim.lsp.config(name, server)
     vim.lsp.enable(name)
   end
+
+  -- C# via roslyn.nvim — the Roslyn LSP (same engine as VS Code's C# Dev Kit).
+  -- Attaches on .sln/.csproj; server installed from mason (Crashdummyy registry).
+  vim.pack.add { gh 'seblyng/roslyn.nvim' }
+  require('roslyn').setup {}
+  -- Whole-solution diagnostics so problems from unopened C# files show in Trouble.
+  vim.lsp.config('roslyn', {
+    settings = {
+      ['csharp|background_analysis'] = {
+        dotnet_analyzer_diagnostics_scope = 'fullSolution',
+        dotnet_compiler_diagnostics_scope = 'fullSolution',
+      },
+    },
+  })
 end
 
 -- ============================================================
@@ -834,32 +961,147 @@ do
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function(bufnr)
-      -- You can specify filetypes to autoformat on save here:
-      local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
-      }
-      if enabled_filetypes[vim.bo[bufnr].filetype] then
-        return { timeout_ms = 500 }
-      else
+      -- Format on save unless toggled off globally or per-buffer (<leader>tf).
+      if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
         return nil
       end
+      return { timeout_ms = 1000, lsp_format = 'fallback' }
     end,
     default_format_opts = {
-      lsp_format = 'fallback', -- Use external formatters if configured below, otherwise use LSP formatting. Set to `false` to disable LSP formatting entirely.
+      -- Use the external formatter below if set; otherwise fall back to the LSP
+      -- (e.g. C# via roslyn, which formats from .editorconfig).
+      lsp_format = 'fallback',
     },
-    -- You can also specify external formatters in here.
+    -- External formatters run the same binaries as pre-commit, reading the repo's
+    -- .editorconfig / .prettierrc / etc. Project-local installs are preferred.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
-      -- Conform can also run multiple formatters sequentially
-      -- python = { "isort", "black" },
-      --
-      -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      lua = { 'stylua' },
+      python = { 'ruff_organize_imports', 'ruff_format' },
+      javascript = { 'prettier' },
+      javascriptreact = { 'prettier' },
+      typescript = { 'prettier' },
+      typescriptreact = { 'prettier' },
+      vue = { 'prettier' },
+      css = { 'prettier' },
+      scss = { 'prettier' },
+      html = { 'prettier' },
+      json = { 'prettier' },
+      jsonc = { 'prettier' },
+      yaml = { 'prettier' },
+      markdown = { 'prettier' },
+      sh = { 'shfmt' },
+      bash = { 'shfmt' },
+      toml = { 'taplo' },
+      php = { 'pint' },
+      -- C#: no entry — roslyn's editorconfig-based LSP formatting (lsp_format fallback).
     },
   }
 
   vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[F]ormat buffer' })
+  -- Toggle format-on-save globally.
+  vim.keymap.set('n', '<leader>tf', function()
+    vim.g.disable_autoformat = not vim.g.disable_autoformat
+    vim.notify('Format on save ' .. (vim.g.disable_autoformat and 'disabled' or 'enabled'))
+  end, { desc = '[T]oggle [F]ormat on save' })
+end
+
+-- ============================================================
+-- SECTION 6b: LINTING (non-LSP)
+-- nvim-lint for linters with no language server (e.g. markdownlint)
+-- ============================================================
+do
+  vim.pack.add { gh 'mfussenegger/nvim-lint' }
+  local lint = require 'lint'
+  -- markdownlint-cli2 reads the repo's .markdownlint-cli2.* or .markdownlint.*,
+  -- so nvim's markdown diagnostics match pre-commit. LSP-backed languages
+  -- (eslint, ruff, etc.) don't need nvim-lint — their server reports diagnostics.
+  lint.linters_by_ft = {
+    markdown = { 'markdownlint-cli2' },
+  }
+
+  vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
+    group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
+    callback = function()
+      if vim.bo.modifiable then
+        lint.try_lint()
+      end
+    end,
+  })
+end
+
+-- ============================================================
+-- SECTION 6c: FILE EXPLORER
+-- neo-tree — a VS Code-style tree with git status + diagnostic badges
+-- ============================================================
+do
+  vim.pack.add {
+    gh 'MunifTanjim/nui.nvim', -- plenary + devicons already added above
+    gh 'nvim-neo-tree/neo-tree.nvim',
+  }
+  require('neo-tree').setup {
+    close_if_last_window = true,
+    window = {
+      mappings = {
+        ['<space>'] = 'none', -- free Space so <leader> maps work inside neo-tree
+        ['l'] = 'open',
+        ['h'] = 'close_node',
+      },
+    },
+    default_component_configs = {
+      -- Plain single-char git markers instead of cryptic/box glyphs.
+      git_status = {
+        symbols = {
+          added = '+', modified = '~', deleted = '-', renamed = '»',
+          untracked = '?', ignored = '◌', unstaged = '○', staged = '✓', conflict = '!',
+        },
+      },
+    },
+    filesystem = {
+      follow_current_file = { enabled = true }, -- reveal the open file in the tree
+      use_libuv_file_watcher = true, -- auto-refresh on external changes
+      filtered_items = {
+        hide_dotfiles = false, -- we edit dotfiles
+        hide_gitignored = true,
+      },
+    },
+    -- git status + diagnostic badges show on files by default.
+  }
+  -- neo-tree sets its own window bg on load; re-apply transparency (incl. the
+  -- float preview) whenever a neo-tree buffer opens, so it matches other windows.
+  vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'neo-tree',
+    callback = function()
+      for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer', 'NeoTreeFloatNormal', 'NeoTreeFloatBorder', 'NeoTreePreview' } do
+        vim.api.nvim_set_hl(0, g, { bg = 'none' })
+      end
+      -- Mute neo-tree's git marker/filename colors to the project palette.
+      local git = {
+        NeoTreeGitAdded = '#55805f',
+        NeoTreeGitStaged = '#55805f',
+        NeoTreeGitModified = '#d1b072',
+        NeoTreeGitUnstaged = '#d1b072',
+        NeoTreeGitUntracked = '#c08552',
+        NeoTreeGitConflict = '#d16969',
+        NeoTreeGitDeleted = '#7d5159',
+      }
+      for g, c in pairs(git) do
+        vim.api.nvim_set_hl(0, g, { fg = c })
+      end
+    end,
+  })
+  vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[E]xplorer (Neo-tree)' })
+  -- Tree of only git-changed files, for navigating what changed.
+  vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = '[G]it changed files ([E]xplorer)' })
+end
+
+-- ============================================================
+-- SECTION 6d: MARKDOWN RENDERING
+-- render-markdown — pretty in-buffer markdown; <leader>tm toggles raw vs rendered
+-- ============================================================
+do
+  vim.pack.add { gh 'MeanderingProgrammer/render-markdown.nvim' } -- treesitter + icons already present
+  require('render-markdown').setup {}
+  vim.keymap.set('n', '<leader>tm', '<cmd>RenderMarkdown toggle<cr>', { desc = '[T]oggle [M]arkdown render' })
 end
 
 -- ============================================================
