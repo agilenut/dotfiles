@@ -181,6 +181,9 @@ do
 
   -- Show which line your cursor is on
   vim.o.cursorline = true
+  -- Highlight only the line NUMBER, not a full-width gray bar — the bar's fixed
+  -- bg clashes with the transparent, tinted terminal backgrounds.
+  vim.o.cursorlineopt = 'number'
 
   -- Minimal number of screen lines to keep above and below the cursor.
   vim.o.scrolloff = 10
@@ -473,6 +476,8 @@ do
     -- rounded winborder above delineates them.
     set(0, 'NormalFloat', { bg = 'none' })
     set(0, 'FloatBorder', { bg = 'none' })
+    -- Bold the current-line number so it marks the line without a bg bar.
+    set(0, 'CursorLineNr', { fg = '#c6c6c6', bold = true })
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
