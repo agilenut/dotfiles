@@ -388,7 +388,7 @@ do
       map(']c', function() if vim.wo.diff then vim.cmd.normal { ']c', bang = true } else gs.nav_hunk 'next' end end, 'Next git hunk')
       map('[c', function() if vim.wo.diff then vim.cmd.normal { '[c', bang = true } else gs.nav_hunk 'prev' end end, 'Prev git hunk')
       -- See the old vs new lines in a popup, or act on the hunk.
-      map('<leader>hp', gs.preview_hunk, 'Preview hunk (old vs new)')
+      map('<leader>hp', gs.preview_hunk_inline, 'Preview hunk inline (old vs new)')
       map('<leader>hs', gs.stage_hunk, 'Stage hunk')
       map('<leader>hr', gs.reset_hunk, 'Reset hunk')
       map('<leader>hb', function() gs.blame_line { full = true } end, 'Blame line')
