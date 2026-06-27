@@ -23,6 +23,7 @@ alias repos='cd ~/repos'        # repos
 alias docs='cd ~/Documents'     # documents
 alias dl='cd ~/Downloads'       # downloads
 alias dot='cd ~/repos/dotfiles' # dotfiles repo
+alias ws='cd ~/workspaces'      # workspaces
 
 # LS
 # -----------------------------------------------------------------------------

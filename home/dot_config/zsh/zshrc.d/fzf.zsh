@@ -25,9 +25,12 @@ source <(fzf --zsh)
 # NOTE: This is not a standard FZF parameter but is useful to have.
 FZF_COLOR_OPTS='--color=fg:7,fg+:12,pointer:4,hl:5,hl+:5,prompt:6,info:3'
 
-# Set shared preview arguments
-FZF_PREVIEW_BIND="?:toggle-preview,\
+# Shared fzf binds, applied globally via FZF_DEFAULT_OPTS below (so every fzf —
+# widgets, zoxide, custom pickers, fzf-tab — gets them). ctrl-/ toggles preview;
+# Alacritty is configured to send 0x1F for Ctrl+/ so this works and `?` stays typeable.
+FZF_PREVIEW_BIND="ctrl-/:toggle-preview,\
 ctrl-a:select-all,\
+alt-a:toggle-all,\
 ctrl-f:preview-page-down,\
 ctrl-b:preview-page-up"
 
@@ -38,15 +41,14 @@ FD_DEFAULT_OPTS=(
   "--ignore-file=${XDG_CONFIG_HOME:-$HOME/.config}/fd/fd.ignore"
 )
 
-# Default options for all FZF commands
-export FZF_DEFAULT_OPTS="$FZF_COLOR_OPTS"
+# Default options for all FZF commands (binds here apply to every fzf invocation)
+export FZF_DEFAULT_OPTS="$FZF_COLOR_OPTS --bind '$FZF_PREVIEW_BIND'"
 
 # Set CTRL-T to use fd command for both files and directories.
 export FZF_CTRL_T_COMMAND="fd ${FD_DEFAULT_OPTS[@]}"
 
 # Use preview for CTRL-T
 export FZF_CTRL_T_OPTS="--preview 'fzf-preview {}' \
---bind '$FZF_PREVIEW_BIND' \
 --preview-window hidden \
 --height 80%"
 
@@ -55,13 +57,11 @@ export FZF_ALT_C_COMMAND="fd --type d ${FD_DEFAULT_OPTS[@]}"
 
 # Use preview for ALT-C
 export FZF_ALT_C_OPTS="--preview 'fzf-preview {}' \
---bind '$FZF_PREVIEW_BIND' \
 --preview-window hidden \
 --height 80%"
 
 # Use preview for CTRL-R
 export FZF_CTRL_R_OPTS="--preview 'fzf-preview {}' \
---bind '$FZF_PREVIEW_BIND' \
 --preview-window up:10%,wrap,hidden \
 --height 80%"
 
@@ -90,7 +90,10 @@ _fzf_compgen_dir() {
 
 zstyle ':fzf-tab:*' fzf-flags $FZF_COLOR_OPTS
 zstyle ':fzf-tab:*' switch-group '<' '>'
+# fzf-tab ignores FZF_DEFAULT_OPTS by default; opt in so it inherits the shared
+# binds (preview toggle/scroll, select-all) defined above.
+zstyle ':fzf-tab:*' use-fzf-default-opts yes
 
 zstyle ':fzf-tab:complete:(cd|cdi|z|ls|eza|mv|cp|rm):*' fzf-preview 'fzf-preview $realpath'
-zstyle ':fzf-tab:complete:(cd|cdi|z|ls|eza):*' fzf-flags --preview-window hidden --bind "$FZF_PREVIEW_BIND" --height 80% $FZF_COLOR_OPTS
-zstyle ':fzf-tab:complete:(mv|cp|rm):*' fzf-flags --multi --preview-window hidden --bind "$FZF_PREVIEW_BIND" --height 80% $FZF_COLOR_OPTS
+zstyle ':fzf-tab:complete:(cd|cdi|z|ls|eza):*' fzf-flags --preview-window hidden --height 80% $FZF_COLOR_OPTS
+zstyle ':fzf-tab:complete:(mv|cp|rm):*' fzf-flags --multi --preview-window hidden --height 80% $FZF_COLOR_OPTS

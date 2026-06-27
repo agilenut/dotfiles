@@ -240,14 +240,9 @@ do
   -- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
   -- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
 
-  -- Keybinds to make split navigation easier.
-  --  Use CTRL+<hjkl> to switch between windows
-  --
-  --  See `:help wincmd` for a list of all window commands
-  vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
-  vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
-  vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
-  vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+  -- Split navigation is handled by vim-tmux-navigator (Ctrl+hjkl across nvim
+  -- splits AND tmux panes). The plugin is added in the plugins section below,
+  -- after the `gh` helper is defined; the tmux config has the matching bindings.
 
   -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
   -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
@@ -360,6 +355,10 @@ do
   -- and then call its `setup()` function to start it with default settings.
   vim.pack.add { gh 'NMAC427/guess-indent.nvim' }
   require('guess-indent').setup {}
+
+  -- vim-tmux-navigator: Ctrl+hjkl moves between nvim splits AND tmux panes as one
+  -- grid (auto-maps <C-hjkl>). Matching bindings live in ~/.config/tmux/tmux.conf.
+  vim.pack.add { gh 'christoomey/vim-tmux-navigator' }
 
   -- Because lua is a real programming language, you can also have some logic to your installation -
   -- like only installing a plugin if a condition is met.
@@ -593,15 +592,28 @@ do
 
   -- See `:help telescope` and `:help telescope.setup()`
   require('telescope').setup {
-    -- You can put your default mappings / updates / etc. in here
-    --  All the info you're looking for is in `:help telescope.setup()`
-    --
-    -- defaults = {
-    --   mappings = {
-    --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-    --   },
-    -- },
-    -- pickers = {}
+    defaults = {
+      mappings = {
+        -- Match fzf: Ctrl+j/k move the selection, Ctrl+f/b scroll the preview,
+        -- Ctrl+a selects all (parity with fzf's ctrl-a).
+        -- (Telescope binds only C-n/p + C-u/d by default, so C-j/k fell through
+        -- to insert-mode behavior — C-k digraph, C-j newline.)
+        i = {
+          ['<C-j>'] = require('telescope.actions').move_selection_next,
+          ['<C-k>'] = require('telescope.actions').move_selection_previous,
+          ['<C-f>'] = require('telescope.actions').preview_scrolling_down,
+          ['<C-b>'] = require('telescope.actions').preview_scrolling_up,
+          ['<C-a>'] = require('telescope.actions').select_all,
+        },
+        n = {
+          ['<C-j>'] = require('telescope.actions').move_selection_next,
+          ['<C-k>'] = require('telescope.actions').move_selection_previous,
+          ['<C-f>'] = require('telescope.actions').preview_scrolling_down,
+          ['<C-b>'] = require('telescope.actions').preview_scrolling_up,
+          ['<C-a>'] = require('telescope.actions').select_all,
+        },
+      },
+    },
     extensions = {
       ['ui-select'] = { require('telescope.themes').get_dropdown() },
     },
@@ -632,6 +644,15 @@ do
     vim.cmd 'tabnew'
     vim.cmd 'terminal lazygit'
     vim.cmd 'startinsert'
+    -- Close the terminal tab the moment lazygit exits, so `q` drops you
+    -- straight back to your code instead of a dead `[Process exited]` buffer.
+    vim.api.nvim_create_autocmd('TermClose', {
+      buffer = vim.api.nvim_get_current_buf(),
+      once = true,
+      callback = function()
+        vim.schedule(function() vim.cmd 'bdelete!' end)
+      end,
+    })
   end, { desc = '[G]it (lazy[g]it)' })
 
   -- Add Telescope-based LSP pickers when an LSP attaches to a buffer.
