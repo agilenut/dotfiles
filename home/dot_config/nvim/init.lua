@@ -224,7 +224,11 @@ do
     },
   }
 
-  vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+  -- Toggle the verbose inline diagnostic text on/off; gutter signs stay either
+  -- way, so you keep a quiet indicator without the end-of-line wall of text.
+  vim.keymap.set('n', '<leader>tx', function()
+    vim.diagnostic.config { virtual_text = not vim.diagnostic.config().virtual_text }
+  end, { desc = 'Toggle diagnostic inline te[x]t' })
 
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
   -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -383,22 +387,44 @@ do
     on_attach = function(bufnr)
       local gs = require 'gitsigns'
       local function map(l, r, desc) vim.keymap.set('n', l, r, { buffer = bufnr, desc = desc }) end
-      -- Jump between changed hunks (falls back to native nav in diff mode).
-      map(']c', function() if vim.wo.diff then vim.cmd.normal { ']c', bang = true } else gs.nav_hunk 'next' end end, 'Next git hunk')
-      map('[c', function() if vim.wo.diff then vim.cmd.normal { '[c', bang = true } else gs.nav_hunk 'prev' end end, 'Prev git hunk')
-      -- See the old vs new lines in a popup, or act on the hunk.
-      map('<leader>hp', gs.preview_hunk_inline, 'Preview hunk inline (old vs new)')
-      map('<leader>hs', gs.stage_hunk, 'Stage hunk')
-      map('<leader>hr', gs.reset_hunk, 'Reset hunk')
-      map('<leader>hb', function() gs.blame_line { full = true } end, 'Blame line')
-      -- Toggles: show removed lines inline; per-line blame.
-      map('<leader>td', gs.toggle_deleted, 'Toggle deleted lines inline')
-      map('<leader>tb', gs.toggle_current_line_blame, 'Toggle line blame')
+      -- Jump between changed hunks (staged + unstaged). Always gitsigns nav — no
+      -- diff-mode special-case, so a stray `:diffthis` can't silently break it.
+      map(']c', function() gs.nav_hunk('next', { target = 'all' }) end, 'Next git hunk')
+      map('[c', function() gs.nav_hunk('prev', { target = 'all' }) end, 'Prev git hunk')
+      -- Hunk staging from the editor (stage_hunk toggles stage/unstage). Bigger
+      -- git ops live in lazygit (<space>gg); inline diffs are on <leader>gd.
+      map('<leader>ghs', gs.stage_hunk, '[H]unk [S]tage/unstage')
+      map('<leader>ghr', gs.reset_hunk, '[H]unk [R]eset (discard changes)')
+      -- Capital = whole buffer: stage all, unstage all, reset all (discard).
+      map('<leader>ghS', gs.stage_buffer, 'Buffer [S]tage all')
+      map('<leader>ghU', gs.reset_buffer_index, 'Buffer [U]nstage all')
+      map('<leader>ghR', gs.reset_buffer, 'Buffer [R]eset all (discard)')
+      -- Blame: gb = popup with the full commit for the current line; gB = ambient toggle.
+      map('<leader>gb', function() gs.blame_line { full = true } end, '[G]it [B]lame line')
+      map('<leader>gB', gs.toggle_current_line_blame, '[G]it [B]lame toggle')
     end,
   }
 
-  -- Toggle full-line highlight for changed lines (gitsigns linehl, off by default).
-  vim.keymap.set('n', '<leader>tgh', '<cmd>Gitsigns toggle_linehl<cr>', { desc = 'Toggle git line highlight' })
+  -- inline-diff.nvim — VSCode-style live word-level inline diff: added/removed/changed
+  -- shown inline as you type, with deleted lines. It derives colors from DiffAdd/
+  -- DiffDelete and auto-boosts the word emphasis. Visualization only; gitsigns still
+  -- owns signs, staging, blame, hunk nav.
+  vim.pack.add { gh 'cvlmtg/inline-diff.nvim' }
+  require('inline-diff').setup {}
+  -- inline-diff re-defines its highlights with a forced contrast fg on every enable,
+  -- which flattens treesitter colors. Strip that fg on the ADD groups (bg only) right
+  -- after toggling, so added/changed code keeps its syntax highlighting. Deleted text
+  -- is virtual text with no syntax, so it keeps the contrast fg.
+  local function inline_diff_keep_syntax()
+    for _, g in ipairs { 'InlineDiffAdd', 'InlineDiffWordAdd' } do
+      local hl = vim.api.nvim_get_hl(0, { name = g })
+      if hl.bg then vim.api.nvim_set_hl(0, g, { bg = hl.bg }) end
+    end
+  end
+  vim.keymap.set('n', '<leader>gd', function()
+    vim.cmd 'InlineDiff'
+    inline_diff_keep_syntax()
+  end, { desc = '[G]it [D]iff (inline toggle)' })
 
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
@@ -412,10 +438,9 @@ do
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
-      { '<leader>tg', group = '[G]it' },
       { '<leader>g', group = '[G]it' },
-      { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
-      { '<leader>x', group = 'Diagnostics (Trouble)' },
+      { '<leader>gh', group = 'Git [H]unk' },
+      { '<leader>x', group = 'Diagnostics' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
   }
@@ -455,22 +480,25 @@ do
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_statusline_mode_contrast })
 
   -- Align gitsigns with the muted delta diff palette so nvim's gutter signs and
-  -- changed-line highlights match the terminal/lazygit diffs (add=green,
-  -- change=blue, delete=red, all muted). Ln backgrounds reuse delta's exact
-  -- plus/minus line tints; fg left unset so syntax colors show through.
+  -- changed-line highlights match the terminal/lazygit diffs. delta has no
+  -- "change" state (a modified line is delete + add), so change lines render
+  -- green like adds and the green word-diff stays readable; only the gutter sign
+  -- (~) distinguishes a modify from an add. fg left unset so syntax shows through.
   local function fix_gitsigns_palette()
     local set = vim.api.nvim_set_hl
     set(0, 'GitSignsAdd', { fg = '#55805f' })
     set(0, 'GitSignsChange', { fg = '#5a7ba6' })
     set(0, 'GitSignsDelete', { fg = '#7d5159' })
-    set(0, 'GitSignsAddLn', { bg = '#1a2620' })
-    set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
-    set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
+    set(0, 'GitSignsAddLn', { bg = '#1f3a29' })
+    set(0, 'GitSignsChangeLn', { bg = '#1f3a29' })
+    set(0, 'GitSignsDeleteLn', { bg = '#3d2027' })
+    -- Intra-line word diff is handled by inline-diff.nvim, which derives its own
+    -- colors from DiffAdd/DiffDelete below — no gitsigns word_diff groups needed.
     -- vimdiff / :diffthis use the Diff* groups — match the muted delta palette.
-    set(0, 'DiffAdd', { bg = '#1a2620' })
-    set(0, 'DiffChange', { bg = '#1c2333' })
-    set(0, 'DiffDelete', { bg = '#26191c' })
-    set(0, 'DiffText', { bg = '#2f3d5c' })
+    set(0, 'DiffAdd', { bg = '#1f3a29' })
+    set(0, 'DiffChange', { bg = '#1f3a29' })
+    set(0, 'DiffDelete', { bg = '#3d2027' })
+    set(0, 'DiffText', { bg = '#4a9d64' })
     -- Transparent floats (neo-tree preview, telescope, hover, which-key); the
     -- rounded winborder above delineates them.
     set(0, 'NormalFloat', { bg = 'none' })
@@ -638,7 +666,6 @@ do
   vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
   vim.keymap.set('n', '<leader>sa', function() builtin.find_files { hidden = true, no_ignore = true } end, { desc = '[S]earch [A]ll files (incl. hidden + ignored)' })
-  vim.keymap.set('n', '<leader>gf', builtin.git_files, { desc = '[G]it tracked [F]iles' })
   vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = '[G]it [S]tatus (changed files)' })
   vim.keymap.set('n', '<leader>gg', function()
     vim.cmd 'tabnew'
@@ -693,7 +720,7 @@ do
   vim.keymap.set('n', '<leader>/', function()
     -- You can pass additional configuration to Telescope to change the theme, layout, etc.
     builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
-      winblend = 10,
+      winblend = 0,
       previewer = false,
     })
   end, { desc = '[/] Fuzzily search in current buffer' })
@@ -1113,6 +1140,23 @@ do
   vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[E]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
   vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = '[G]it changed files ([E]xplorer)' })
+
+  -- neo-tree's git-status icons go stale when you stage/unstage (via gitsigns or
+  -- lazygit): staging only touches .git/index, not the file, so neo-tree's libuv
+  -- file watcher never sees it. Refresh neo-tree's git status when gitsigns reports
+  -- an index change, debounced so frequent sign updates while typing don't thrash it.
+  local nt_refresh_pending = false
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'GitSignsUpdate',
+    callback = function()
+      if nt_refresh_pending then return end
+      nt_refresh_pending = true
+      vim.defer_fn(function()
+        nt_refresh_pending = false
+        pcall(function() require('neo-tree.sources.manager').refresh 'filesystem' end)
+      end, 300)
+    end,
+  })
 end
 
 -- ============================================================
