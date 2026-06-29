@@ -176,6 +176,10 @@ do
   vim.o.list = true
   vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+  -- Hide the ~ markers on lines past the end of the buffer; the line numbers
+  -- already show where content ends, so the column of tildes is just noise.
+  vim.opt.fillchars:append { eob = ' ' }
+
   -- Preview substitutions live, as you type!
   vim.o.inccommand = 'split'
 
@@ -527,6 +531,21 @@ do
   end
   fix_diagnostic_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_diagnostic_palette })
+
+  -- neo-tree's current-row highlight (NeoTreeCursorLine) inherits the theme's
+  -- near-black CursorLine (#222), which barely reads over the transparent bg.
+  -- Lighten whatever CursorLine the active theme provides so the selected row
+  -- stays visible, and re-derive it if the colorscheme changes. Bump the 0.16
+  -- factor for a more prominent bar.
+  local function fix_neotree_cursorline()
+    local cl = vim.api.nvim_get_hl(0, { name = 'CursorLine', link = false })
+    local base = cl.bg or 0x222222
+    local r, g, b = math.floor(base / 65536) % 256, math.floor(base / 256) % 256, base % 256
+    local function up(c) return math.floor(c + (255 - c) * 0.16) end
+    vim.api.nvim_set_hl(0, 'NeoTreeCursorLine', { bg = up(r) * 65536 + up(g) * 256 + up(b) })
+  end
+  fix_neotree_cursorline()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_neotree_cursorline })
 
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
