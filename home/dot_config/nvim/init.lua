@@ -176,6 +176,10 @@ do
   vim.o.list = true
   vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+  -- Hide the ~ markers on lines past the end of the buffer; the line numbers
+  -- already show where content ends, so the column of tildes is just noise.
+  vim.opt.fillchars:append { eob = ' ' }
+
   -- Preview substitutions live, as you type!
   vim.o.inccommand = 'split'
 
@@ -528,6 +532,23 @@ do
   fix_diagnostic_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_diagnostic_palette })
 
+  -- The theme's CursorLine is near-black (#222) and barely reads on the transparent
+  -- background. Lighten it so the current-row highlight is visible in the panels that
+  -- use a full-line cursorline — neo-tree (via NeoTreeCursorLine) and Trouble (which
+  -- uses CursorLine directly). Normal buffers use cursorlineopt=number, so brightening
+  -- CursorLine only affects those panels. Re-derive on colorscheme change; bump 0.16
+  -- for a stronger bar.
+  local function fix_cursorline()
+    local base = vim.api.nvim_get_hl(0, { name = 'CursorLine', link = false }).bg or 0x222222
+    local r, g, b = math.floor(base / 65536) % 256, math.floor(base / 256) % 256, base % 256
+    local function up(c) return math.floor(c + (255 - c) * 0.16) end
+    local bright = up(r) * 65536 + up(g) * 256 + up(b)
+    vim.api.nvim_set_hl(0, 'CursorLine', { bg = bright })
+    vim.api.nvim_set_hl(0, 'NeoTreeCursorLine', { bg = bright })
+  end
+  fix_cursorline()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_cursorline })
+
   -- Highlight todo, notes, etc in comments
   vim.pack.add { gh 'folke/todo-comments.nvim' }
   require('todo-comments').setup { signs = false }
@@ -535,7 +556,17 @@ do
   -- Trouble: a VS Code-style "Problems" panel for diagnostics (also quickfix,
   -- LSP references, symbols). <leader>xx = workspace, <leader>xX = this buffer.
   vim.pack.add { gh 'folke/trouble.nvim' }
-  require('trouble').setup {}
+  require('trouble').setup {
+    -- l / h expand / collapse the file groups, like neo-tree (merged with defaults).
+    keys = { l = 'fold_open', h = 'fold_close' },
+  }
+  -- Trouble's folder icon is yellow (TroubleIconDirectory links to Special); link it
+  -- to Directory (blue) so folders match neo-tree. Re-apply on colorscheme change.
+  local function blue_trouble_folder()
+    vim.api.nvim_set_hl(0, 'TroubleIconDirectory', { link = 'Directory' })
+  end
+  blue_trouble_folder()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = blue_trouble_folder })
   vim.keymap.set('n', '<leader>xx', '<cmd>Trouble diagnostics toggle<cr>', { desc = 'Diagnostics list (Trouble)' })
   vim.keymap.set('n', '<leader>xX', '<cmd>Trouble diagnostics toggle filter.buf=0<cr>', { desc = 'Buffer diagnostics (Trouble)' })
 
@@ -565,21 +596,88 @@ do
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
 
-  -- Simple and easy statusline.
-  --  You could remove this setup call if you don't like it,
-  --  and try some other statusline plugin
+  -- Statusline. Mini's defaults, with a few tweaks via a custom content function:
+  -- a short mode label (N/I/V) at any width; the LSP-client + fileinfo
+  -- (filetype/encoding/size) sections dropped (that info is on <leader>bi); and
+  -- diagnostics limited to errors + warnings, with icons colored by severity.
   local statusline = require 'mini.statusline'
-  -- Set `use_icons` to true if you have a Nerd Font
-  statusline.setup { use_icons = vim.g.have_nerd_font }
-
-  -- You can configure sections in the statusline by overriding their
-  -- default behavior. For example, here we set the section for
-  -- cursor location to LINE:COLUMN
+  -- Cursor location as LINE:COLUMN.
   ---@diagnostic disable-next-line: duplicate-set-field
   statusline.section_location = function() return '%2l:%-2v' end
 
-  -- ... and there is more!
-  --  Check out: https://github.com/nvim-mini/mini.nvim
+  -- Errors + warnings only — mini's built-in section shows all four levels in the
+  -- section's flat color. Icons colored via the themed Diagnostic* groups.
+  local DIAG_ERROR, DIAG_WARN = '', ''
+  local function diagnostics_ew()
+    local c = vim.diagnostic.count(0)
+    local e, w = c[vim.diagnostic.severity.ERROR] or 0, c[vim.diagnostic.severity.WARN] or 0
+    local parts = {}
+    if e > 0 then parts[#parts + 1] = '%#DiagnosticError#' .. DIAG_ERROR .. ' ' .. e end
+    if w > 0 then parts[#parts + 1] = '%#DiagnosticWarn#' .. DIAG_WARN .. ' ' .. w end
+    return table.concat(parts, ' ')
+  end
+
+  -- Special (non-file) buffers — neo-tree, help, quickfix, Trouble. The mode/path/
+  -- flags bar is meaningless there; show just a focus-aware label (the mode-colored
+  -- block marks the focused window; dimmed via the inactive content when not).
+  local special = { ['neo-tree'] = 'Neo-tree', help = 'Help', qf = 'Quickfix', trouble = 'Trouble' }
+
+  statusline.setup {
+    use_icons = vim.g.have_nerd_font,
+    content = {
+      active = function()
+        -- trunc_width 999 forces the short mode name (N/I/V) regardless of width.
+        local mode, mode_hl = statusline.section_mode { trunc_width = 999 }
+        local label = special[vim.bo.filetype]
+        if label then
+          -- Special buffers get a normal-looking bar: mode block, the label on the
+          -- grey Devinfo bar (like the git section), and the cursor position.
+          return statusline.combine_groups {
+            { hl = mode_hl, strings = { mode } },
+            { hl = 'MiniStatuslineDevinfo', strings = { label } },
+            '%=',
+            { hl = mode_hl, strings = { statusline.section_location { trunc_width = 75 } } },
+          }
+        end
+        local git = statusline.section_git { trunc_width = 40 }
+        local diff = statusline.section_diff { trunc_width = 75 }
+        local diagnostics = diagnostics_ew()
+        local filename = statusline.section_filename { trunc_width = 140 }
+        local location = statusline.section_location { trunc_width = 75 }
+        local search = statusline.section_searchcount { trunc_width = 75 }
+        -- LSP and fileinfo sections intentionally omitted.
+        return statusline.combine_groups {
+          { hl = mode_hl, strings = { mode } },
+          { hl = 'MiniStatuslineDevinfo', strings = { git, diff } },
+          '%<',
+          { hl = 'MiniStatuslineFilename', strings = { filename } },
+          '%=',
+          -- Diagnostics on the right, just left of line:col, on the transparent
+          -- background (the grey Devinfo block washed out their muted colors).
+          { hl = 'MiniStatuslineFilename', strings = { diagnostics } },
+          { hl = mode_hl, strings = { search, location } },
+        }
+      end,
+      inactive = function()
+        local label = special[vim.bo.filetype]
+        if label then
+          -- Not selected: plain whitish label on the dark background (no grey bar).
+          return statusline.combine_groups { { hl = 'MiniStatuslineFilename', strings = { ' ' .. label } } }
+        end
+        return '%#MiniStatuslineInactive#%F%='
+      end,
+    },
+  }
+
+  -- Make the filename section transparent (it also carries the diagnostics and the
+  -- unfocused special-buffer label) so its content reads on the terminal background
+  -- instead of the grey Devinfo fill. Re-derive on colorscheme change.
+  local function transparent_filename()
+    local h = vim.api.nvim_get_hl(0, { name = 'MiniStatuslineFilename', link = false })
+    vim.api.nvim_set_hl(0, 'MiniStatuslineFilename', { fg = h.fg, bg = 'none' })
+  end
+  transparent_filename()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = transparent_filename })
 end
 
 -- ============================================================
@@ -1177,6 +1275,21 @@ do
   }
   vim.notify = notify
 
+  -- nvim-notify ships bright accent colors (green INFO, orange WARN, red ERROR)
+  -- that ignore the theme. Link each level's border/title/icon to the matching
+  -- (muted) Diagnostic* group so toasts read like the rest of the UI. Re-link on
+  -- colorscheme change.
+  local function theme_notify()
+    local map = { INFO = 'Info', WARN = 'Warn', ERROR = 'Error', DEBUG = 'Hint', TRACE = 'Hint' }
+    for level, diag in pairs(map) do
+      for _, part in ipairs { 'Border', 'Title', 'Icon' } do
+        vim.api.nvim_set_hl(0, 'Notify' .. level .. part, { link = 'Diagnostic' .. diag })
+      end
+    end
+  end
+  theme_notify()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = theme_notify })
+
   -- Toggle helper: flip the setting, announce it, and register a which-key entry
   -- whose label and icon track live state — "Disable" + green switch when on,
   -- "Enable" + grey switch when off. which-key re-runs the desc/icon functions
@@ -1249,6 +1362,37 @@ do
     end
   end
   vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
+
+  -- File metadata dropped from the statusline (full path, type, encoding, size,
+  -- attached LSP servers), on demand as a notify toast.
+  vim.keymap.set('n', '<leader>bi', function()
+    local buf = 0
+    local path = vim.api.nvim_buf_get_name(buf)
+    local full = path ~= '' and vim.fn.fnamemodify(path, ':~') or '[No Name]'
+    local enc = vim.bo[buf].fileencoding ~= '' and vim.bo[buf].fileencoding or vim.o.encoding
+    local ft = vim.bo[buf].filetype
+    local bytes = path ~= '' and vim.fn.getfsize(path) or -1
+    local size
+    if bytes < 0 then
+      size = '(unsaved)'
+    elseif bytes < 1024 then
+      size = bytes .. ' B'
+    elseif bytes < 1024 * 1024 then
+      size = string.format('%.1f KB', bytes / 1024)
+    else
+      size = string.format('%.1f MB', bytes / (1024 * 1024))
+    end
+    local names = {}
+    for _, c in ipairs(vim.lsp.get_clients { bufnr = buf }) do
+      names[#names + 1] = c.name
+    end
+    vim.notify(table.concat({
+      'Path:  ' .. full,
+      'Type:  ' .. (ft ~= '' and ft or '(none)') .. '   ' .. enc .. '   ' .. vim.bo[buf].fileformat,
+      'Size:  ' .. size,
+      'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
+    }, '\n'), vim.log.levels.INFO, { title = 'File info' })
+  end, { desc = 'Buffer [i]nfo (path, type, size, LSP)' })
 end
 
 -- ============================================================
