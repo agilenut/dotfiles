@@ -224,14 +224,6 @@ do
     },
   }
 
-  -- Toggle the verbose inline diagnostic text on/off; gutter signs stay either
-  -- way, so you keep a quiet indicator without the end-of-line wall of text.
-  vim.keymap.set('n', '<leader>tx', function()
-    local on = not vim.diagnostic.config().virtual_text
-    vim.diagnostic.config { virtual_text = on }
-    vim.notify('Diagnostic text ' .. (on and 'enabled' or 'disabled'))
-  end, { desc = 'Toggle diagnostic inline te[x]t' })
-
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
   -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
   -- is not what someone will guess without a bit more experience.
@@ -401,11 +393,9 @@ do
       map('<leader>ghS', gs.stage_buffer, 'Buffer [S]tage all')
       map('<leader>ghU', gs.reset_buffer_index, 'Buffer [U]nstage all')
       map('<leader>ghR', gs.reset_buffer, 'Buffer [R]eset all (discard)')
-      -- Blame: gb = popup with the full commit for the current line; gB = ambient toggle.
+      -- Blame: gb = popup with the full commit for the current line. The ambient
+      -- line-blame toggle (gB) lives with the other toggles in the notifications section.
       map('<leader>gb', function() gs.blame_line { full = true } end, 'Git [b]lame line')
-      map('<leader>gB', function()
-        vim.notify('Line blame ' .. (gs.toggle_current_line_blame() and 'enabled' or 'disabled'))
-      end, 'Git [B]lame toggle')
     end,
   }
 
@@ -444,9 +434,12 @@ do
     -- the sequence), in its real case — `Git [b]lame line` (press b), `Buffer
     -- [S]tage all` (Shift+S). Group words stay plain/unbracketed as searchable
     -- context (so `<leader>sk` "git" finds git cmds); keys with no matching letter
-    -- (x, gr) get no bracket. Group icons only: see icons.rules = false above.
+    -- (x, gr) get no bracket. Icons live on groups only (icons.rules = false above),
+    -- except the toggles, which carry a live state icon (green switch on / grey
+    -- off) registered alongside their dynamic Enable/Disable label.
     -- Document existing key chains
     spec = {
+      { '<leader>b', group = '[b]uffer' },
       { '<leader>s', group = '[s]earch', icon = { icon = '', color = 'cyan' }, mode = { 'n', 'v' } },
       { '<leader>t', group = '[t]oggle', icon = { icon = '', color = 'yellow' } },
       { '<leader>g', group = '[g]it', icon = { cat = 'filetype', name = 'git' } },
@@ -846,18 +839,6 @@ do
           end,
         })
       end
-
-      -- The following code creates a keymap to toggle inlay hints in your
-      -- code, if the language server you are using supports them
-      --
-      -- This may be unwanted, since they displace some of your code
-      if client and client:supports_method('textDocument/inlayHint', event.buf) then
-        map('<leader>th', function()
-          local on = not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }
-          vim.lsp.inlay_hint.enable(on, { bufnr = event.buf })
-          vim.notify('Inlay hints ' .. (on and 'enabled' or 'disabled'))
-        end, 'Toggle inlay [h]ints')
-      end
     end,
   })
 
@@ -1023,9 +1004,9 @@ do
   vim.pack.add { gh 'stevearc/conform.nvim' }
   require('conform').setup {
     notify_on_error = false,
-    format_on_save = function(bufnr)
-      -- Format on save unless toggled off globally or per-buffer (<leader>tf).
-      if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+    format_on_save = function()
+      -- Format on save unless globally disabled via <leader>tf.
+      if vim.g.disable_autoformat then
         return nil
       end
       return { timeout_ms = 1000, lsp_format = 'fallback' }
@@ -1061,11 +1042,6 @@ do
   }
 
   vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[f]ormat buffer' })
-  -- Toggle format-on-save globally.
-  vim.keymap.set('n', '<leader>tf', function()
-    vim.g.disable_autoformat = not vim.g.disable_autoformat
-    vim.notify('Format on save ' .. (vim.g.disable_autoformat and 'disabled' or 'enabled'))
-  end, { desc = 'Toggle [f]ormat on save' })
 end
 
 -- ============================================================
@@ -1181,10 +1157,98 @@ end
 do
   vim.pack.add { gh 'MeanderingProgrammer/render-markdown.nvim' } -- treesitter + icons already present
   require('render-markdown').setup {}
-  vim.keymap.set('n', '<leader>tm', function()
-    vim.cmd 'RenderMarkdown toggle'
-    vim.notify('Markdown render ' .. (require('render-markdown.state').enabled and 'enabled' or 'disabled'))
-  end, { desc = 'Toggle [m]arkdown render' })
+end
+
+-- ============================================================
+-- SECTION: notifications, unified toggles, buffer delete
+-- ============================================================
+do
+  -- nvim-notify: route vim.notify through animated toasts (with history via
+  -- :Notifications). Single-purpose; background_colour is pinned to the VS Code
+  -- Dark editor bg because the theme runs transparent, so notify has no window
+  -- background to read and blend against (change it if the theme changes).
+  vim.pack.add { gh 'rcarriga/nvim-notify' }
+  local notify = require 'notify'
+  notify.setup {
+    stages = 'fade',
+    render = 'wrapped-compact',
+    timeout = 3000,
+    background_colour = '#1e1e1e',
+  }
+  vim.notify = notify
+
+  -- Toggle helper: flip the setting, announce it, and register a which-key entry
+  -- whose label and icon track live state — "Disable" + green switch when on,
+  -- "Enable" + grey switch when off. which-key re-runs the desc/icon functions
+  -- on every popup open, so the row always reflects the current value.
+  local TOGGLE_ON, TOGGLE_OFF = '', ''
+  local function toggle(key, name, get, set)
+    vim.keymap.set('n', key, function()
+      local on = not get()
+      set(on)
+      vim.notify((on and 'Enabled ' or 'Disabled ') .. name)
+    end, { desc = 'Toggle ' .. name })
+    require('which-key').add {
+      {
+        key,
+        desc = function() return (get() and 'Disable ' or 'Enable ') .. name end,
+        icon = function()
+          local on = get()
+          -- Explicit 'grey' (not nil) for off: the base WhichKeyIcon fallback is underlined.
+          return { icon = on and TOGGLE_ON or TOGGLE_OFF, color = on and 'green' or 'grey' }
+        end,
+      },
+    }
+  end
+
+  -- Wrap a state read that reaches into a plugin's internals so a future refactor
+  -- of that module can't throw inside which-key's render callback (which would
+  -- blank the toggle popup). Core vim.* getters below don't need this.
+  local function safe_get(fn)
+    return function()
+      local ok, v = pcall(fn)
+      return ok and v or false
+    end
+  end
+
+  toggle('<leader>th', 'inlay hints', function() return vim.lsp.inlay_hint.is_enabled { bufnr = 0 } end, function(s) vim.lsp.inlay_hint.enable(s, { bufnr = 0 }) end)
+  toggle('<leader>tx', 'diagnostic text', function() return vim.diagnostic.config().virtual_text ~= false end, function(s) vim.diagnostic.config { virtual_text = s } end)
+  toggle('<leader>tm', 'markdown render', safe_get(function() return require('render-markdown.state').enabled end), function(s) vim.cmd('RenderMarkdown ' .. (s and 'enable' or 'disable')) end)
+  toggle('<leader>tf', 'format on save', function() return not vim.g.disable_autoformat end, function(s) vim.g.disable_autoformat = not s end)
+  toggle('<leader>gB', 'line blame', safe_get(function() return require('gitsigns.config').config.current_line_blame end), function(s) require('gitsigns').toggle_current_line_blame(s) end)
+
+  -- Delete the current buffer while keeping the window/split layout: show the
+  -- alternate (or another listed) buffer in its place, falling back to a fresh
+  -- empty buffer only when nothing else is listed.
+  local function buf_delete()
+    local cur = vim.api.nvim_get_current_buf()
+    if vim.bo[cur].modified then
+      vim.notify('Buffer has unsaved changes; save or use :bd! first', vim.log.levels.WARN)
+      return
+    end
+    local repl
+    local alt = vim.fn.bufnr '#'
+    if alt > 0 and alt ~= cur and vim.bo[alt].buflisted then
+      repl = alt
+    else
+      for _, b in ipairs(vim.fn.getbufinfo { buflisted = 1 }) do
+        if b.bufnr ~= cur then
+          repl = b.bufnr
+          break
+        end
+      end
+    end
+    repl = repl or vim.api.nvim_create_buf(true, false)
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_get_buf(win) == cur then
+        vim.api.nvim_win_set_buf(win, repl)
+      end
+    end
+    if vim.api.nvim_buf_is_valid(cur) then
+      pcall(vim.api.nvim_buf_delete, cur, {})
+    end
+  end
+  vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
 end
 
 -- ============================================================
