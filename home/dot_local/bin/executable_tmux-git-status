@@ -1,6 +1,9 @@
 #!/bin/bash
-# Outputs: ⎇ branch-name [+staged ~modified ?untracked]
-# Or nothing if not in a git repo
+# Outputs: ⎇ branch-name [*] [⇡ahead] [⇣behind]
+#   *      working tree has uncommitted changes (staged, unstaged, or untracked)
+#   ⇡N   commits on HEAD not yet on any remote (unpushed; counts before the first push too)
+#   ⇣N   commits on the upstream branch not yet pulled
+# Prints nothing if not in a git repo.
 #
 # Usage: tmux-git-status [path]
 # Pass the pane's current path so git runs in the right directory.
@@ -9,40 +12,33 @@ if [ -n "$1" ]; then
   cd "$1" 2>/dev/null || exit 0
 fi
 
-# One git call returns branch line + porcelain status; non-zero = not a repo.
-status=$(git status --porcelain=v1 --branch 2>/dev/null) || exit 0
+# Branch name, or short SHA when detached; bail if not a repo.
+branch=$(git symbolic-ref --short -q HEAD 2>/dev/null) \
+  || branch=$(git rev-parse --short -q HEAD 2>/dev/null) \
+  || exit 0
 
-# One awk pass: parse branch from "## ..." line, count file statuses.
-read -r branch staged modified untracked <<<"$(awk '
-  NR == 1 {
-    line = substr($0, 4)  # strip leading "## "
-    if (line ~ /^No commits yet on /) {
-      branch = substr(line, length("No commits yet on ") + 1)
-    } else if (line ~ /\(no branch\)/) {
-      branch = "HEAD"
-    } else {
-      sub(/\.\.\..*$/, "", line)  # strip "...upstream"
-      sub(/ \[.*\]$/, "", line)   # strip " [ahead/behind]"
-      branch = line
-    }
-    next
-  }
-  /^[MADRC]/ { staged++ }
-  /^.[MD]/   { modified++ }
-  /^\?\?/    { untracked++ }
-  END { printf "%s %d %d %d", branch, staged+0, modified+0, untracked+0 }
-' <<<"$status")"
+# Working tree dirty (any porcelain entry: staged, unstaged, or untracked)?
+dirty=
+[ -n "$(git status --porcelain 2>/dev/null)" ] && dirty=1
 
-[ -z "$branch" ] && exit 0
-
-output="#[fg=cyan]⎇ ${branch}"
-
-if [ "$staged" -gt 0 ] || [ "$modified" -gt 0 ] || [ "$untracked" -gt 0 ]; then
-  output+=" #[fg=brightblack]["
-  [ "$staged" -gt 0 ] && output+="#[fg=green]+${staged} "
-  [ "$modified" -gt 0 ] && output+="#[fg=yellow]~${modified} "
-  [ "$untracked" -gt 0 ] && output+="#[fg=red]?${untracked} "
-  output="${output% }#[fg=brightblack]]"
+# Unpushed: commits on HEAD not reachable from any remote ref — works before the
+# first push, unlike ahead-of-upstream. Skip when there is no remote (then
+# --remotes matches nothing and the count would be every commit).
+ahead=0
+if [ -n "$(git remote 2>/dev/null)" ]; then
+  ahead=$(git rev-list --count HEAD --not --remotes 2>/dev/null)
+  [ -z "$ahead" ] && ahead=0
 fi
 
-echo "$output"
+# Behind: commits on the upstream not in HEAD (needs an upstream to compare to).
+behind=$(git rev-list --count 'HEAD..@{upstream}' 2>/dev/null)
+[ -z "$behind" ] && behind=0
+
+# Branch in cyan; the dirty/sync indicators share one muted color (white) so red
+# and yellow stay reserved for diagnostics elsewhere.
+ind=white
+out="#[fg=cyan]⎇ ${branch}"
+[ -n "$dirty" ] && out+=" #[fg=${ind}]*"
+[ "$ahead" -gt 0 ] && out+=" #[fg=${ind}]⇡${ahead}"
+[ "$behind" -gt 0 ] && out+=" #[fg=${ind}]⇣${behind}"
+echo "$out"
