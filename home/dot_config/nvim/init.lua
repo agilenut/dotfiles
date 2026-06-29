@@ -224,8 +224,6 @@ do
     },
   }
 
-  vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
-
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
   -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
   -- is not what someone will guess without a bit more experience.
@@ -383,40 +381,71 @@ do
     on_attach = function(bufnr)
       local gs = require 'gitsigns'
       local function map(l, r, desc) vim.keymap.set('n', l, r, { buffer = bufnr, desc = desc }) end
-      -- Jump between changed hunks (falls back to native nav in diff mode).
-      map(']c', function() if vim.wo.diff then vim.cmd.normal { ']c', bang = true } else gs.nav_hunk 'next' end end, 'Next git hunk')
-      map('[c', function() if vim.wo.diff then vim.cmd.normal { '[c', bang = true } else gs.nav_hunk 'prev' end end, 'Prev git hunk')
-      -- See the old vs new lines in a popup, or act on the hunk.
-      map('<leader>hp', gs.preview_hunk_inline, 'Preview hunk inline (old vs new)')
-      map('<leader>hs', gs.stage_hunk, 'Stage hunk')
-      map('<leader>hr', gs.reset_hunk, 'Reset hunk')
-      map('<leader>hb', function() gs.blame_line { full = true } end, 'Blame line')
-      -- Toggles: show removed lines inline; per-line blame.
-      map('<leader>td', gs.toggle_deleted, 'Toggle deleted lines inline')
-      map('<leader>tb', gs.toggle_current_line_blame, 'Toggle line blame')
+      -- Jump between changed hunks (staged + unstaged). Always gitsigns nav — no
+      -- diff-mode special-case, so a stray `:diffthis` can't silently break it.
+      map(']c', function() gs.nav_hunk('next', { target = 'all' }) end, 'Next git [c]hange')
+      map('[c', function() gs.nav_hunk('prev', { target = 'all' }) end, 'Prev git [c]hange')
+      -- Hunk staging from the editor (stage_hunk toggles stage/unstage). Bigger
+      -- git ops live in lazygit (<space>gg); inline diffs are on <leader>gd.
+      map('<leader>ghs', gs.stage_hunk, 'Hunk [s]tage/unstage')
+      map('<leader>ghr', gs.reset_hunk, 'Hunk [r]eset (discard changes)')
+      -- Capital = whole buffer: stage all, unstage all, reset all (discard).
+      map('<leader>ghS', gs.stage_buffer, 'Buffer [S]tage all')
+      map('<leader>ghU', gs.reset_buffer_index, 'Buffer [U]nstage all')
+      map('<leader>ghR', gs.reset_buffer, 'Buffer [R]eset all (discard)')
+      -- Blame: gb = popup with the full commit for the current line. The ambient
+      -- line-blame toggle (gB) lives with the other toggles in the notifications section.
+      map('<leader>gb', function() gs.blame_line { full = true } end, 'Git [b]lame line')
     end,
   }
 
-  -- Toggle full-line highlight for changed lines (gitsigns linehl, off by default).
-  vim.keymap.set('n', '<leader>tgh', '<cmd>Gitsigns toggle_linehl<cr>', { desc = 'Toggle git line highlight' })
+  -- inline-diff.nvim — VSCode-style live word-level inline diff: added/removed/changed
+  -- shown inline as you type, with deleted lines. It derives colors from DiffAdd/
+  -- DiffDelete and auto-boosts the word emphasis. Visualization only; gitsigns still
+  -- owns signs, staging, blame, hunk nav.
+  vim.pack.add { gh 'cvlmtg/inline-diff.nvim' }
+  require('inline-diff').setup {}
+  -- inline-diff re-defines its highlights with a forced contrast fg on every enable,
+  -- which flattens treesitter colors. Strip that fg on the ADD groups (bg only) right
+  -- after toggling, so added/changed code keeps its syntax highlighting. Deleted text
+  -- is virtual text with no syntax, so it keeps the contrast fg.
+  local function inline_diff_keep_syntax()
+    for _, g in ipairs { 'InlineDiffAdd', 'InlineDiffWordAdd' } do
+      local hl = vim.api.nvim_get_hl(0, { name = g })
+      if hl.bg then vim.api.nvim_set_hl(0, g, { bg = hl.bg }) end
+    end
+  end
+  vim.keymap.set('n', '<leader>gd', function()
+    vim.cmd 'InlineDiff'
+    inline_diff_keep_syntax()
+  end, { desc = 'Git [d]iff (inline toggle)' })
 
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
   require('which-key').setup {
     -- Delay between pressing a key and opening which-key (milliseconds)
     delay = 0,
-    icons = { mappings = vim.g.have_nerd_font },
+    -- rules = false drops the spotty auto per-key icons; only the explicit group
+    -- icons in `spec` below render (mappings must stay true or ALL icons vanish).
+    icons = { mappings = true, rules = false },
     win = { border = 'rounded' }, -- which-key ignores the global winborder
 
+    -- Keymap description convention: bracket ONLY the action key (the last key in
+    -- the sequence), in its real case — `Git [b]lame line` (press b), `Buffer
+    -- [S]tage all` (Shift+S). Group words stay plain/unbracketed as searchable
+    -- context (so `<leader>sk` "git" finds git cmds); keys with no matching letter
+    -- (x, gr) get no bracket. Icons live on groups only (icons.rules = false above),
+    -- except the toggles, which carry a live state icon (green switch on / grey
+    -- off) registered alongside their dynamic Enable/Disable label.
     -- Document existing key chains
     spec = {
-      { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
-      { '<leader>t', group = '[T]oggle' },
-      { '<leader>tg', group = '[G]it' },
-      { '<leader>g', group = '[G]it' },
-      { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
-      { '<leader>x', group = 'Diagnostics (Trouble)' },
-      { 'gr', group = 'LSP Actions', mode = { 'n' } },
+      { '<leader>b', group = '[b]uffer' },
+      { '<leader>s', group = '[s]earch', icon = { icon = '', color = 'cyan' }, mode = { 'n', 'v' } },
+      { '<leader>t', group = '[t]oggle', icon = { icon = '', color = 'yellow' } },
+      { '<leader>g', group = '[g]it', icon = { cat = 'filetype', name = 'git' } },
+      { '<leader>gh', group = 'Git [h]unk', icon = { icon = '', color = 'orange' } },
+      { '<leader>x', group = 'Diagnostics', icon = { icon = '󱖫', color = 'red' } },
+      { 'gr', group = 'LSP Actions', icon = { icon = '', color = 'green' }, mode = { 'n' } },
     },
   }
 
@@ -455,22 +484,25 @@ do
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_statusline_mode_contrast })
 
   -- Align gitsigns with the muted delta diff palette so nvim's gutter signs and
-  -- changed-line highlights match the terminal/lazygit diffs (add=green,
-  -- change=blue, delete=red, all muted). Ln backgrounds reuse delta's exact
-  -- plus/minus line tints; fg left unset so syntax colors show through.
+  -- changed-line highlights match the terminal/lazygit diffs. delta has no
+  -- "change" state (a modified line is delete + add), so change lines render
+  -- green like adds and the green word-diff stays readable; only the gutter sign
+  -- (~) distinguishes a modify from an add. fg left unset so syntax shows through.
   local function fix_gitsigns_palette()
     local set = vim.api.nvim_set_hl
     set(0, 'GitSignsAdd', { fg = '#55805f' })
     set(0, 'GitSignsChange', { fg = '#5a7ba6' })
     set(0, 'GitSignsDelete', { fg = '#7d5159' })
-    set(0, 'GitSignsAddLn', { bg = '#1a2620' })
-    set(0, 'GitSignsChangeLn', { bg = '#1c2333' })
-    set(0, 'GitSignsDeleteLn', { bg = '#26191c' })
+    set(0, 'GitSignsAddLn', { bg = '#1f3a29' })
+    set(0, 'GitSignsChangeLn', { bg = '#1f3a29' })
+    set(0, 'GitSignsDeleteLn', { bg = '#3d2027' })
+    -- Intra-line word diff is handled by inline-diff.nvim, which derives its own
+    -- colors from DiffAdd/DiffDelete below — no gitsigns word_diff groups needed.
     -- vimdiff / :diffthis use the Diff* groups — match the muted delta palette.
-    set(0, 'DiffAdd', { bg = '#1a2620' })
-    set(0, 'DiffChange', { bg = '#1c2333' })
-    set(0, 'DiffDelete', { bg = '#26191c' })
-    set(0, 'DiffText', { bg = '#2f3d5c' })
+    set(0, 'DiffAdd', { bg = '#1f3a29' })
+    set(0, 'DiffChange', { bg = '#1f3a29' })
+    set(0, 'DiffDelete', { bg = '#3d2027' })
+    set(0, 'DiffText', { bg = '#4a9d64' })
     -- Transparent floats (neo-tree preview, telescope, hover, which-key); the
     -- rounded winborder above delineates them.
     set(0, 'NormalFloat', { bg = 'none' })
@@ -625,21 +657,20 @@ do
 
   -- See `:help telescope.builtin`
   local builtin = require 'telescope.builtin'
-  vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
-  vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-  vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
-  vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
-  vim.keymap.set({ 'n', 'v' }, '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
-  vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
-  vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
-  vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-  vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-  vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = '[S]earch [C]ommands' })
+  vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = 'Search [h]elp' })
+  vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = 'Search [k]eymaps' })
+  vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = 'Search [f]iles' })
+  vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = 'Search [s]elect Telescope' })
+  vim.keymap.set({ 'n', 'v' }, '<leader>sw', builtin.grep_string, { desc = 'Search current [w]ord' })
+  vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = 'Search by [g]rep' })
+  vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = 'Search [d]iagnostics' })
+  vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = 'Search [r]esume' })
+  vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = 'Search recent files [.]' })
+  vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = 'Search [c]ommands' })
   vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
-  vim.keymap.set('n', '<leader>sa', function() builtin.find_files { hidden = true, no_ignore = true } end, { desc = '[S]earch [A]ll files (incl. hidden + ignored)' })
-  vim.keymap.set('n', '<leader>gf', builtin.git_files, { desc = '[G]it tracked [F]iles' })
-  vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = '[G]it [S]tatus (changed files)' })
+  vim.keymap.set('n', '<leader>sa', function() builtin.find_files { hidden = true, no_ignore = true } end, { desc = 'Search [a]ll files (incl. hidden + ignored)' })
+  vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = 'Git [s]tatus (changed files)' })
   vim.keymap.set('n', '<leader>gg', function()
     vim.cmd 'tabnew'
     vim.cmd 'terminal lazygit'
@@ -653,7 +684,7 @@ do
         vim.schedule(function() vim.cmd 'bdelete!' end)
       end,
     })
-  end, { desc = '[G]it (lazy[g]it)' })
+  end, { desc = 'Git (lazy[g]it)' })
 
   -- Add Telescope-based LSP pickers when an LSP attaches to a buffer.
   -- If you later switch picker plugins, this is where to update these mappings.
@@ -663,29 +694,29 @@ do
       local buf = event.buf
 
       -- Find references for the word under your cursor.
-      vim.keymap.set('n', 'grr', builtin.lsp_references, { buffer = buf, desc = '[G]oto [R]eferences' })
+      vim.keymap.set('n', 'grr', builtin.lsp_references, { buffer = buf, desc = 'Goto [r]eferences' })
 
       -- Jump to the implementation of the word under your cursor.
       -- Useful when your language has ways of declaring types without an actual implementation.
-      vim.keymap.set('n', 'gri', builtin.lsp_implementations, { buffer = buf, desc = '[G]oto [I]mplementation' })
+      vim.keymap.set('n', 'gri', builtin.lsp_implementations, { buffer = buf, desc = 'Goto [i]mplementation' })
 
       -- Jump to the definition of the word under your cursor.
       -- This is where a variable was first declared, or where a function is defined, etc.
       -- To jump back, press <C-t>.
-      vim.keymap.set('n', 'grd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
+      vim.keymap.set('n', 'grd', builtin.lsp_definitions, { buffer = buf, desc = 'Goto [d]efinition' })
 
       -- Fuzzy find all the symbols in your current document.
       -- Symbols are things like variables, functions, types, etc.
-      vim.keymap.set('n', 'gO', builtin.lsp_document_symbols, { buffer = buf, desc = 'Open Document Symbols' })
+      vim.keymap.set('n', 'gO', builtin.lsp_document_symbols, { buffer = buf, desc = '[O]pen Document Symbols' })
 
       -- Fuzzy find all the symbols in your current workspace.
       -- Similar to document symbols, except searches over your entire project.
-      vim.keymap.set('n', 'gW', builtin.lsp_dynamic_workspace_symbols, { buffer = buf, desc = 'Open Workspace Symbols' })
+      vim.keymap.set('n', 'gW', builtin.lsp_dynamic_workspace_symbols, { buffer = buf, desc = 'Open [W]orkspace Symbols' })
 
       -- Jump to the type of the word under your cursor.
       -- Useful when you're not sure what type a variable is and you want to see
       -- the definition of its *type*, not where it was *defined*.
-      vim.keymap.set('n', 'grt', builtin.lsp_type_definitions, { buffer = buf, desc = '[G]oto [T]ype Definition' })
+      vim.keymap.set('n', 'grt', builtin.lsp_type_definitions, { buffer = buf, desc = 'Goto [t]ype definition' })
     end,
   })
 
@@ -693,7 +724,7 @@ do
   vim.keymap.set('n', '<leader>/', function()
     -- You can pass additional configuration to Telescope to change the theme, layout, etc.
     builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
-      winblend = 10,
+      winblend = 0,
       previewer = false,
     })
   end, { desc = '[/] Fuzzily search in current buffer' })
@@ -709,11 +740,11 @@ do
         prompt_title = 'Live Grep in Open Files',
       }
     end,
-    { desc = '[S]earch [/] in Open Files' }
+    { desc = 'Search [/] in open files' }
   )
 
   -- Shortcut for searching your Neovim configuration files
-  vim.keymap.set('n', '<leader>sn', function() builtin.find_files { cwd = vim.fn.stdpath 'config' } end, { desc = '[S]earch [N]eovim files' })
+  vim.keymap.set('n', '<leader>sn', function() builtin.find_files { cwd = vim.fn.stdpath 'config' } end, { desc = 'Search [n]eovim files' })
 end
 
 -- ============================================================
@@ -770,15 +801,15 @@ do
 
       -- Rename the variable under your cursor.
       --  Most Language Servers support renaming across files, etc.
-      map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+      map('grn', vim.lsp.buf.rename, 'Re[n]ame')
 
       -- Execute a code action, usually your cursor needs to be on top of an error
       -- or a suggestion from your LSP for this to activate.
-      map('gra', vim.lsp.buf.code_action, '[G]oto Code [A]ction', { 'n', 'x' })
+      map('gra', vim.lsp.buf.code_action, 'Code [a]ction', { 'n', 'x' })
 
       -- WARN: This is not Goto Definition, this is Goto Declaration.
       --  For example, in C this would take you to the header.
-      map('grD', vim.lsp.buf.declaration, '[G]oto [D]eclaration')
+      map('grD', vim.lsp.buf.declaration, 'Goto [D]eclaration')
 
       -- The following two autocommands are used to highlight references of the
       -- word under your cursor when your cursor rests there for a little while.
@@ -807,14 +838,6 @@ do
             vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
           end,
         })
-      end
-
-      -- The following code creates a keymap to toggle inlay hints in your
-      -- code, if the language server you are using supports them
-      --
-      -- This may be unwanted, since they displace some of your code
-      if client and client:supports_method('textDocument/inlayHint', event.buf) then
-        map('<leader>th', function() vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }) end, '[T]oggle Inlay [H]ints')
       end
     end,
   })
@@ -981,9 +1004,9 @@ do
   vim.pack.add { gh 'stevearc/conform.nvim' }
   require('conform').setup {
     notify_on_error = false,
-    format_on_save = function(bufnr)
-      -- Format on save unless toggled off globally or per-buffer (<leader>tf).
-      if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+    format_on_save = function()
+      -- Format on save unless globally disabled via <leader>tf.
+      if vim.g.disable_autoformat then
         return nil
       end
       return { timeout_ms = 1000, lsp_format = 'fallback' }
@@ -1018,12 +1041,7 @@ do
     },
   }
 
-  vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[F]ormat buffer' })
-  -- Toggle format-on-save globally.
-  vim.keymap.set('n', '<leader>tf', function()
-    vim.g.disable_autoformat = not vim.g.disable_autoformat
-    vim.notify('Format on save ' .. (vim.g.disable_autoformat and 'disabled' or 'enabled'))
-  end, { desc = '[T]oggle [F]ormat on save' })
+  vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[f]ormat buffer' })
 end
 
 -- ============================================================
@@ -1110,9 +1128,26 @@ do
       end
     end,
   })
-  vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[E]xplorer (Neo-tree)' })
+  vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[e]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
-  vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = '[G]it changed files ([E]xplorer)' })
+  vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = 'Git changed files ([e]xplorer)' })
+
+  -- neo-tree's git-status icons go stale when you stage/unstage (via gitsigns or
+  -- lazygit): staging only touches .git/index, not the file, so neo-tree's libuv
+  -- file watcher never sees it. Refresh neo-tree's git status when gitsigns reports
+  -- an index change, debounced so frequent sign updates while typing don't thrash it.
+  local nt_refresh_pending = false
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'GitSignsUpdate',
+    callback = function()
+      if nt_refresh_pending then return end
+      nt_refresh_pending = true
+      vim.defer_fn(function()
+        nt_refresh_pending = false
+        pcall(function() require('neo-tree.sources.manager').refresh 'filesystem' end)
+      end, 300)
+    end,
+  })
 end
 
 -- ============================================================
@@ -1122,7 +1157,98 @@ end
 do
   vim.pack.add { gh 'MeanderingProgrammer/render-markdown.nvim' } -- treesitter + icons already present
   require('render-markdown').setup {}
-  vim.keymap.set('n', '<leader>tm', '<cmd>RenderMarkdown toggle<cr>', { desc = '[T]oggle [M]arkdown render' })
+end
+
+-- ============================================================
+-- SECTION: notifications, unified toggles, buffer delete
+-- ============================================================
+do
+  -- nvim-notify: route vim.notify through animated toasts (with history via
+  -- :Notifications). Single-purpose; background_colour is pinned to the VS Code
+  -- Dark editor bg because the theme runs transparent, so notify has no window
+  -- background to read and blend against (change it if the theme changes).
+  vim.pack.add { gh 'rcarriga/nvim-notify' }
+  local notify = require 'notify'
+  notify.setup {
+    stages = 'fade',
+    render = 'wrapped-compact',
+    timeout = 3000,
+    background_colour = '#1e1e1e',
+  }
+  vim.notify = notify
+
+  -- Toggle helper: flip the setting, announce it, and register a which-key entry
+  -- whose label and icon track live state — "Disable" + green switch when on,
+  -- "Enable" + grey switch when off. which-key re-runs the desc/icon functions
+  -- on every popup open, so the row always reflects the current value.
+  local TOGGLE_ON, TOGGLE_OFF = '', ''
+  local function toggle(key, name, get, set)
+    vim.keymap.set('n', key, function()
+      local on = not get()
+      set(on)
+      vim.notify((on and 'Enabled ' or 'Disabled ') .. name)
+    end, { desc = 'Toggle ' .. name })
+    require('which-key').add {
+      {
+        key,
+        desc = function() return (get() and 'Disable ' or 'Enable ') .. name end,
+        icon = function()
+          local on = get()
+          -- Explicit 'grey' (not nil) for off: the base WhichKeyIcon fallback is underlined.
+          return { icon = on and TOGGLE_ON or TOGGLE_OFF, color = on and 'green' or 'grey' }
+        end,
+      },
+    }
+  end
+
+  -- Wrap a state read that reaches into a plugin's internals so a future refactor
+  -- of that module can't throw inside which-key's render callback (which would
+  -- blank the toggle popup). Core vim.* getters below don't need this.
+  local function safe_get(fn)
+    return function()
+      local ok, v = pcall(fn)
+      return ok and v or false
+    end
+  end
+
+  toggle('<leader>th', 'inlay hints', function() return vim.lsp.inlay_hint.is_enabled { bufnr = 0 } end, function(s) vim.lsp.inlay_hint.enable(s, { bufnr = 0 }) end)
+  toggle('<leader>tx', 'diagnostic text', function() return vim.diagnostic.config().virtual_text ~= false end, function(s) vim.diagnostic.config { virtual_text = s } end)
+  toggle('<leader>tm', 'markdown render', safe_get(function() return require('render-markdown.state').enabled end), function(s) vim.cmd('RenderMarkdown ' .. (s and 'enable' or 'disable')) end)
+  toggle('<leader>tf', 'format on save', function() return not vim.g.disable_autoformat end, function(s) vim.g.disable_autoformat = not s end)
+  toggle('<leader>gB', 'line blame', safe_get(function() return require('gitsigns.config').config.current_line_blame end), function(s) require('gitsigns').toggle_current_line_blame(s) end)
+
+  -- Delete the current buffer while keeping the window/split layout: show the
+  -- alternate (or another listed) buffer in its place, falling back to a fresh
+  -- empty buffer only when nothing else is listed.
+  local function buf_delete()
+    local cur = vim.api.nvim_get_current_buf()
+    if vim.bo[cur].modified then
+      vim.notify('Buffer has unsaved changes; save or use :bd! first', vim.log.levels.WARN)
+      return
+    end
+    local repl
+    local alt = vim.fn.bufnr '#'
+    if alt > 0 and alt ~= cur and vim.bo[alt].buflisted then
+      repl = alt
+    else
+      for _, b in ipairs(vim.fn.getbufinfo { buflisted = 1 }) do
+        if b.bufnr ~= cur then
+          repl = b.bufnr
+          break
+        end
+      end
+    end
+    repl = repl or vim.api.nvim_create_buf(true, false)
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_get_buf(win) == cur then
+        vim.api.nvim_win_set_buf(win, repl)
+      end
+    end
+    if vim.api.nvim_buf_is_valid(cur) then
+      pcall(vim.api.nvim_buf_delete, cur, {})
+    end
+  end
+  vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
 end
 
 -- ============================================================
