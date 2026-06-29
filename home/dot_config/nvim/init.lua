@@ -227,7 +227,9 @@ do
   -- Toggle the verbose inline diagnostic text on/off; gutter signs stay either
   -- way, so you keep a quiet indicator without the end-of-line wall of text.
   vim.keymap.set('n', '<leader>tx', function()
-    vim.diagnostic.config { virtual_text = not vim.diagnostic.config().virtual_text }
+    local on = not vim.diagnostic.config().virtual_text
+    vim.diagnostic.config { virtual_text = on }
+    vim.notify('Diagnostic text ' .. (on and 'enabled' or 'disabled'))
   end, { desc = 'Toggle diagnostic inline te[x]t' })
 
   -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
@@ -401,7 +403,9 @@ do
       map('<leader>ghR', gs.reset_buffer, 'Buffer [R]eset all (discard)')
       -- Blame: gb = popup with the full commit for the current line; gB = ambient toggle.
       map('<leader>gb', function() gs.blame_line { full = true } end, 'Git [b]lame line')
-      map('<leader>gB', gs.toggle_current_line_blame, 'Git [B]lame toggle')
+      map('<leader>gB', function()
+        vim.notify('Line blame ' .. (gs.toggle_current_line_blame() and 'enabled' or 'disabled'))
+      end, 'Git [B]lame toggle')
     end,
   }
 
@@ -848,7 +852,11 @@ do
       --
       -- This may be unwanted, since they displace some of your code
       if client and client:supports_method('textDocument/inlayHint', event.buf) then
-        map('<leader>th', function() vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }) end, 'Toggle inlay [h]ints')
+        map('<leader>th', function()
+          local on = not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf }
+          vim.lsp.inlay_hint.enable(on, { bufnr = event.buf })
+          vim.notify('Inlay hints ' .. (on and 'enabled' or 'disabled'))
+        end, 'Toggle inlay [h]ints')
       end
     end,
   })
@@ -1173,7 +1181,10 @@ end
 do
   vim.pack.add { gh 'MeanderingProgrammer/render-markdown.nvim' } -- treesitter + icons already present
   require('render-markdown').setup {}
-  vim.keymap.set('n', '<leader>tm', '<cmd>RenderMarkdown toggle<cr>', { desc = 'Toggle [m]arkdown render' })
+  vim.keymap.set('n', '<leader>tm', function()
+    vim.cmd 'RenderMarkdown toggle'
+    vim.notify('Markdown render ' .. (require('render-markdown.state').enabled and 'enabled' or 'disabled'))
+  end, { desc = 'Toggle [m]arkdown render' })
 end
 
 -- ============================================================
