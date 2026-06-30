@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# claude-tcc-prune
+# =============================================================================
+# Removes orphaned `claude-code` entries from the user TCC (privacy) database
+# on macOS.
+#
+# Why they accumulate: the Homebrew cask installs the CLI to a version-stamped
+# path, `/opt/homebrew/Caskroom/claude-code/<version>/claude`, and the
+# `/opt/homebrew/bin/claude` symlink resolves there. macOS TCC keys privacy
+# grants to the *resolved real path*, so every upgrade is a brand-new client:
+# a fresh permission prompt and a new row in System Settings > Privacy. Then
+# `brew cleanup` deletes the old version's folder, leaving the row pointing at
+# a binary that no longer exists - an orphan.
+#
+# This prunes exactly those orphans: rows whose client is a claude-code
+# Caskroom binary that is no longer on disk. The current (live) version and any
+# unrelated app are left untouched. It cannot grant permissions - macOS has no
+# supported path for that - so a fresh prompt after each upgrade is expected;
+# this only keeps the dead rows from piling up.
+#
+# Scope boundary: only the USER database is pruned. Full Disk Access lives in
+# the SYSTEM database (/Library/...), which SIP makes read-only even to root,
+# so an orphaned FDA row can't be scripted away - remove it by hand in System
+# Settings > Privacy & Security > Full Disk Access (the "-" button). Both
+# databases are world-readable, so `--list` shows every claude row in each
+# (the UI surfaces only some TCC services; the database is the full picture).
+#
+# Requires Full Disk Access for the invoking terminal to PRUNE (the write needs
+# it). Without it the script reports and exits 0 so it never breaks the update
+# flow it's wired into. `--list` only reads, so it works without FDA.
+
+set -euo pipefail
+
+# TCC databases. Overridable so tests can point at fixtures. The user db holds
+# per-folder and app-data grants; the system db holds Full Disk Access. Both are
+# world-readable, but only the user db is writable (system db is SIP-protected).
+TCC_DB="${CLAUDE_TCC_DB:-$HOME/Library/Application Support/com.apple.TCC/TCC.db}"
+TCC_DB_SYS="${CLAUDE_TCC_DB_SYS:-/Library/Application Support/com.apple.TCC/TCC.db}"
+
+# SQL LIKE pattern selecting candidate rows. Matches both Apple Silicon
+# (/opt/homebrew) and Intel (/usr/local) Caskroom prefixes.
+readonly CLAUDE_TCC_SQL_LIKE='%/Caskroom/claude-code/%'
+
+# True when PATH is a claude-code Caskroom binary. The glob requires the
+# version segment and the `claude` leaf, so the stable `bin/claude` symlink and
+# unrelated Caskroom tools never match. Pure; sourceable for tests.
+claude_tcc_is_managed_path() {
+  case "$1" in
+    */Caskroom/claude-code/*/claude) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Reads candidate client paths on stdin, echoes those that are managed AND no
+# longer exist on disk (the orphans). Filesystem-checking but side-effect-free,
+# so tests drive it with real temp files.
+claude_tcc_select_orphans() {
+  local path
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    if claude_tcc_is_managed_path "$path" && [ ! -e "$path" ]; then
+      printf '%s\n' "$path"
+    fi
+  done
+}
+
+# Executable paths of every running `claude` process. A still-running session
+# whose binary was unlinked (not renamed) keeps that exact deleted path open, so
+# it shows here even though it fails the on-disk check. Side-effecting (lsof).
+claude_tcc_inuse_paths() {
+  local pid
+  for pid in $(pgrep -x claude 2>/dev/null); do
+    lsof -p "$pid" -a -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | grep -E '/claude$'
+  done | sort -u
+}
+
+# Reads candidate paths on stdin, drops any that exactly match a path in the
+# newline-separated in-use list ($1), echoes the rest. Pruning a row whose
+# binary a live session still runs would only make it re-prompt and recreate the
+# row, so those wait until the session exits. Pure; sourceable for tests.
+claude_tcc_drop_inuse() {
+  local inuse="$1" path
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    printf '%s\n' "$inuse" | grep -qxF "$path" || printf '%s\n' "$path"
+  done
+}
+
+# Maps a TCC service id to the System Settings pane it appears in, or flags the
+# services that have no UI surface at all. Pure; sourceable for tests.
+claude_tcc_service_label() {
+  case "$1" in
+    kTCCServiceSystemPolicyAllFiles) echo "Full Disk Access" ;;
+    kTCCServiceSystemPolicyDocumentsFolder) echo "Files & Folders: Documents" ;;
+    kTCCServiceSystemPolicyDesktopFolder) echo "Files & Folders: Desktop" ;;
+    kTCCServiceSystemPolicyDownloadsFolder) echo "Files & Folders: Downloads" ;;
+    kTCCServiceSystemPolicyNetworkVolumes) echo "Files & Folders: Network Volumes" ;;
+    kTCCServiceSystemPolicyRemovableVolumes) echo "Files & Folders: Removable Volumes" ;;
+    kTCCServiceSystemPolicyAppData) echo "App data (no UI pane)" ;;
+    kTCCServiceFileProviderDomain) echo "File Provider (no UI pane)" ;;
+    kTCCServiceAccessibility) echo "Accessibility" ;;
+    kTCCServiceScreenCapture) echo "Screen Recording" ;;
+    kTCCServiceMediaLibrary) echo "Media & Apple Music" ;;
+    *) echo "${1#kTCCService}" ;;
+  esac
+}
+
+# Classifies a row's client into a state. Path clients (client_type 1) are live
+# or orphaned by disk existence; bundle clients (client_type 0) have no path.
+# Pure apart from the existence check; sourceable for tests.
+claude_tcc_client_state() {
+  if [ "$1" = 0 ]; then
+    echo "bundle"
+  elif [ -e "$2" ]; then
+    echo "live"
+  else
+    echo "orphan"
+  fi
+}
+
+# Human label for a TCC auth_value.
+claude_tcc_auth_label() {
+  case "$1" in
+    0 | 1) echo "denied" ;;
+    2) echo "allowed" ;;
+    3) echo "limited" ;;
+    *) echo "auth=$1" ;;
+  esac
+}
+
+# Prints every claude row in one database as an aligned table. Read-only.
+claude_tcc_list_db() {
+  local db="$1" rows
+  if ! rows="$(sqlite3 "$db" \
+    "SELECT service || '|' || client_type || '|' || auth_value || '|' || client \
+       FROM access WHERE client LIKE '%claude%' ORDER BY client, service;" 2>/dev/null)"; then
+    echo "  (unreadable)"
+    return
+  fi
+  if [ -z "$rows" ]; then
+    echo "  (no claude entries)"
+    return
+  fi
+  printf '  %-7s %-8s %-35s %s\n' STATE AUTH PANE CLIENT
+  local service ctype auth client
+  while IFS='|' read -r service ctype auth client; do
+    [ -n "$service" ] || continue
+    printf '  %-7s %-8s %-35s %s\n' \
+      "$(claude_tcc_client_state "$ctype" "$client")" \
+      "$(claude_tcc_auth_label "$auth")" \
+      "$(claude_tcc_service_label "$service")" \
+      "$client"
+  done <<<"$rows"
+}
+
+# Dumps both databases. The UI shows only some services; this is the full set.
+claude_tcc_list() {
+  echo "User database ($TCC_DB) - prunable:"
+  claude_tcc_list_db "$TCC_DB"
+  echo ""
+  echo "System database ($TCC_DB_SYS) - read-only (SIP); remove orphans in System Settings:"
+  claude_tcc_list_db "$TCC_DB_SYS"
+}
+
+claude_tcc_prune_main() {
+  local dry_run=false quiet=false list=false
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run | -n) dry_run=true ;;
+      --quiet | -q) quiet=true ;;
+      --list | -l) list=true ;;
+      --help | -h)
+        echo "Usage: claude-tcc-prune [--list] [--dry-run] [--quiet]"
+        echo ""
+        echo "Remove orphaned claude-code entries from the user TCC database."
+        echo ""
+        echo "  -l, --list     Show all claude rows in both TCC databases, then exit"
+        echo "  -n, --dry-run  Show what would be removed without deleting"
+        echo "  -q, --quiet    Suppress output unless rows are pruned"
+        echo "  -h, --help     Show this help message"
+        return 0
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        return 1
+        ;;
+    esac
+    shift
+  done
+
+  # macOS-only; TCC is an Apple concept. Silent no-op elsewhere.
+  if [[ "$OSTYPE" != darwin* ]]; then
+    return 0
+  fi
+
+  # --list is a read-only report over both databases; it needs no FDA.
+  if [ "$list" = true ]; then
+    claude_tcc_list
+    return 0
+  fi
+
+  # A trivial read doubles as the Full Disk Access probe: if the terminal lacks
+  # it (or the DB is missing on a fresh machine), this fails and we bail clean.
+  if ! sqlite3 "$TCC_DB" 'SELECT 1 FROM access LIMIT 1;' >/dev/null 2>&1; then
+    [ "$quiet" = true ] || echo "claude-tcc-prune: can't read TCC.db (grant this terminal Full Disk Access); skipping"
+    return 0
+  fi
+
+  local orphans
+  orphans="$(
+    sqlite3 "$TCC_DB" \
+      "SELECT DISTINCT client FROM access WHERE client LIKE '$CLAUDE_TCC_SQL_LIKE';" \
+      | claude_tcc_select_orphans
+  )"
+
+  # Keep rows whose binary a running session still holds open; they'd just
+  # re-prompt and come back. They get swept on a later run once that session exits.
+  if [ -n "$orphans" ]; then
+    orphans="$(claude_tcc_drop_inuse "$(claude_tcc_inuse_paths)" <<<"$orphans")"
+  fi
+
+  if [ -z "$orphans" ]; then
+    [ "$quiet" = true ] || echo "claude-tcc-prune: no orphaned claude-code TCC entries"
+    return 0
+  fi
+
+  local count path
+  count="$(printf '%s\n' "$orphans" | grep -c .)"
+
+  if [ "$dry_run" = true ]; then
+    echo "claude-tcc-prune: would remove $count orphaned entr$([ "$count" -eq 1 ] && echo y || echo ies):"
+    while IFS= read -r path; do printf '  %s\n' "$path"; done <<<"$orphans"
+    return 0
+  fi
+
+  # Delete every row for each orphan path in one transaction. Paths are already
+  # constrained to the strict Caskroom glob, but single quotes are still doubled
+  # defensively before interpolation.
+  local sql="BEGIN;" esc
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    esc=${path//"'"/"''"}
+    sql+=" DELETE FROM access WHERE client='$esc';"
+  done <<<"$orphans"
+  sql+=" COMMIT;"
+
+  # `.timeout` (not `PRAGMA busy_timeout`, which echoes its value to stdout)
+  # rides out tccd briefly holding the database open.
+  sqlite3 -cmd '.timeout 2000' "$TCC_DB" "$sql"
+
+  # Restart the user's TCC daemon so System Settings reflects the removal
+  # without a reopen. Best-effort; it respawns immediately and grants persist.
+  # Skipped when CLAUDE_TCC_DB is overridden: tests run against a fixture db and
+  # must not touch the real daemon.
+  if [ -z "${CLAUDE_TCC_DB:-}" ]; then
+    killall tccd 2>/dev/null || true
+  fi
+
+  echo "claude-tcc-prune: removed $count orphaned claude-code TCC entr$([ "$count" -eq 1 ] && echo y || echo ies)"
+}
+
+# Run only when executed directly - sourcing (e.g. from tests) just defines the
+# functions above.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  claude_tcc_prune_main "$@"
+fi
