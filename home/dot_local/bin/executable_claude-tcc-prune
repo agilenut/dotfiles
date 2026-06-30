@@ -243,7 +243,7 @@ claude_tcc_prune_main() {
   local sql="BEGIN;" esc
   while IFS= read -r path; do
     [ -n "$path" ] || continue
-    esc="${path//\'/\'\'}"
+    esc=${path//"'"/"''"}
     sql+=" DELETE FROM access WHERE client='$esc';"
   done <<<"$orphans"
   sql+=" COMMIT;"
@@ -254,7 +254,11 @@ claude_tcc_prune_main() {
 
   # Restart the user's TCC daemon so System Settings reflects the removal
   # without a reopen. Best-effort; it respawns immediately and grants persist.
-  killall tccd 2>/dev/null || true
+  # Skipped when CLAUDE_TCC_DB is overridden: tests run against a fixture db and
+  # must not touch the real daemon.
+  if [ -z "${CLAUDE_TCC_DB:-}" ]; then
+    killall tccd 2>/dev/null || true
+  fi
 
   echo "claude-tcc-prune: removed $count orphaned claude-code TCC entr$([ "$count" -eq 1 ] && echo y || echo ies)"
 }
