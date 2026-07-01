@@ -37,6 +37,7 @@ romkatv/zsh-bench kind:path
 
 "zsh-users/zsh-completions" path:src kind:fpath
 "$ZDOTDIR/zshrc.d/dotnet.zsh"
+"$ZDOTDIR/zshrc.d/theme.zsh"
 "$ZDOTDIR/zshrc.d/fzf.zsh" conditional:is-completion-fzf
 "$ZDOTDIR/zshrc.d/zoxide.zsh"
 

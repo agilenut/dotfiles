@@ -27,6 +27,10 @@ usage() {
   usage
   exit 1
 }
+if [[ "$1" == "--list" ]]; then
+  echo "$themes"
+  exit 0
+fi
 target=$1
 echo "$themes" | grep -qx "$target" || {
   echo "Unknown theme: $target"
