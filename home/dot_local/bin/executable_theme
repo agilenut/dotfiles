@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Switch the active color theme across all themed tools.
+#
+# Rewrites the `theme` value in chezmoi's config, then re-applies so every
+# templated tool regenerates from home/.chezmoidata/themes.toml. Running
+# nvim/tmux/bat sessions need a restart/reload to pick up the change; quicklook
+# needs the theme re-selected in the Syntax Highlight app (its selection is GUI
+# state).
+set -euo pipefail
+
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.toml"
+palette="$(chezmoi source-path)/.chezmoidata/themes.toml"
+
+# Available themes = the [themes.<name>.ansi] tables in the palette.
+themes=$(grep -oE '^\[themes\.[a-z0-9-]+\.ansi\]' "$palette" \
+  | sed -E 's/.*themes\.([a-z0-9-]+)\.ansi.*/\1/')
+current=$(sed -nE 's/^[[:space:]]*theme[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$cfg" 2>/dev/null || true)
+
+usage() {
+  echo "Usage: theme <name>"
+  echo "Available:"
+  echo "$themes" | sed 's/^/  /'
+  [[ -n "$current" ]] && echo "Current: $current"
+}
+
+[[ $# -eq 1 ]] || {
+  usage
+  exit 1
+}
+target=$1
+echo "$themes" | grep -qx "$target" || {
+  echo "Unknown theme: $target"
+  usage
+  exit 1
+}
+
+tmp=$(mktemp)
+if grep -qE '^[[:space:]]*theme[[:space:]]*=' "$cfg"; then
+  sed -E "s/^[[:space:]]*theme[[:space:]]*=.*/    theme = \"$target\"/" "$cfg" >"$tmp"
+else
+  # No theme set yet (config predates theming) - insert after the profile line.
+  awk -v t="$target" '{print} /^[[:space:]]*profile[[:space:]]*=/{print "    theme = \"" t "\""}' "$cfg" >"$tmp"
+fi
+mv "$tmp" "$cfg"
+
+echo "theme set to: $target"
+chezmoi apply -v

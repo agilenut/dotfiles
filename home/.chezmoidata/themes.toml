@@ -1,0 +1,106 @@
+# Centralized color palette — single source of truth for all themed tools.
+#
+# Layers per theme:
+#   ansi   — the 16 terminal colors (+ bg/fg). Drives alacritty; oh-my-posh
+#            prompt, tmux, lazygit (partly), fzf, eza, and LS_COLORS cascade
+#            from these for free.
+#   syntax — semantic hex tokens for the syntax tools (bat, delta, nvim via
+#            vscode.nvim color_overrides, quicklook).
+#   ui     — shared UI accents (selection, muted, diff/git colors).
+#
+# The active theme is selected by the `theme` field in chezmoi config
+# (see .chezmoi.toml.tmpl); switch with the `theme <name>` script.
+#
+# bright_black is deliberately the muted grey #6e7681 (not #666666) so the
+# "muted/dim" grey is one value across tmux/lazygit/nvim/quicklook.
+
+[themes.vscode-dark-modern.ansi]
+  background     = "#1f1f1f"
+  foreground     = "#c6c6c6"
+  black          = "#1f1f1f"
+  red            = "#d16969"
+  green          = "#6a9955"
+  yellow         = "#ce9178"
+  blue           = "#569cd6"
+  magenta        = "#646695"
+  cyan           = "#4ec9b0"
+  white          = "#c6c6c6"
+  bright_black   = "#6e7681"
+  bright_red     = "#e08f8f"
+  bright_green   = "#a4c98b"
+  bright_yellow  = "#e0bc9f"
+  bright_blue    = "#8cbceb"
+  bright_magenta = "#c586c0"
+  bright_cyan    = "#4ec9b0"
+  bright_white   = "#e5e5e5"
+
+[themes.vscode-dark-modern.syntax]
+  comment         = "#6a9955"
+  string          = "#ce9178"
+  escape          = "#d7ba7d"
+  regexp          = "#d16969"
+  number          = "#b5cea8"
+  keyword         = "#c586c0" # control flow (pink)
+  keyword_storage = "#569cd6" # storage / declaration (blue)
+  function        = "#dcdcaa"
+  type            = "#4ec9b0"
+  variable        = "#9cdcfe"
+  constant        = "#4fc1ff"
+  operator        = "#c6c6c6"
+
+[themes.vscode-dark-modern.ui]
+  selection      = "#37373d"
+  muted          = "#6e7681"
+  diff_add_bg    = "#1f3a29"
+  diff_change_bg = "#1f3a29"
+  diff_del_bg    = "#3d2027"
+  git_add        = "#55805f"
+  git_change     = "#d7ba7d"
+  git_delete     = "#7d5159"
+
+# Dark 2026 (GitHub-Dark family). Syntax from VS Code's 2026-dark.json; ANSI
+# from the standard GitHub-Dark terminal palette (the theme ships no terminal
+# colors). Approximate — refine to taste later.
+[themes.dark-2026.ansi]
+  background     = "#121314"
+  foreground     = "#bbbebf"
+  black          = "#121314"
+  red            = "#ff7b72"
+  green          = "#3fb950"
+  yellow         = "#d29922"
+  blue           = "#58a6ff"
+  magenta        = "#bc8cff"
+  cyan           = "#39c5cf"
+  white          = "#b1bac4"
+  bright_black   = "#6e7681"
+  bright_red     = "#ffa198"
+  bright_green   = "#56d364"
+  bright_yellow  = "#e3b341"
+  bright_blue    = "#79c0ff"
+  bright_magenta = "#d2a8ff"
+  bright_cyan    = "#56d4dd"
+  bright_white   = "#ffffff"
+
+[themes.dark-2026.syntax]
+  comment         = "#8b949e"
+  string          = "#a5d6ff"
+  escape          = "#7ee787"
+  regexp          = "#a5d6ff"
+  number          = "#79c0ff"
+  keyword         = "#ff7b72"
+  keyword_storage = "#ff7b72"
+  function        = "#d2a8ff"
+  type            = "#7ee787"
+  variable        = "#ffa657"
+  constant        = "#79c0ff"
+  operator        = "#bbbebf"
+
+[themes.dark-2026.ui]
+  selection      = "#276782"
+  muted          = "#8b949e"
+  diff_add_bg    = "#1a2620"
+  diff_change_bg = "#242526"
+  diff_del_bg    = "#26191c"
+  git_add        = "#3fb950"
+  git_change     = "#d29922"
+  git_delete     = "#f85149"
