@@ -166,7 +166,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#D69D85</string>
+				<string>#CE9178</string>
 			</dict>
 		</dict>
 		<dict>
@@ -179,7 +179,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#E3BBAB</string>
+				<string>#D7BA7D</string>
 			</dict>
 		</dict>
 		<dict>
@@ -225,7 +225,7 @@
 			<key>name</key>
 			<string>Class name</string>
 			<key>scope</key>
-			<string>entity.name.type</string>
+			<string>support.class, support.type, entity.name.type, entity.name.namespace, entity.other.attribute, entity.name.scope-resolution, entity.name.class, storage.type.numeric.go, storage.type.byte.go, storage.type.boolean.go, storage.type.string.go, storage.type.uintptr.go, storage.type.error.go, storage.type.rune.go, storage.type.cs, storage.type.generic.cs, storage.type.modifier.cs, storage.type.variable.cs, storage.type.annotation.java, storage.type.generic.java, storage.type.java, storage.type.object.array.java, storage.type.primitive.array.java, storage.type.primitive.java, storage.type.token.java, storage.type.groovy, storage.type.annotation.groovy, storage.type.parameters.groovy, storage.type.generic.groovy, storage.type.object.array.groovy, storage.type.primitive.array.groovy, storage.type.primitive.groovy</string>
 			<key>settings</key>
 			<dict>
 				<key>fontStyle</key>
@@ -318,7 +318,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>#DCDCAA</string>
 			</dict>
 		</dict>
 		<dict>
@@ -331,7 +331,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>#4EC9B0</string>
 			</dict>
 		</dict>
 		<dict>
@@ -357,7 +357,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>#9CDCFE</string>
 			</dict>
 		</dict>
 		<dict>
@@ -738,6 +738,17 @@
 			<dict>
 				<key>background</key>
 				<string>#26191C</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Doc-comment XML tags (green, matches VS Code)</string>
+			<key>scope</key>
+			<string>source.cs comment entity.name.tag, source.cs comment entity.other.attribute-name, source.cs comment punctuation.definition.tag</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#6A9955</string>
 			</dict>
 		</dict>
 	</array>
