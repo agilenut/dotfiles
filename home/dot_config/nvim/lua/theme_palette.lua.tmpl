@@ -1,5 +1,8 @@
-{{- $t := index .themes .theme -}}
--- Generated from the active theme "{{ .theme }}" (home/.chezmoidata/themes.toml).
+{{- $name := "vscode-dark-modern" -}}
+{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
+{{- $t := index .themes $name -}}
+{{- if not $t }}{{ fail (printf "unknown theme %q (see home/.chezmoidata/themes.toml)" $name) }}{{ end -}}
+-- Generated from the active theme "{{ $name }}" (home/.chezmoidata/themes.toml).
 -- Do not edit by hand; run `theme <name>` to switch, then restart nvim.
 return {
   ansi = {

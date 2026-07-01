@@ -1,5 +1,8 @@
-{{- $t := index .themes .theme -}}
-# Alacritty ANSI palette — generated from the active theme "{{ .theme }}"
+{{- $name := "vscode-dark-modern" -}}
+{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
+{{- $t := index .themes $name -}}
+{{- if not $t }}{{ fail (printf "unknown theme %q (see home/.chezmoidata/themes.toml)" $name) }}{{ end -}}
+# Alacritty ANSI palette — generated from the active theme "{{ $name }}"
 # (home/.chezmoidata/themes.toml). Do not edit by hand; run `theme <name>`.
 
 [colors.primary]
