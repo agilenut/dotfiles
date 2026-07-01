@@ -11,7 +11,7 @@
 #--theme="Monokai Extended Origin"
 #--theme="Nord"
 #--theme="Visual Studio Dark+"
---theme="vscode_dark_modern" # my custom theme
+--theme="palette" # my custom theme
 #--theme="ansi"
 #--theme="gruvbox-dark"
 
