@@ -459,16 +459,34 @@ do
   -- change the command under that to load whatever the name of that colorscheme is.
   --
   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-  -- vscode.nvim — matches VS Code Dark+ / Dark Modern, paired with our
-  -- Alacritty + bat themes for a consistent look across the terminal.
+  -- vscode.nvim — its named color slots are remapped to the active theme's
+  -- palette (home/.chezmoidata/themes.toml, generated into theme_palette.lua)
+  -- via color_overrides, so the whole colorscheme follows `theme <name>`.
   vim.pack.add { gh 'Mofiqul/vscode.nvim' }
+  local palette = require 'theme_palette'
   require('vscode').setup {
     italic_comments = false,
-    -- Transparent bg so the terminal's per-project background tint shows
-    -- through instead of vscode.nvim's own #1F1F1F.
+    -- Transparent bg so the terminal's per-project background tint shows through.
     transparent = true,
-    -- Dim the default editor foreground to match the terminal text (#c6c6c6).
-    color_overrides = { vscFront = '#c6c6c6' },
+    color_overrides = {
+      vscBack = palette.ansi.background,
+      vscFront = palette.ansi.foreground,
+      vscGreen = palette.syntax.comment,
+      vscOrange = palette.syntax.string,
+      vscYellowOrange = palette.syntax.escape,
+      vscLightRed = palette.syntax.regexp,
+      vscLightGreen = palette.syntax.number,
+      vscPink = palette.syntax.keyword,
+      vscBlue = palette.syntax.keyword_storage,
+      vscYellow = palette.syntax.func,
+      vscBlueGreen = palette.syntax.type,
+      vscLightBlue = palette.syntax.variable,
+      vscAccentBlue = palette.syntax.constant,
+      vscViolet = palette.ansi.magenta,
+      vscGray = palette.ui.muted,
+      vscLineNumber = palette.ui.muted,
+      vscSelection = palette.ui.selection,
+    },
   }
   vim.cmd.colorscheme 'vscode'
 
@@ -480,7 +498,7 @@ do
       local group = 'MiniStatuslineMode' .. mode
       local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
       if hl.bg then
-        vim.api.nvim_set_hl(0, group, { fg = '#1f1f1f', bg = string.format('#%06x', hl.bg), bold = true })
+        vim.api.nvim_set_hl(0, group, { fg = palette.ansi.background, bg = string.format('#%06x', hl.bg), bold = true })
       end
     end
   end
@@ -494,25 +512,25 @@ do
   -- (~) distinguishes a modify from an add. fg left unset so syntax shows through.
   local function fix_gitsigns_palette()
     local set = vim.api.nvim_set_hl
-    set(0, 'GitSignsAdd', { fg = '#55805f' })
-    set(0, 'GitSignsChange', { fg = '#d7ba7d' })
-    set(0, 'GitSignsDelete', { fg = '#7d5159' })
-    set(0, 'GitSignsAddLn', { bg = '#1f3a29' })
-    set(0, 'GitSignsChangeLn', { bg = '#1f3a29' })
-    set(0, 'GitSignsDeleteLn', { bg = '#3d2027' })
+    set(0, 'GitSignsAdd', { fg = palette.ui.git_add })
+    set(0, 'GitSignsChange', { fg = palette.ui.git_change })
+    set(0, 'GitSignsDelete', { fg = palette.ui.git_delete })
+    set(0, 'GitSignsAddLn', { bg = palette.ui.diff_add_bg })
+    set(0, 'GitSignsChangeLn', { bg = palette.ui.diff_change_bg })
+    set(0, 'GitSignsDeleteLn', { bg = palette.ui.diff_del_bg })
     -- Intra-line word diff is handled by inline-diff.nvim, which derives its own
     -- colors from DiffAdd/DiffDelete below — no gitsigns word_diff groups needed.
     -- vimdiff / :diffthis use the Diff* groups — match the muted delta palette.
-    set(0, 'DiffAdd', { bg = '#1f3a29' })
-    set(0, 'DiffChange', { bg = '#1f3a29' })
-    set(0, 'DiffDelete', { bg = '#3d2027' })
-    set(0, 'DiffText', { bg = '#4a9d64' })
+    set(0, 'DiffAdd', { bg = palette.ui.diff_add_bg })
+    set(0, 'DiffChange', { bg = palette.ui.diff_change_bg })
+    set(0, 'DiffDelete', { bg = palette.ui.diff_del_bg })
+    set(0, 'DiffText', { bg = palette.ui.diff_text })
     -- Transparent floats (neo-tree preview, telescope, hover, which-key); the
     -- rounded winborder above delineates them.
     set(0, 'NormalFloat', { bg = 'none' })
     set(0, 'FloatBorder', { bg = 'none' })
     -- Bold the current-line number so it marks the line without a bg bar.
-    set(0, 'CursorLineNr', { fg = '#c6c6c6', bold = true })
+    set(0, 'CursorLineNr', { fg = palette.ansi.foreground, bold = true })
   end
   fix_gitsigns_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_gitsigns_palette })
@@ -521,7 +539,7 @@ do
   -- bright #f44747 we dropped). Covers inline text/signs/underline, Trouble, and
   -- neo-tree badges, which all read the Diagnostic* groups.
   local function fix_diagnostic_palette()
-    local colors = { Error = '#d16969', Warn = '#d7ba7d', Info = '#569cd6', Hint = '#6e7681' }
+    local colors = { Error = palette.ui.diag_error, Warn = palette.ui.diag_warn, Info = palette.ui.diag_info, Hint = palette.ui.diag_hint }
     for sev, c in pairs(colors) do
       vim.api.nvim_set_hl(0, 'Diagnostic' .. sev, { fg = c })
       vim.api.nvim_set_hl(0, 'DiagnosticSign' .. sev, { fg = c })
@@ -538,9 +556,9 @@ do
   -- stock which colors them as strings) so they read as documentation. Only
   -- @string.documentation is touched, so regular strings stay peach.
   local function fix_syntax_palette()
-    vim.api.nvim_set_hl(0, '@string.escape', { fg = '#d7ba7d' })
-    vim.api.nvim_set_hl(0, '@string.regexp', { fg = '#d16969' })
-    vim.api.nvim_set_hl(0, '@string.documentation', { fg = '#6a9955' })
+    vim.api.nvim_set_hl(0, '@string.escape', { fg = palette.syntax.escape })
+    vim.api.nvim_set_hl(0, '@string.regexp', { fg = palette.syntax.regexp })
+    vim.api.nvim_set_hl(0, '@string.documentation', { fg = palette.syntax.comment })
   end
   fix_syntax_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_syntax_palette })
@@ -1225,14 +1243,15 @@ do
         vim.api.nvim_set_hl(0, g, { bg = 'none' })
       end
       -- Mute neo-tree's git marker/filename colors to the project palette.
+      local palette = require 'theme_palette'
       local git = {
-        NeoTreeGitAdded = '#55805f',
-        NeoTreeGitStaged = '#55805f',
-        NeoTreeGitModified = '#d7ba7d',
-        NeoTreeGitUnstaged = '#d7ba7d',
-        NeoTreeGitUntracked = '#c586c0',
-        NeoTreeGitConflict = '#d16969',
-        NeoTreeGitDeleted = '#7d5159',
+        NeoTreeGitAdded = palette.ui.git_add,
+        NeoTreeGitStaged = palette.ui.git_add,
+        NeoTreeGitModified = palette.ui.git_change,
+        NeoTreeGitUnstaged = palette.ui.git_change,
+        NeoTreeGitUntracked = palette.ui.git_untracked,
+        NeoTreeGitConflict = palette.ui.git_conflict,
+        NeoTreeGitDeleted = palette.ui.git_delete,
       }
       for g, c in pairs(git) do
         vim.api.nvim_set_hl(0, g, { fg = c })
@@ -1284,7 +1303,7 @@ do
     stages = 'fade',
     render = 'wrapped-compact',
     timeout = 3000,
-    background_colour = '#1f1f1f',
+    background_colour = require('theme_palette').ansi.background,
   }
   vim.notify = notify
 
