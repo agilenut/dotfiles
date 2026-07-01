@@ -4,7 +4,14 @@
 # vim: set ft=bash :
 
 # Configure QuickLook extensions (syntax-highlight and qlmarkdown)
-# This copies custom themes and CSS after chezmoi deploys the config files
+# This copies custom themes and CSS after chezmoi deploys the config files.
+#
+# run_onchange tracks this script's rendered content, so embedding the source
+# files' hashes below forces a re-copy whenever any of them change (the plugin
+# reads the copies in Application Support, not the live config files):
+#   custom.css: {{ include "dot_config/syntax-highlight/custom.css" | sha256sum }}
+#   global.css: {{ include "dot_config/syntax-highlight/Styles/global.css" | sha256sum }}
+#   theme:      {{ include "dot_config/syntax-highlight/Themes/vscode-dark-modern-custom.theme" | sha256sum }}
 
 SYNTAX_HIGHLIGHT_SRC="${HOME}/.config/syntax-highlight"
 SYNTAX_HIGHLIGHT_DEST="${HOME}/Library/Application Support/Syntax Highlight"
@@ -34,6 +41,12 @@ if [[ -d "$SYNTAX_HIGHLIGHT_SRC" ]]; then
   if [[ -f "$SYNTAX_HIGHLIGHT_SRC/custom.css" ]]; then
     cp -f "$SYNTAX_HIGHLIGHT_SRC/custom.css" "$SYNTAX_HIGHLIGHT_DEST/"
   fi
+
+  # The plugin caches rendered previews here; qlmanage -r does NOT clear it, so
+  # theme/CSS edits won't show until this cache is dropped. Clear it and flush
+  # the QuickLook cache so changes take effect immediately.
+  rm -rf "${HOME}/Library/Caches/org.sbarex.SourceCodeSyntaxHighlight/"* 2>/dev/null || true
+  qlmanage -r cache >/dev/null 2>&1 || true
 
   echo "syntax-highlight configured"
 fi

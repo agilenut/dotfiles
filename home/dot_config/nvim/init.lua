@@ -495,7 +495,7 @@ do
   local function fix_gitsigns_palette()
     local set = vim.api.nvim_set_hl
     set(0, 'GitSignsAdd', { fg = '#55805f' })
-    set(0, 'GitSignsChange', { fg = '#5a7ba6' })
+    set(0, 'GitSignsChange', { fg = '#d7ba7d' })
     set(0, 'GitSignsDelete', { fg = '#7d5159' })
     set(0, 'GitSignsAddLn', { bg = '#1f3a29' })
     set(0, 'GitSignsChangeLn', { bg = '#1f3a29' })
@@ -521,7 +521,7 @@ do
   -- bright #f44747 we dropped). Covers inline text/signs/underline, Trouble, and
   -- neo-tree badges, which all read the Diagnostic* groups.
   local function fix_diagnostic_palette()
-    local colors = { Error = '#d16969', Warn = '#d1b072', Info = '#6e8bb0', Hint = '#6e7681' }
+    local colors = { Error = '#d16969', Warn = '#d7ba7d', Info = '#569cd6', Hint = '#6e7681' }
     for sev, c in pairs(colors) do
       vim.api.nvim_set_hl(0, 'Diagnostic' .. sev, { fg = c })
       vim.api.nvim_set_hl(0, 'DiagnosticSign' .. sev, { fg = c })
@@ -531,6 +531,19 @@ do
   end
   fix_diagnostic_palette()
   vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_diagnostic_palette })
+
+  -- vscode.nvim leaves string escapes uncolored and renders regex as a plain
+  -- string. Stock VS Code Dark Modern themes escapes gold and regex red — match
+  -- it. Docstrings are deliberately green (as bat/delta render them, and unlike
+  -- stock which colors them as strings) so they read as documentation. Only
+  -- @string.documentation is touched, so regular strings stay peach.
+  local function fix_syntax_palette()
+    vim.api.nvim_set_hl(0, '@string.escape', { fg = '#d7ba7d' })
+    vim.api.nvim_set_hl(0, '@string.regexp', { fg = '#d16969' })
+    vim.api.nvim_set_hl(0, '@string.documentation', { fg = '#6a9955' })
+  end
+  fix_syntax_palette()
+  vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_syntax_palette })
 
   -- The theme's CursorLine is near-black (#222) and barely reads on the transparent
   -- background. Lighten it so the current-row highlight is visible in the panels that
@@ -1215,9 +1228,9 @@ do
       local git = {
         NeoTreeGitAdded = '#55805f',
         NeoTreeGitStaged = '#55805f',
-        NeoTreeGitModified = '#d1b072',
-        NeoTreeGitUnstaged = '#d1b072',
-        NeoTreeGitUntracked = '#c08552',
+        NeoTreeGitModified = '#d7ba7d',
+        NeoTreeGitUnstaged = '#d7ba7d',
+        NeoTreeGitUntracked = '#c586c0',
         NeoTreeGitConflict = '#d16969',
         NeoTreeGitDeleted = '#7d5159',
       }
@@ -1271,7 +1284,7 @@ do
     stages = 'fade',
     render = 'wrapped-compact',
     timeout = 3000,
-    background_colour = '#1e1e1e',
+    background_colour = '#1f1f1f',
   }
   vim.notify = notify
 
