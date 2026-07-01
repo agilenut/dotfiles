@@ -1,25 +1,25 @@
-Description="vscode darkplus (custom)"
+Description="vscode dark modern (custom)"
 
 Categories = {"dark"}
 
-Default = { Colour="#c6c6c6" }
-Canvas = { Colour="#1e1e1e" }
+Default = { Colour="#9cdcfe" }
+Canvas = { Colour="#1f1f1f" }
 Number = { Colour="#b5cea8" }
-String = { Colour="#d7ba7d" }
-Escape = { Colour="#fd7ba7" }
-PreProcessor = { Colour="#007acc" }
-StringPreProc = { Colour="#d7ba7d" }
+String = { Colour="#ce9178" }
+Escape = { Colour="#d7ba7d" }
+PreProcessor = { Colour="#c586c0" }
+StringPreProc = { Colour="#ce9178" }
 BlockComment = { Colour="#6a9955" }
 LineComment = { Colour="#6a9955" }
-LineNum = { Colour="#808080" }
-Operator = { Colour="#d4d4d4" }
+LineNum = { Colour="#6e7681" }
+Operator = { Colour="#c6c6c6" }
 Interpolation = { Colour="#569cd6" }
 Hover = { Colour="", Custom = { { Format = "html", Style = "cursor:help;", Override = false } } }
 Error = { Colour="#d16969" }
 ErrorMessage = { Colour="#d16969", Custom = { { Format = "html", Style = "border:solid 1px red; margin-left: 3em;", Override = false } } }
 
 Keywords = {
-	{ Colour="#c58ec0" },
+	{ Colour="#569cd6" },
 	{ Colour="#569cd6" },
 	{ Colour="#569cd6" },
 	{ Colour="#dcdcaa" },
@@ -29,15 +29,15 @@ Keywords = {
 
 
 SemanticTokenTypes = {
-	{ Type = 'keyword', Style = { Colour="#c58ec0" } },
-	{ Type = 'type', Style = { Colour="#569cd6" } },
+	{ Type = 'keyword', Style = { Colour="#c586c0" } },
+	{ Type = 'type', Style = { Colour="#4ec9b0" } },
 	{ Type = 'function', Style = { Colour="#dcdcaa" } },
 	{ Type = 'method', Style = { Colour="#dcdcaa" } },
-	{ Type = 'class', Style = { Colour="#c58ec0" } },
-	{ Type = 'struct', Style = { Colour="#dcdcaa" } },
-	{ Type = 'parameter', Style = { Colour="#aaaaaa" } },
-	{ Type = 'variable', Style = { Colour="#b9a66f" } },
+	{ Type = 'class', Style = { Colour="#4ec9b0" } },
+	{ Type = 'struct', Style = { Colour="#4ec9b0" } },
+	{ Type = 'parameter', Style = { Colour="#9cdcfe" } },
+	{ Type = 'variable', Style = { Colour="#9cdcfe" } },
 	{ Type = 'number', Style = { Colour="#b5cea8" } },
-	{ Type = 'regexp', Style = { Colour="#d7ba7d" } },
-	{ Type = 'operator', Style = { Colour="#d4d4d4" } },
+	{ Type = 'regexp', Style = { Colour="#d16969" } },
+	{ Type = 'operator', Style = { Colour="#d4d4d4" } }
 }
