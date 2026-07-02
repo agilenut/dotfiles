@@ -101,8 +101,9 @@ main() {
   test_worktree_lib
   test_worktree_e2e
 
-  # Claude tmux session-restore wrapper tests
+  # Claude tmux wrapper tests (restore + refresh)
   test_claude_restore
+  test_claude_refresh
 
   # Claude TCC prune tests
   test_claude_tcc_prune
