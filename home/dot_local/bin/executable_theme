@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Switch the active color theme across all themed tools.
+#
+# Rewrites the `theme` value in chezmoi's config, then re-applies ONLY the theme
+# files (not the whole tree) so a switch never deploys unrelated work-in-progress
+# elsewhere in the source. Warns before overwriting local changes to those files.
+#
+# Running nvim/tmux/bat sessions need a restart to pick up the change; quicklook
+# needs the theme re-selected in the Syntax Highlight app (its selection is GUI
+# state). tmux/fzf follow via alacritty's ANSI palette.
+set -euo pipefail
+
+cfgdir="${XDG_CONFIG_HOME:-$HOME/.config}"
+cfg="$cfgdir/chezmoi/chezmoi.toml"
+palette="$(chezmoi source-path)/.chezmoidata/themes.toml"
+
+# Only these targets are applied on a switch — keep in sync when adding a tool.
+targets=(
+  "$cfgdir/alacritty/themes/palette.toml"
+  "$cfgdir/bat/themes/palette.tmTheme"
+  "$cfgdir/git/config"
+  "$cfgdir/nvim/lua/theme_palette.lua"
+  "$cfgdir/lazygit/config.yml"
+)
+[[ "$(uname)" == "Darwin" ]] && targets+=("$cfgdir/syntax-highlight/Themes/palette.theme")
+
+# Available themes = the [themes.<name>.ansi] tables in the palette.
+themes=$(grep -oE '^\[themes\.[a-z0-9-]+\.ansi\]' "$palette" \
+  | sed -E 's/.*themes\.([a-z0-9-]+)\.ansi.*/\1/')
+current=$(sed -nE 's/^[[:space:]]*theme[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$cfg" 2>/dev/null || true)
+
+usage() {
+  echo "Usage: theme <name>"
+  echo "Available:"
+  echo "$themes" | sed 's/^/  /'
+  [[ -n "$current" ]] && echo "Current: $current"
+}
+
+[[ $# -eq 1 ]] || {
+  usage
+  exit 1
+}
+if [[ "$1" == "--list" ]]; then
+  echo "$themes"
+  exit 0
+fi
+target=$1
+echo "$themes" | grep -qxF "$target" || {
+  echo "Unknown theme: $target"
+  usage
+  exit 1
+}
+
+# Warn if a theme target already has local changes the apply would overwrite
+# (checked before switching, so the diff shows only pre-existing divergence).
+pending=$(chezmoi diff "${targets[@]}" 2>/dev/null | grep -E '^diff --git' | sed -E 's#.* b/#  #' || true)
+if [[ -n "$pending" ]]; then
+  echo "Warning: these theme files have local changes a switch would overwrite:"
+  echo "$pending"
+  if [[ ! -t 0 ]]; then
+    echo "Refusing to overwrite them non-interactively; resolve them first."
+    exit 1
+  fi
+  read -r -p "Continue? [y/N] " ans
+  [[ "$ans" =~ ^[Yy] ]] || {
+    echo "Aborted."
+    exit 1
+  }
+fi
+
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+if grep -qE '^[[:space:]]*theme[[:space:]]*=' "$cfg"; then
+  sed -E "s/^[[:space:]]*theme[[:space:]]*=.*/    theme = \"$target\"/" "$cfg" >"$tmp"
+else
+  # No theme set yet (config predates theming) - insert after the profile line.
+  awk -v t="$target" '{print} /^[[:space:]]*profile[[:space:]]*=/{print "    theme = \"" t "\""}' "$cfg" >"$tmp"
+fi
+mv "$tmp" "$cfg"
+
+echo "theme set to: $target"
+# Apply each target independently and quietly (no -v, so no diff spew / pager).
+# A target that isn't managed on this machine, or errors, warns but doesn't
+# abort the rest of the switch.
+for t in "${targets[@]}"; do
+  if ! out=$(chezmoi apply "$t" 2>&1); then
+    echo "  warning: could not apply $t"
+    [[ -n "$out" ]] && echo "$out" | sed 's/^/    /'
+  fi
+done
+
+# Alacritty only watches each window's PRIMARY config for live reload, not
+# imported files — and palette.toml is imported. Touch the top-level configs so
+# every running window re-reads the new palette. github.com/alacritty/alacritty/issues/5852
+if [[ -d "$cfgdir/alacritty" ]]; then
+  for a in "$cfgdir"/alacritty/*.toml; do
+    [[ -f "$a" ]] && touch "$a"
+  done
+fi
+
+# bat/delta read a compiled theme cache.
+if command -v bat >/dev/null 2>&1; then
+  bat cache --build >/dev/null 2>&1 || true
+elif command -v batcat >/dev/null 2>&1; then
+  batcat cache --build >/dev/null 2>&1 || true
+fi
+
+# quicklook (macOS) reads a copy in Application Support; a full apply's
+# run_onchange does this, but a scoped apply skips it.
+qldir="$HOME/Library/Application Support/Syntax Highlight/Themes"
+qltheme="$cfgdir/syntax-highlight/Themes/palette.theme"
+if [[ -d "$qldir" && -f "$qltheme" ]]; then
+  cp -f "$qltheme" "$qldir/"
+  command -v qlmanage >/dev/null 2>&1 && qlmanage -r >/dev/null 2>&1 || true
+fi

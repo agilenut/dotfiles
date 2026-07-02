@@ -4,8 +4,12 @@
 # that updates the theme needs this to take effect. delta reads bat's cached
 # themes too, so this also refreshes git/lazygit diffs.
 #
-# The hash below makes chezmoi re-run this only when the theme content changes:
-# theme hash: {{ include "dot_config/bat/themes/vscode_dark_modern.tmTheme" | sha256sum }}
+# The hashes below make chezmoi re-run this whenever the theme template, the
+# palette, or the active theme selection changes (the last covers a `theme`
+# toggle, where only the config value moves):
+# tmpl:    {{ include "dot_config/bat/themes/palette.tmTheme.tmpl" | sha256sum }}
+# palette: {{ include ".chezmoidata/themes.toml" | sha256sum }}
+# active:  {{ if hasKey . "theme" }}{{ .theme }}{{ else }}vscode-dark-modern{{ end }}
 
 set -euo pipefail
 

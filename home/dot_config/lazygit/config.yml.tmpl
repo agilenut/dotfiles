@@ -1,3 +1,7 @@
+{{- $name := "vscode-dark-modern" -}}
+{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
+{{- $t := index .themes $name -}}
+{{- if not $t }}{{ fail (printf "unknown theme %q" $name) }}{{ end -}}
 promptToReturnFromSubprocess: false
 os:
   editPreset: "nvim"
@@ -10,16 +14,16 @@ gui:
     activeBorderColor:
       - blue
     inactiveBorderColor:
-      - "#6e7681"
+      - brightblack
     selectedLineBgColor:
-      - "#37373d"
+      - "{{ $t.ui.selection }}"
     selectedRangeBgColor:
-      - "#37373d"
+      - "{{ $t.ui.selection }}"
     optionsTextColor:
       - blue
   authorColors:
-    "agilenut": "#569cd6" # your commits in the theme blue
-    "*": "#6e7681" # everyone else muted
+    "agilenut": blue # your commits in the theme blue
+    "*": brightblack # everyone else muted
   branchColorPatterns:
     "^feat/": "green"
     "^fix/": "red"
@@ -29,8 +33,8 @@ gui:
     "^test/": "yellow"
     "^ci/": "cyan"
     "^build/": "cyan"
-    "^chore/": "#6e7681"
-    "^style/": "#6e7681"
+    "^chore/": brightblack
+    "^style/": brightblack
 git:
   diffContextSize: 10
 {{- if lookPath "delta" }}

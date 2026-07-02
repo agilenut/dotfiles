@@ -3,8 +3,9 @@
   # allow external commands to create new windows
   ipc_socket = true
 
-  #import = ["~/.config/alacritty/themes/visual_studio_dark_plus.toml"]
-  import = [ "~/.config/alacritty/themes/vscode_dark_modern.toml" ]
+  # palette.toml is generated from the active theme (home/.chezmoidata/themes.toml);
+  # run `theme <name>` to switch. Alacritty live-reloads on config change.
+  import = [ "~/.config/alacritty/themes/palette.toml" ]
 
 [env]
   TERM = "xterm-256color"
