@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# @raycast.schemaVersion 1
+# @raycast.title Refresh Claude Sessions
+# @raycast.mode compact
+# @raycast.icon ♻️
+# @raycast.packageName Claude
+
+# claude-refresh
+# =============================================================================
+# Restart every claude process running in tmux panes, in place, so each picks
+# up a newly installed Claude Code version and resumes its session. Run it
+# after `brewup`/`update` bumps the claude-code cask; tmux itself (windows,
+# layouts, scrollback, non-claude panes) is untouched.
+#
+# Per pane whose current command is `claude`:
+#   named session  → send C-c C-c to exit, wait for the shell, `claude -r <name>`
+#   unnamed        → left running on the old version (nothing to resume by;
+#                    matches claude-restore's leave-alone behavior)
+#   invoking pane  → skipped, so a claude session asked to run this can't
+#                    kill itself mid-refresh
+#
+# Session names come from the pane title (`<glyph> <name>`), parsed by
+# claude_restore_classify sourced from claude-restore — the same contract
+# tmux-resurrect restores rely on. Titles are captured BEFORE exiting claude,
+# because the shell may rewrite the title once claude is gone.
+
+set -euo pipefail
+
+# Raycast runs script commands with a minimal PATH that has neither
+# ~/.local/bin (claude-restore) nor /opt/homebrew/bin (tmux). Append rather
+# than prepend so a caller-provided override still wins.
+PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin"
+
+# How long to wait for a pane's claude to exit before giving up on it, and how
+# often to poll. Exit keys are re-sent every reprompt_polls polls in case the
+# first C-c pair landed outside claude's confirm-exit window.
+readonly exit_timeout=10
+readonly poll_interval=0.2
+readonly reprompt_polls=5
+
+# The title parser lives in claude-restore (sourceable by design). Overridable
+# so tests can point at a checkout instead of PATH.
+CLAUDE_RESTORE_BIN="${CLAUDE_RESTORE_BIN:-$(command -v claude-restore || true)}"
+if [ -z "$CLAUDE_RESTORE_BIN" ]; then
+  echo "claude-refresh: claude-restore not found on PATH (provides the title parser)" >&2
+  return 1 2>/dev/null || exit 1
+fi
+# shellcheck source=/dev/null
+source "$CLAUDE_RESTORE_BIN"
+
+# Map raw pane listings to refresh actions. Reads `pane_id<TAB>command<TAB>title`
+# lines on stdin ($1 = the invoking pane's id, may be empty) and emits one
+# action line per claude pane:
+#   restart<TAB><pane_id><TAB><session-name>
+#   skip-self<TAB><pane_id>
+#   skip-unnamed<TAB><pane_id><TAB><title>
+# Non-claude panes emit nothing. Side-effect-free and sourceable for tests.
+claude_refresh_plan() {
+  local self="${1:-}"
+  local pane cmd title action
+  while IFS=$'\t' read -r pane cmd title; do
+    [ -n "$pane" ] || continue
+    [ "$cmd" = claude ] || continue
+    if [ -n "$self" ] && [ "$pane" = "$self" ]; then
+      printf 'skip-self\t%s\n' "$pane"
+      continue
+    fi
+    action="$(claude_restore_classify "$title")"
+    case "$action" in
+      resume$'\t'*)
+        printf 'restart\t%s\t%s\n' "$pane" "${action#resume$'\t'}"
+        ;;
+      *)
+        printf 'skip-unnamed\t%s\t%s\n' "$pane" "$title"
+        ;;
+    esac
+  done
+}
+
+# Wait for one pane's claude to exit, re-sending the exit keys periodically.
+# Echoes the terminal state: ok | timeout | vanished.
+claude_refresh_await_shell() {
+  local pane="$1"
+  local deadline=$((SECONDS + exit_timeout)) polls=0 current
+  while :; do
+    current="$(tmux display-message -p -t "$pane" '#{pane_current_command}' 2>/dev/null || true)"
+    if [ -z "$current" ]; then
+      echo vanished
+      return 0
+    fi
+    if [ "$current" != claude ]; then
+      echo ok
+      return 0
+    fi
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo timeout
+      return 0
+    fi
+    polls=$((polls + 1))
+    if [ $((polls % reprompt_polls)) -eq 0 ]; then
+      # || true: the pane can close between the probe above and this send;
+      # the next probe reports it as vanished.
+      tmux send-keys -t "$pane" C-c C-c 2>/dev/null || true
+    fi
+    sleep "$poll_interval"
+  done
+}
+
+claude_refresh_main() {
+  local listing
+  if ! listing="$(tmux list-panes -a -F $'#{pane_id}\t#{pane_current_command}\t#{pane_title}' 2>/dev/null)"; then
+    echo "claude-refresh: tmux not available or no server running" >&2
+    exit 1
+  fi
+
+  local plan
+  plan="$(printf '%s\n' "$listing" | claude_refresh_plan "${TMUX_PANE:-}")"
+
+  local -a panes=() names=()
+  local action pane detail skipped=0
+  while IFS=$'\t' read -r action pane detail; do
+    case "$action" in
+      restart)
+        panes+=("$pane")
+        names+=("$detail")
+        ;;
+      skip-self)
+        echo "skip      $pane  (this pane is running the refresh)"
+        ;;
+      skip-unnamed)
+        echo "skip      $pane  unnamed session (title: ${detail:-<empty>})"
+        skipped=$((skipped + 1))
+        ;;
+    esac
+  done <<<"$plan"
+
+  if [ "${#panes[@]}" -eq 0 ]; then
+    echo "No claude panes to restart."
+    return 0
+  fi
+
+  # Exit all panes first, then poll each — slow exits overlap instead of
+  # serializing.
+  local i
+  for i in "${!panes[@]}"; do
+    # || true: a pane that closed since the plan snapshot must not abort the
+    # blast (set -e) — phase 2 reports it as vanished.
+    tmux send-keys -t "${panes[$i]}" C-c C-c 2>/dev/null || true
+  done
+
+  local state resume_cmd restarted=0 failed=0
+  for i in "${!panes[@]}"; do
+    pane="${panes[$i]}"
+    state="$(claude_refresh_await_shell "$pane")"
+    case "$state" in
+      ok)
+        # -l types the command literally (no key-name interpretation); %q keeps
+        # names with spaces one argument for the pane's shell.
+        printf -v resume_cmd 'claude -r %q' "${names[$i]}"
+        if tmux send-keys -t "$pane" -l "$resume_cmd" 2>/dev/null \
+          && tmux send-keys -t "$pane" Enter 2>/dev/null; then
+          echo "restarted $pane  ${names[$i]}"
+          restarted=$((restarted + 1))
+        else
+          echo "FAILED    $pane  ${names[$i]} (pane disappeared mid-refresh)"
+          failed=$((failed + 1))
+        fi
+        ;;
+      timeout)
+        echo "FAILED    $pane  ${names[$i]} (claude didn't exit within ${exit_timeout}s — left as is)"
+        failed=$((failed + 1))
+        ;;
+      vanished)
+        echo "FAILED    $pane  ${names[$i]} (pane disappeared mid-refresh)"
+        failed=$((failed + 1))
+        ;;
+    esac
+  done
+
+  # Last line is the summary — Raycast compact mode shows only this.
+  echo "Restarted $restarted, skipped $skipped unnamed, failed $failed."
+  [ "$failed" -eq 0 ]
+}
+
+# Run only when executed directly — sourcing (e.g. from tests) just defines the
+# functions above.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  claude_refresh_main "$@"
+fi
