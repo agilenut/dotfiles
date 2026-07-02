@@ -8,6 +8,11 @@
 # Usage: tmux-git-status [path]
 # Pass the pane's current path so git runs in the right directory.
 
+# Status-bar polling must never take .git/index.lock — a plain `git status`
+# opportunistically writes the refreshed index, and this runs every 5s in the
+# active pane's repo, colliding with commits happening there.
+export GIT_OPTIONAL_LOCKS=0
+
 if [ -n "$1" ]; then
   cd "$1" 2>/dev/null || exit 0
 fi

@@ -11,4 +11,6 @@ repo=$(
     | fzf --reverse --prompt='lazygit repo> '
 ) || exit 0
 
-[ -n "${repo:-}" ] && exec lazygit -p "$repo"
+# lazygit's status polling doesn't pass --no-optional-locks; without this it
+# takes .git/index.lock on refresh and collides with concurrent commits.
+[ -n "${repo:-}" ] && GIT_OPTIONAL_LOCKS=0 exec lazygit -p "$repo"

@@ -101,6 +101,14 @@ do
   -- Set to true if you have a Nerd Font installed and selected in the terminal
   vim.g.have_nerd_font = true
 
+  -- No git command spawned from nvim (telescope git_status, :terminal lazygit,
+  -- any plugin) may take .git/index.lock for opportunistic index refreshes —
+  -- those collide with commits running concurrently in another session.
+  -- Deliberate writes (stage hunk, commit) use mandatory locks and are
+  -- unaffected. gitsigns/neo-tree/mini.git already pass --no-optional-locks;
+  -- this covers everything else.
+  vim.env.GIT_OPTIONAL_LOCKS = '0'
+
   -- Highlight chezmoi `.tmpl` files as their underlying type: strip the
   -- `.tmpl` suffix and re-run filetype detection on the remaining name
   -- (alacritty.toml.tmpl -> toml, git/config.tmpl -> gitconfig, etc.).
