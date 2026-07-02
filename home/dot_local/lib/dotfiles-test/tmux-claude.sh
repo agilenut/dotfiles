@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Claude tmux session-restore wrapper tests
+# Claude tmux wrapper tests (restore + refresh)
 # shellcheck shell=bash
 
 CLAUDE_RESTORE="${HOME}/.local/bin/claude-restore"
+CLAUDE_REFRESH="${HOME}/.local/bin/claude-refresh"
 
 # Asserts the claude-restore title-parse contract. The send-keys delivery and
 # real tmux-resurrect restore paths are inherently interactive — they live in
@@ -126,5 +127,81 @@ test_claude_restore() {
     pass "restore-complete hook signals cold-start launchers"
   else
     fail "missing @resurrect-hook-post-restore-all -> @restore-complete (cold-start race returns)"
+  fi
+}
+
+# Asserts claude-refresh's pane-listing → action mapping. The send-keys
+# exit/resume delivery is inherently interactive — verify live by running
+# claude-refresh after a claude update; here we cover the plan branches only.
+test_claude_refresh() {
+  section "Claude tmux session refresh"
+
+  if [ ! -f "$CLAUDE_REFRESH" ] || [ ! -f "$CLAUDE_RESTORE" ]; then
+    skip "claude-refresh or claude-restore not installed"
+    return
+  fi
+
+  # Runs claude_refresh_plan ($1 = invoking pane id) from a fresh source of
+  # the installed script, with CLAUDE_RESTORE_BIN pinning the title parser to
+  # the installed claude-restore instead of a PATH lookup. Only call inside a
+  # command substitution — that subshell keeps the sourced functions from
+  # leaking into the test runner; do pass/fail in the parent so the counters
+  # update.
+  refresh_plan() {
+    export CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE"
+    # shellcheck source=/dev/null
+    source "$CLAUDE_REFRESH" && claude_refresh_plan "$1"
+  }
+
+  local result expected
+
+  # ---- named claude pane → restart with the session name ----
+  result=$(printf '%%3\tclaude\t/tmp\t✳ images4\n' | refresh_plan '')
+  if [ "$result" = "$(printf 'restart\t%%3\timages4')" ]; then
+    pass "named claude pane restarts with the session name"
+  else
+    fail "named pane misplanned: '$result'"
+  fi
+
+  # ---- session name with spaces survives the pipeline whole ----
+  result=$(printf '%%3\tclaude\t/tmp\t⠐ my feature work\n' | refresh_plan '')
+  if [ "$result" = "$(printf 'restart\t%%3\tmy feature work')" ]; then
+    pass "spaced session name preserved whole"
+  else
+    fail "spaced name misplanned: '$result'"
+  fi
+
+  # ---- the invoking pane is never restarted ----
+  result=$(printf '%%9\tclaude\t/tmp\t✳ voice\n' | refresh_plan '%9')
+  if [ "$result" = "$(printf 'skip-self\t%%9')" ]; then
+    pass "invoking pane is skipped"
+  else
+    fail "self pane misplanned: '$result'"
+  fi
+
+  # ---- deleted cwd (removed worktree) → left running, not stranded ----
+  result=$(printf '%%6\tclaude\t/nonexistent/worktree-gone\t✳ images4\n' | refresh_plan '')
+  if [ "$result" = "$(printf 'skip-cwd\t%%6\t/nonexistent/worktree-gone')" ]; then
+    pass "deleted-cwd pane is left running"
+  else
+    fail "deleted-cwd pane misplanned: '$result'"
+  fi
+
+  # ---- unnamed session (default title) → left running ----
+  result=$(printf '%%5\tclaude\t/tmp\t⠂ Claude Code\n' | refresh_plan '')
+  if [ "$result" = "$(printf 'skip-unnamed\t%%5\t⠂ Claude Code')" ]; then
+    pass "unnamed session is left running"
+  else
+    fail "unnamed pane misplanned: '$result'"
+  fi
+
+  # ---- non-claude panes emit nothing; mixed listing keeps order ----
+  result=$(printf '%%1\tzsh\t/tmp\tsome title\n%%2\tclaude\t/tmp\t✳ reviews3\n%%3\tnvim\t/tmp\tMac.local\n%%4\tclaude\t/tmp\thostname.local\n' \
+    | refresh_plan '')
+  expected="$(printf 'restart\t%%2\treviews3\nskip-unnamed\t%%4\thostname.local')"
+  if [ "$result" = "$expected" ]; then
+    pass "non-claude panes ignored, claude panes planned in order"
+  else
+    fail "mixed listing misplanned: '$result'"
   fi
 }
