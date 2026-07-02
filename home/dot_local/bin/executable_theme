@@ -57,6 +57,10 @@ pending=$(chezmoi diff "${targets[@]}" 2>/dev/null | grep -E '^diff --git' | sed
 if [[ -n "$pending" ]]; then
   echo "Warning: these theme files have local changes a switch would overwrite:"
   echo "$pending"
+  if [[ ! -t 0 ]]; then
+    echo "Refusing to overwrite them non-interactively; resolve them first."
+    exit 1
+  fi
   read -r -p "Continue? [y/N] " ans
   [[ "$ans" =~ ^[Yy] ]] || {
     echo "Aborted."
@@ -75,7 +79,11 @@ fi
 mv "$tmp" "$cfg"
 
 echo "theme set to: $target"
-chezmoi apply -v "${targets[@]}"
+# Apply each target independently so a tool that isn't managed on this machine
+# doesn't abort the rest of the switch.
+for t in "${targets[@]}"; do
+  chezmoi apply -v "$t" || echo "  (skipped, not managed here: $t)"
+done
 
 # bat/delta read a compiled theme cache.
 if command -v bat >/dev/null 2>&1; then
@@ -87,7 +95,8 @@ fi
 # quicklook (macOS) reads a copy in Application Support; a full apply's
 # run_onchange does this, but a scoped apply skips it.
 qldir="$HOME/Library/Application Support/Syntax Highlight/Themes"
-if [[ -d "$qldir" ]]; then
-  cp -f "$cfgdir/syntax-highlight/Themes/"*.theme "$qldir/" 2>/dev/null || true
+qltheme="$cfgdir/syntax-highlight/Themes/palette.theme"
+if [[ -d "$qldir" && -f "$qltheme" ]]; then
+  cp -f "$qltheme" "$qldir/"
   command -v qlmanage >/dev/null 2>&1 && qlmanage -r >/dev/null 2>&1 || true
 fi
