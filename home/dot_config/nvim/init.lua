@@ -1048,6 +1048,10 @@ do
     yamlls = {},
     jsonls = {},
     taplo = {},
+    -- Azure infra-as-code (elenkis infra/). cmd set explicitly: the
+    -- lspconfig default ships none, and mason-lspconfig's shim only applies
+    -- via its setup(), which this config doesn't use.
+    bicep = { cmd = { 'bicep-lsp' } },
     -- CSS/SCSS: completion/hover only — validation off (stylelint via
     -- nvim-lint is the linter, matching the repos' .vscode settings).
     cssls = {
