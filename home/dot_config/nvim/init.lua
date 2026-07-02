@@ -1048,18 +1048,12 @@ do
     yamlls = {},
     jsonls = {},
     taplo = {},
-    -- Tailwind class completion (invoicing, v4 CSS-first). classRegex adds
-    -- completion inside cva()/cx()/clsx() calls (patterns from cva docs).
+    -- Tailwind class completion (invoicing, v4 CSS-first). classFunctions
+    -- extends completion/hover/linting into the class-builder helpers.
     tailwindcss = {
       settings = {
         tailwindCSS = {
-          experimental = {
-            classRegex = {
-              { 'cva\\(((?:[^()]|\\([^()]*\\))*)\\)', '["\'`]([^"\'`]*).*?["\'`]' },
-              { 'cx\\(((?:[^()]|\\([^()]*\\))*)\\)', "(?:'|\"|`)([^']*)(?:'|\"|`)" },
-              { 'clsx\\(((?:[^()]|\\([^()]*\\))*)\\)', "(?:'|\"|`)([^']*)(?:'|\"|`)" },
-            },
-          },
+          classFunctions = { 'cva', 'cx', 'clsx', 'cn' },
         },
       },
     },
