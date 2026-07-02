@@ -79,11 +79,24 @@ fi
 mv "$tmp" "$cfg"
 
 echo "theme set to: $target"
-# Apply each target independently so a tool that isn't managed on this machine
-# doesn't abort the rest of the switch.
+# Apply each target independently and quietly (no -v, so no diff spew / pager).
+# A target that isn't managed on this machine, or errors, warns but doesn't
+# abort the rest of the switch.
 for t in "${targets[@]}"; do
-  chezmoi apply -v "$t" || echo "  (skipped, not managed here: $t)"
+  if ! out=$(chezmoi apply "$t" 2>&1); then
+    echo "  warning: could not apply $t"
+    [[ -n "$out" ]] && echo "$out" | sed 's/^/    /'
+  fi
 done
+
+# Alacritty only watches each window's PRIMARY config for live reload, not
+# imported files — and palette.toml is imported. Touch the top-level configs so
+# every running window re-reads the new palette. github.com/alacritty/alacritty/issues/5852
+if [[ -d "$cfgdir/alacritty" ]]; then
+  for a in "$cfgdir"/alacritty/*.toml; do
+    [[ -f "$a" ]] && touch "$a"
+  done
+fi
 
 # bat/delta read a compiled theme cache.
 if command -v bat >/dev/null 2>&1; then
