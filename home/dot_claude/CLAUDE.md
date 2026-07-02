@@ -303,6 +303,10 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
 
 - ALWAYS look up current APIs and versions on Context7 before using a
   library; use web search for broader approach questions
+- **Lint / format / type-check tool choice per language**: see
+  `~/.claude/references/linting-formatting-tooling.md`. Prefer the Primary
+  column for new work; legacy tools stay config-gated in existing repos.
+  Drive tools from the repo's own config files, not editor settings.
 - NEVER suppress compiler warnings or analyzer rules without asking first
 - No committed secrets or credentials
 - **DRY**: naturally eager, especially when reuse looks likely or aids
