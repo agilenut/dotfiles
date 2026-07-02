@@ -36,6 +36,46 @@ function M.has_config(bufnr, names)
   return vim.fs.root(bufnr, names) ~= nil
 end
 
+---Dir of the nearest ancestor pyproject.toml declaring `[tool.<tool>]` (or a
+---subtable like `[tool.ruff.lint]`), walking past pyprojects that don't
+---declare it; nil when none does. Canonical header form only — quoted or
+---whitespace-padded table headers are not recognized (false negatives keep
+---the tool off, the safe direction).
+---@param bufnr integer
+---@param tool string
+---@return string|nil
+function M.pyproject_tool_root(bufnr, tool)
+  local prefix = '[tool.' .. tool
+  local dirname = vim.fs.dirname(vim.api.nvim_buf_get_name(bufnr))
+  for _, path in ipairs(vim.fs.find('pyproject.toml', { upward = true, path = dirname, limit = math.huge })) do
+    local ok, lines = pcall(vim.fn.readfile, path)
+    if ok then
+      for _, line in ipairs(lines) do
+        local following = line:sub(#prefix + 1, #prefix + 1)
+        if line:sub(1, #prefix) == prefix and (following == ']' or following == '.') then
+          return vim.fs.dirname(path)
+        end
+      end
+    end
+  end
+  return nil
+end
+
+---True when an ancestor pyproject.toml declares `[tool.<tool>]`.
+---@param bufnr integer
+---@param tool string
+---@return boolean
+function M.has_pyproject_tool(bufnr, tool)
+  return M.pyproject_tool_root(bufnr, tool) ~= nil
+end
+
+---True when the repo pins ruff config (pyproject [tool.ruff] or ruff.toml).
+---@param bufnr integer
+---@return boolean
+function M.uses_ruff(bufnr)
+  return M.has_pyproject_tool(bufnr, 'ruff') or M.has_config(bufnr, { 'ruff.toml', '.ruff.toml' })
+end
+
 ---Resolve `name` to the buffer's project-local executable (searching upward
 ---from the file), falling back to plain `name` on PATH (mason).
 ---@param bufnr integer

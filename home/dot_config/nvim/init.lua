@@ -1119,6 +1119,11 @@ do
     'markdownlint-cli2',
     'stylelint',
     'actionlint',
+    -- Python bridge tools for repos not yet migrated to ruff/basedpyright
+    'black',
+    'isort',
+    'mypy',
+    'pylint',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -1151,10 +1156,13 @@ do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
   -- conform's builtin prettier/pint/stylelint definitions already prefer the
-  -- repo's node_modules/.bin or vendor/bin binary. ruff's builtin runs bare
-  -- 'ruff', so route it through the repo's .venv pin (mason as fallback).
-  local ruff_local = function(_, ctx)
-    return require('project').local_bin(ctx.buf, 'ruff')
+  -- repo's node_modules/.bin or vendor/bin binary. The python builtins run
+  -- bare commands, so route them through the repo's .venv pin (mason as
+  -- fallback).
+  local local_tool = function(name)
+    return function(_, ctx)
+      return require('project').local_bin(ctx.buf, name)
+    end
   end
   require('conform').setup {
     notify_on_error = false,
@@ -1174,7 +1182,20 @@ do
     -- .editorconfig / .prettierrc / etc. Project-local installs are preferred.
     formatters_by_ft = {
       lua = { 'stylua' },
-      python = { 'ruff_organize_imports', 'ruff_format' },
+      -- Python: ruff is the formatter (tool verdicts); repos pinned to black
+      -- with no ruff config (uperix) bridge to black until migrated. isort
+      -- needs its own config — its defaults aren't black-compatible, and a
+      -- repo that never configured it shouldn't get imports reordered.
+      python = function(bufnr)
+        local project = require 'project'
+        if project.has_pyproject_tool(bufnr, 'black') and not project.uses_ruff(bufnr) then
+          if project.has_pyproject_tool(bufnr, 'isort') or project.has_config(bufnr, { '.isort.cfg' }) then
+            return { 'isort', 'black' }
+          end
+          return { 'black' }
+        end
+        return { 'ruff_organize_imports', 'ruff_format' }
+      end,
       javascript = { 'prettier' },
       javascriptreact = { 'prettier' },
       typescript = { 'prettier' },
@@ -1196,8 +1217,10 @@ do
       -- C#: no entry — roslyn's editorconfig-based LSP formatting (lsp_format fallback).
     },
     formatters = {
-      ruff_format = { command = ruff_local },
-      ruff_organize_imports = { command = ruff_local },
+      ruff_format = { command = local_tool 'ruff' },
+      ruff_organize_imports = { command = local_tool 'ruff' },
+      black = { command = local_tool 'black' },
+      isort = { command = local_tool 'isort' },
       -- stylelint errors without a config; run it only where one exists.
       stylelint = {
         condition = function(_, ctx)
@@ -1226,14 +1249,60 @@ do
     css = { 'stylelint' },
     scss = { 'stylelint' },
     yaml = { 'actionlint' },
+    python = { 'mypy', 'pylint' },
   }
 
-  -- Per-linter run conditions beyond filetype: actionlint applies only to
-  -- GitHub workflow files, not yaml at large.
+  -- Per-linter run conditions beyond filetype and config gating: path
+  -- scoping, event scoping for slow linters, pyproject content gates.
+  -- basedpyright is the primary Python type checker; mypy/pylint are
+  -- config-gated bridges for un-migrated repos (tool verdicts).
   local lint_when = {
     actionlint = function()
       -- Direct children only — GitHub ignores subdirs of workflows/.
       return vim.fs.dirname(vim.api.nvim_buf_get_name(0)):find('/%.github/workflows$') ~= nil
+    end,
+    mypy = function(ev)
+      return ev.event == 'BufWritePost' -- slow, and lints the file on disk
+        and (require('project').has_config(0, { 'mypy.ini', '.mypy.ini' }) or require('project').has_pyproject_tool(0, 'mypy'))
+    end,
+    pylint = function(ev)
+      return ev.event == 'BufWritePost' -- slow
+        and (require('project').has_config(0, { '.pylintrc', 'pylintrc' }) or require('project').has_pyproject_tool(0, 'pylint'))
+    end,
+  }
+
+  -- pylint reports paths relative to its cwd, but the builtin parser keeps
+  -- only entries whose path matches the buffer relative to NVIM's cwd — a
+  -- mismatch whenever the spawn cwd differs (always, for us). Resolve the
+  -- paths against the linter cwd before delegating to the builtin parser.
+  local pylint_parser = lint.linters.pylint.parser
+  lint.linters.pylint.parser = function(output, bufnr, cwd)
+    local ok, items = pcall(vim.json.decode, output)
+    if ok and type(items) == 'table' then
+      local bufpath = vim.fs.normalize(vim.api.nvim_buf_get_name(bufnr))
+      for _, item in ipairs(items) do
+        if type(item.path) == 'string' and type(cwd) == 'string' then
+          local resolved = vim.startswith(item.path, '/') and item.path or cwd .. '/' .. item.path
+          if vim.fs.normalize(resolved) == bufpath then
+            item.path = vim.api.nvim_buf_get_name(bufnr)
+          end
+        end
+      end
+      output = vim.json.encode(items)
+    end
+    return pylint_parser(output, bufnr, cwd)
+  end
+
+  -- mypy resolves its config from cwd only (no upward walk); pylint import
+  -- resolution also wants the project root. Run those from the root of the
+  -- config that satisfied the gate — a nearer unrelated pyproject.toml must
+  -- not steal the cwd from the declaring config.
+  local lint_cwd = {
+    mypy = function()
+      return vim.fs.root(0, { 'mypy.ini', '.mypy.ini' }) or require('project').pyproject_tool_root(0, 'mypy')
+    end,
+    pylint = function()
+      return vim.fs.root(0, { '.pylintrc', 'pylintrc' }) or require('project').pyproject_tool_root(0, 'pylint')
     end,
   }
 
@@ -1255,22 +1324,21 @@ do
 
   -- Run the repo's pinned binary when one exists (mason fallback).
   -- nvim-lint evaluates cmd with the linted buffer current, so bufnr 0 works.
-  lint.linters['markdownlint-cli2'].cmd = function()
-    return require('project').local_bin(0, 'markdownlint-cli2')
-  end
-  lint.linters.stylelint.cmd = function()
-    return require('project').local_bin(0, 'stylelint')
+  for _, name in ipairs { 'markdownlint-cli2', 'stylelint', 'mypy', 'pylint' } do
+    lint.linters[name].cmd = function()
+      return require('project').local_bin(0, name)
+    end
   end
 
   vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
     group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
-    callback = function()
+    callback = function(ev)
       if not vim.bo.modifiable then
         return
       end
       -- Linters with an entry in project.config_files are opt-in by config:
       -- they run only where that config exists (stylelint errors without one).
-      -- lint_when adds non-config conditions (path scoping).
+      -- lint_when adds non-config conditions (path/event scoping).
       local names = vim.tbl_filter(function(name)
         local project = require 'project'
         local configs = project.config_files[name]
@@ -1278,16 +1346,18 @@ do
           return false
         end
         local when = lint_when[name]
-        return not when or when()
+        return not when or when(ev)
       end, linters_for_ft(vim.bo.filetype))
-      if #names == 0 then
-        return
-      end
       -- Lint from the buffer's dir so stdin linters (markdownlint-cli2,
       -- stylelint) resolve their config from the file's location — matching
-      -- pre-commit's per-file resolution — rather than nvim's cwd.
+      -- pre-commit's per-file resolution — rather than nvim's cwd. Linters
+      -- in lint_cwd override this with their own root.
       local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
-      lint.try_lint(names, { cwd = vim.uv.fs_stat(dir) and dir or nil })
+      local default_cwd = vim.uv.fs_stat(dir) and dir or nil
+      for _, name in ipairs(names) do
+        local cwd = lint_cwd[name] and lint_cwd[name]() or default_cwd
+        lint.try_lint(name, { cwd = cwd })
+      end
     end,
   })
 end
