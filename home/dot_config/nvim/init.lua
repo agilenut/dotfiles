@@ -1139,6 +1139,12 @@ end
 do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
+  -- conform's builtin prettier/pint/stylelint definitions already prefer the
+  -- repo's node_modules/.bin or vendor/bin binary. ruff's builtin runs bare
+  -- 'ruff', so route it through the repo's .venv pin (mason as fallback).
+  local ruff_local = function(_, ctx)
+    return require('project').local_bin(ctx.buf, 'ruff')
+  end
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function()
@@ -1176,6 +1182,10 @@ do
       php = { 'pint' },
       -- C#: no entry — roslyn's editorconfig-based LSP formatting (lsp_format fallback).
     },
+    formatters = {
+      ruff_format = { command = ruff_local },
+      ruff_organize_imports = { command = ruff_local },
+    },
   }
 
   vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[f]ormat buffer' })
@@ -1195,11 +1205,21 @@ do
     markdown = { 'markdownlint-cli2' },
   }
 
+  -- Run the repo's pinned markdownlint-cli2 when one exists (mason fallback).
+  -- nvim-lint evaluates cmd with the linted buffer current, so bufnr 0 works.
+  lint.linters['markdownlint-cli2'].cmd = function()
+    return require('project').local_bin(0, 'markdownlint-cli2')
+  end
+
   vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
     group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
     callback = function()
       if vim.bo.modifiable then
-        lint.try_lint()
+        -- Lint from the buffer's dir so stdin linters (markdownlint-cli2)
+        -- resolve their config from the file's location — matching
+        -- pre-commit's per-file resolution — rather than nvim's cwd.
+        local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
+        lint.try_lint(nil, { cwd = vim.uv.fs_stat(dir) and dir or nil })
       end
     end,
   })
