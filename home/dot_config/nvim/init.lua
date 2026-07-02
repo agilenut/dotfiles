@@ -1118,6 +1118,7 @@ do
     -- Linters with no LSP (run via nvim-lint, reading the repo's config)
     'markdownlint-cli2',
     'stylelint',
+    'actionlint',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -1224,7 +1225,33 @@ do
     markdown = { 'markdownlint-cli2' },
     css = { 'stylelint' },
     scss = { 'stylelint' },
+    yaml = { 'actionlint' },
   }
+
+  -- Per-linter run conditions beyond filetype: actionlint applies only to
+  -- GitHub workflow files, not yaml at large.
+  local lint_when = {
+    actionlint = function()
+      -- Direct children only — GitHub ignores subdirs of workflows/.
+      return vim.fs.dirname(vim.api.nvim_buf_get_name(0)):find('/%.github/workflows$') ~= nil
+    end,
+  }
+
+  -- Mirror nvim-lint's ft resolution (exact match, else dotted-ft union) so
+  -- linters keep running if a runtime update makes workflows 'yaml.ghaction'.
+  local linters_for_ft = function(ft)
+    local names = lint.linters_by_ft[ft]
+    if names then
+      return names
+    end
+    local seen = {}
+    for _, part in ipairs(vim.split(ft, '.', { plain = true })) do
+      for _, name in ipairs(lint.linters_by_ft[part] or {}) do
+        seen[name] = true
+      end
+    end
+    return vim.tbl_keys(seen)
+  end
 
   -- Run the repo's pinned binary when one exists (mason fallback).
   -- nvim-lint evaluates cmd with the linted buffer current, so bufnr 0 works.
@@ -1243,11 +1270,16 @@ do
       end
       -- Linters with an entry in project.config_files are opt-in by config:
       -- they run only where that config exists (stylelint errors without one).
+      -- lint_when adds non-config conditions (path scoping).
       local names = vim.tbl_filter(function(name)
         local project = require 'project'
         local configs = project.config_files[name]
-        return not configs or project.has_config(0, configs)
-      end, lint.linters_by_ft[vim.bo.filetype] or {})
+        if configs and not project.has_config(0, configs) then
+          return false
+        end
+        local when = lint_when[name]
+        return not when or when()
+      end, linters_for_ft(vim.bo.filetype))
       if #names == 0 then
         return
       end
