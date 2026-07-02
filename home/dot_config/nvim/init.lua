@@ -1048,6 +1048,21 @@ do
     yamlls = {},
     jsonls = {},
     taplo = {},
+    -- Tailwind class completion (invoicing, v4 CSS-first). classRegex adds
+    -- completion inside cva()/cx()/clsx() calls (patterns from cva docs).
+    tailwindcss = {
+      settings = {
+        tailwindCSS = {
+          experimental = {
+            classRegex = {
+              { 'cva\\(((?:[^()]|\\([^()]*\\))*)\\)', '["\'`]([^"\'`]*).*?["\'`]' },
+              { 'cx\\(((?:[^()]|\\([^()]*\\))*)\\)', "(?:'|\"|`)([^']*)(?:'|\"|`)" },
+              { 'clsx\\(((?:[^()]|\\([^()]*\\))*)\\)', "(?:'|\"|`)([^']*)(?:'|\"|`)" },
+            },
+          },
+        },
+      },
+    },
     -- Azure infra-as-code (elenkis infra/). cmd set explicitly: the
     -- lspconfig default ships none, and mason-lspconfig's shim only applies
     -- via its setup(), which this config doesn't use.
