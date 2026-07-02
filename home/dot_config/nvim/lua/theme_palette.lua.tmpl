@@ -1,0 +1,51 @@
+{{- $name := "vscode-dark-modern" -}}
+{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
+{{- $t := index .themes $name -}}
+{{- if not $t }}{{ fail (printf "unknown theme %q (see home/.chezmoidata/themes.toml)" $name) }}{{ end -}}
+-- Generated from the active theme "{{ $name }}" (home/.chezmoidata/themes.toml).
+-- Do not edit by hand; run `theme <name>` to switch, then restart nvim.
+return {
+  ansi = {
+    background = '{{ $t.ansi.background }}',
+    foreground = '{{ $t.ansi.foreground }}',
+    black = '{{ $t.ansi.black }}',
+    red = '{{ $t.ansi.red }}',
+    green = '{{ $t.ansi.green }}',
+    yellow = '{{ $t.ansi.yellow }}',
+    blue = '{{ $t.ansi.blue }}',
+    magenta = '{{ $t.ansi.magenta }}',
+    cyan = '{{ $t.ansi.cyan }}',
+    white = '{{ $t.ansi.white }}',
+  },
+  syntax = {
+    comment = '{{ $t.syntax.comment }}',
+    string = '{{ $t.syntax.string }}',
+    escape = '{{ $t.syntax.escape }}',
+    regexp = '{{ $t.syntax.regexp }}',
+    number = '{{ $t.syntax.number }}',
+    keyword = '{{ $t.syntax.keyword }}',
+    keyword_storage = '{{ $t.syntax.keyword_storage }}',
+    func = '{{ $t.syntax.function }}',
+    type = '{{ $t.syntax.type }}',
+    variable = '{{ $t.syntax.variable }}',
+    constant = '{{ $t.syntax.constant }}',
+    operator = '{{ $t.syntax.operator }}',
+  },
+  ui = {
+    selection = '{{ $t.ui.selection }}',
+    muted = '{{ $t.ui.muted }}',
+    diff_add_bg = '{{ $t.ui.diff_add_bg }}',
+    diff_change_bg = '{{ $t.ui.diff_change_bg }}',
+    diff_del_bg = '{{ $t.ui.diff_del_bg }}',
+    diff_text = '{{ $t.ui.diff_text }}',
+    git_add = '{{ $t.ui.git_add }}',
+    git_change = '{{ $t.ui.git_change }}',
+    git_delete = '{{ $t.ui.git_delete }}',
+    git_untracked = '{{ $t.ui.git_untracked }}',
+    git_conflict = '{{ $t.ui.git_conflict }}',
+    diag_error = '{{ $t.ui.diag_error }}',
+    diag_warn = '{{ $t.ui.diag_warn }}',
+    diag_info = '{{ $t.ui.diag_info }}',
+    diag_hint = '{{ $t.ui.diag_hint }}',
+  },
+}

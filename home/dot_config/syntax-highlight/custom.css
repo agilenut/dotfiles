@@ -1,7 +1,7 @@
 /*
   Customizations for the syntax-highlight quicklook plugin (sbarex/SourceCodeSyntaxHighlight).
 
-  All colors come from the highlight theme (Themes/vscode-dark-modern-custom.theme),
+  All colors come from the highlight theme (Themes/palette.theme),
   which is the single source of truth — keep this file to structural-only tweaks.
   Previously this file re-declared every token color and drifted from the theme.
 */

@@ -11,7 +11,9 @@
 # reads the copies in Application Support, not the live config files):
 #   custom.css: {{ include "dot_config/syntax-highlight/custom.css" | sha256sum }}
 #   global.css: {{ include "dot_config/syntax-highlight/Styles/global.css" | sha256sum }}
-#   theme:      {{ include "dot_config/syntax-highlight/Themes/vscode-dark-modern-custom.theme" | sha256sum }}
+#   theme:      {{ include "dot_config/syntax-highlight/Themes/palette.theme.tmpl" | sha256sum }}
+#   palette:    {{ include ".chezmoidata/themes.toml" | sha256sum }}
+#   active:     {{ if hasKey . "theme" }}{{ .theme }}{{ else }}vscode-dark-modern{{ end }}
 
 SYNTAX_HIGHLIGHT_SRC="${HOME}/.config/syntax-highlight"
 SYNTAX_HIGHLIGHT_DEST="${HOME}/Library/Application Support/Syntax Highlight"

@@ -1,9 +1,13 @@
+{{- $name := "vscode-dark-modern" -}}
+{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
+{{- $t := index .themes $name -}}
+{{- if not $t }}{{ fail (printf "unknown theme %q" $name) }}{{ end -}}
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>VSCode Dark Modern</string>
+	<string>{{ $name }}</string>
 	<key>author</key>
 	<string>agilenut</string>
 	<key>settings</key>
@@ -12,17 +16,17 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#1E1E1E</string>
+				<string>{{ $t.ansi.background }}</string>
 				<key>caret</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 				<key>invisibles</key>
 				<string>#FFFFFF40</string>
 				<key>lineHighlight</key>
 				<string>#0F0F0F</string>
 				<key>selection</key>
-				<string>#37373D</string>
+				<string>{{ $t.ui.selection }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -36,7 +40,7 @@
 				<string></string>
 				<key>foreground</key>
 				<!-- <string>#808080</string> -->
-				<string>#6A9955</string>
+				<string>{{ $t.syntax.comment }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -49,7 +53,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#9CDCFE</string>
+				<string>{{ $t.syntax.variable }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -62,7 +66,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C586C0</string>
+				<string>{{ $t.syntax.keyword }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -75,7 +79,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -88,7 +92,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -101,7 +105,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -114,7 +118,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#B5CEA8</string>
+				<string>{{ $t.syntax.number }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -127,7 +131,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#B4CEA8</string>
+				<string>{{ $t.syntax.number }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -140,7 +144,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#569CD6</string>
+				<string>{{ $t.syntax.keyword_storage }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -153,7 +157,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#569CD6</string>
+				<string>{{ $t.syntax.keyword_storage }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -166,7 +170,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#CE9178</string>
+				<string>{{ $t.syntax.string }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -179,7 +183,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#D7BA7D</string>
+				<string>{{ $t.syntax.escape }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -205,7 +209,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C586C0</string>
+				<string>{{ $t.syntax.keyword }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -218,7 +222,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCAA</string>
+				<string>{{ $t.syntax.function }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -231,7 +235,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#4EC9B0</string>
+				<string>{{ $t.syntax.type }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -244,7 +248,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#569CD6</string>
+				<string>{{ $t.syntax.keyword_storage }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -257,7 +261,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#569CD6</string>
+				<string>{{ $t.syntax.keyword_storage }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -270,7 +274,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#4EC9B0</string>
+				<string>{{ $t.syntax.type }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -318,7 +322,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#DCDCAA</string>
+				<string>{{ $t.syntax.function }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -331,7 +335,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#4EC9B0</string>
+				<string>{{ $t.syntax.type }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -344,7 +348,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#B5CEA8</string>
+				<string>{{ $t.syntax.number }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -357,7 +361,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#9CDCFE</string>
+				<string>{{ $t.syntax.variable }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -379,7 +383,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#DCDCAA</string>
+				<string>{{ $t.syntax.function }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -464,7 +468,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#569CD6</string>
+				<string>{{ $t.syntax.keyword_storage }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -503,7 +507,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#569CD6</string>
+				<string>{{ $t.syntax.keyword_storage }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -516,7 +520,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -527,7 +531,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#C6C6C6</string>
+				<string>{{ $t.ansi.foreground }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -538,7 +542,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D7BA7D</string>
+				<string>{{ $t.syntax.escape }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -549,7 +553,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D7BA7D</string>
+				<string>{{ $t.syntax.escape }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -560,7 +564,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D7BA7D</string>
+				<string>{{ $t.syntax.escape }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -571,7 +575,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#D7BA7D</string>
+				<string>{{ $t.syntax.escape }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -582,7 +586,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#9CDCFE</string>
+				<string>{{ $t.syntax.variable }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -615,7 +619,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#6A9955</string>
+				<string>{{ $t.syntax.comment }}</string>
 			</dict>
 		</dict> -->
     <!--<dict>
@@ -660,7 +664,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#7D5159</string>
+				<string>{{ $t.ui.git_delete }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -671,7 +675,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#55805F</string>
+				<string>{{ $t.ui.git_add }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -682,7 +686,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#967EFB</string>
+				<string>{{ $t.ui.git_change }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -715,7 +719,7 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#272852</string>
+				<string>{{ $t.ui.diff_change_bg }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -726,7 +730,7 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#1A2620</string>
+				<string>{{ $t.ui.diff_add_bg }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -737,7 +741,7 @@
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#26191C</string>
+				<string>{{ $t.ui.diff_del_bg }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -748,7 +752,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#6A9955</string>
+				<string>{{ $t.syntax.comment }}</string>
 			</dict>
 		</dict>
 	</array>
