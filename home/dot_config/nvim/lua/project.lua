@@ -6,6 +6,36 @@ local M = {}
 -- Ancestor dirs (relative to the buffer's file) that hold pinned executables.
 local bin_dirs = { 'node_modules/.bin', 'vendor/bin', '.venv/bin' }
 
+-- Config files that gate opt-in tools: a tool runs only where one of its
+-- config files exists in an ancestor dir of the buffer's file. Filename
+-- checks only — a config living INSIDE package.json (e.g. a "stylelint"
+-- field) is not detected, and the tool silently stays off in such a repo.
+M.config_files = {
+  stylelint = {
+    '.stylelintrc',
+    '.stylelintrc.cjs',
+    '.stylelintrc.js',
+    '.stylelintrc.json',
+    '.stylelintrc.mjs',
+    '.stylelintrc.yaml',
+    '.stylelintrc.yml',
+    'stylelint.config.cjs',
+    'stylelint.config.cts',
+    'stylelint.config.js',
+    'stylelint.config.mjs',
+    'stylelint.config.mts',
+    'stylelint.config.ts',
+  },
+}
+
+---True when one of `names` exists in an ancestor dir of the buffer's file.
+---@param bufnr integer
+---@param names string[]
+---@return boolean
+function M.has_config(bufnr, names)
+  return vim.fs.root(bufnr, names) ~= nil
+end
+
 ---Resolve `name` to the buffer's project-local executable (searching upward
 ---from the file), falling back to plain `name` on PATH (mason).
 ---@param bufnr integer

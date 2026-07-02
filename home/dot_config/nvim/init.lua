@@ -1048,6 +1048,15 @@ do
     yamlls = {},
     jsonls = {},
     taplo = {},
+    -- CSS/SCSS: completion/hover only — validation off (stylelint via
+    -- nvim-lint is the linter, matching the repos' .vscode settings).
+    cssls = {
+      settings = {
+        css = { validate = false },
+        scss = { validate = false },
+        less = { validate = false },
+      },
+    },
     -- Markdown navigation (markdownlint comes later via nvim-lint)
     marksman = {},
 
@@ -1108,6 +1117,7 @@ do
     'pint',
     -- Linters with no LSP (run via nvim-lint, reading the repo's config)
     'markdownlint-cli2',
+    'stylelint',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -1169,8 +1179,10 @@ do
       typescript = { 'prettier' },
       typescriptreact = { 'prettier' },
       vue = { 'prettier' },
-      css = { 'prettier' },
-      scss = { 'prettier' },
+      -- stylelint --fix first (skipped without a config), then prettier —
+      -- mirrors the lint side so save-fixes match what pre-commit would do.
+      css = { 'stylelint', 'prettier' },
+      scss = { 'stylelint', 'prettier' },
       html = { 'prettier' },
       json = { 'prettier' },
       jsonc = { 'prettier' },
@@ -1185,6 +1197,13 @@ do
     formatters = {
       ruff_format = { command = ruff_local },
       ruff_organize_imports = { command = ruff_local },
+      -- stylelint errors without a config; run it only where one exists.
+      stylelint = {
+        condition = function(_, ctx)
+          local project = require 'project'
+          return project.has_config(ctx.buf, project.config_files.stylelint)
+        end,
+      },
     },
   }
 
@@ -1203,24 +1222,40 @@ do
   -- (eslint, ruff, etc.) don't need nvim-lint — their server reports diagnostics.
   lint.linters_by_ft = {
     markdown = { 'markdownlint-cli2' },
+    css = { 'stylelint' },
+    scss = { 'stylelint' },
   }
 
-  -- Run the repo's pinned markdownlint-cli2 when one exists (mason fallback).
+  -- Run the repo's pinned binary when one exists (mason fallback).
   -- nvim-lint evaluates cmd with the linted buffer current, so bufnr 0 works.
   lint.linters['markdownlint-cli2'].cmd = function()
     return require('project').local_bin(0, 'markdownlint-cli2')
+  end
+  lint.linters.stylelint.cmd = function()
+    return require('project').local_bin(0, 'stylelint')
   end
 
   vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
     group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
     callback = function()
-      if vim.bo.modifiable then
-        -- Lint from the buffer's dir so stdin linters (markdownlint-cli2)
-        -- resolve their config from the file's location — matching
-        -- pre-commit's per-file resolution — rather than nvim's cwd.
-        local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
-        lint.try_lint(nil, { cwd = vim.uv.fs_stat(dir) and dir or nil })
+      if not vim.bo.modifiable then
+        return
       end
+      -- Linters with an entry in project.config_files are opt-in by config:
+      -- they run only where that config exists (stylelint errors without one).
+      local names = vim.tbl_filter(function(name)
+        local project = require 'project'
+        local configs = project.config_files[name]
+        return not configs or project.has_config(0, configs)
+      end, lint.linters_by_ft[vim.bo.filetype] or {})
+      if #names == 0 then
+        return
+      end
+      -- Lint from the buffer's dir so stdin linters (markdownlint-cli2,
+      -- stylelint) resolve their config from the file's location — matching
+      -- pre-commit's per-file resolution — rather than nvim's cwd.
+      local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
+      lint.try_lint(names, { cwd = vim.uv.fs_stat(dir) and dir or nil })
     end,
   })
 end
