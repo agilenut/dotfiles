@@ -51,21 +51,30 @@ fi
 # shellcheck source=/dev/null
 source "$CLAUDE_RESTORE_BIN"
 
-# Map raw pane listings to refresh actions. Reads `pane_id<TAB>command<TAB>title`
-# lines on stdin ($1 = the invoking pane's id, may be empty) and emits one
-# action line per claude pane:
+# Map raw pane listings to refresh actions. Reads
+# `pane_id<TAB>command<TAB>cwd<TAB>title` lines on stdin ($1 = the invoking
+# pane's id, may be empty) and emits one action line per claude pane:
 #   restart<TAB><pane_id><TAB><session-name>
 #   skip-self<TAB><pane_id>
+#   skip-cwd<TAB><pane_id><TAB><cwd>
 #   skip-unnamed<TAB><pane_id><TAB><title>
-# Non-claude panes emit nothing. Side-effect-free and sourceable for tests.
+# Non-claude panes emit nothing. Reads the filesystem (-d) but never writes;
+# sourceable for tests.
 claude_refresh_plan() {
   local self="${1:-}"
-  local pane cmd title action
-  while IFS=$'\t' read -r pane cmd title; do
+  local pane cmd cwd title action
+  while IFS=$'\t' read -r pane cmd cwd title; do
     [ -n "$pane" ] || continue
     [ "$cmd" = claude ] || continue
     if [ -n "$self" ] && [ "$pane" = "$self" ]; then
       printf 'skip-self\t%s\n' "$pane"
+      continue
+    fi
+    # A deleted cwd (removed worktree) keeps the running claude alive but makes
+    # it unresumable: the shell can't start anything from a directory that no
+    # longer exists. Exiting claude here would strand the pane — leave it.
+    if [ ! -d "$cwd" ]; then
+      printf 'skip-cwd\t%s\t%s\n' "$pane" "$cwd"
       continue
     fi
     action="$(claude_restore_classify "$title")"
@@ -111,7 +120,7 @@ claude_refresh_await_shell() {
 
 claude_refresh_main() {
   local listing
-  if ! listing="$(tmux list-panes -a -F $'#{pane_id}\t#{pane_current_command}\t#{pane_title}' 2>/dev/null)"; then
+  if ! listing="$(tmux list-panes -a -F $'#{pane_id}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_title}' 2>/dev/null)"; then
     echo "claude-refresh: tmux not available or no server running" >&2
     exit 1
   fi
@@ -129,6 +138,10 @@ claude_refresh_main() {
         ;;
       skip-self)
         echo "skip      $pane  (this pane is running the refresh)"
+        ;;
+      skip-cwd)
+        echo "skip      $pane  cwd no longer exists ($detail) — restarting would strand the pane"
+        skipped=$((skipped + 1))
         ;;
       skip-unnamed)
         echo "skip      $pane  unnamed session (title: ${detail:-<empty>})"
@@ -181,7 +194,7 @@ claude_refresh_main() {
   done
 
   # Last line is the summary — Raycast compact mode shows only this.
-  echo "Restarted $restarted, skipped $skipped unnamed, failed $failed."
+  echo "Restarted $restarted, skipped $skipped, failed $failed."
   [ "$failed" -eq 0 ]
 }
 

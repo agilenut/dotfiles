@@ -156,7 +156,7 @@ test_claude_refresh() {
   local result expected
 
   # ---- named claude pane → restart with the session name ----
-  result=$(printf '%%3\tclaude\t✳ images4\n' | refresh_plan '')
+  result=$(printf '%%3\tclaude\t/tmp\t✳ images4\n' | refresh_plan '')
   if [ "$result" = "$(printf 'restart\t%%3\timages4')" ]; then
     pass "named claude pane restarts with the session name"
   else
@@ -164,7 +164,7 @@ test_claude_refresh() {
   fi
 
   # ---- session name with spaces survives the pipeline whole ----
-  result=$(printf '%%3\tclaude\t⠐ my feature work\n' | refresh_plan '')
+  result=$(printf '%%3\tclaude\t/tmp\t⠐ my feature work\n' | refresh_plan '')
   if [ "$result" = "$(printf 'restart\t%%3\tmy feature work')" ]; then
     pass "spaced session name preserved whole"
   else
@@ -172,15 +172,23 @@ test_claude_refresh() {
   fi
 
   # ---- the invoking pane is never restarted ----
-  result=$(printf '%%9\tclaude\t✳ voice\n' | refresh_plan '%9')
+  result=$(printf '%%9\tclaude\t/tmp\t✳ voice\n' | refresh_plan '%9')
   if [ "$result" = "$(printf 'skip-self\t%%9')" ]; then
     pass "invoking pane is skipped"
   else
     fail "self pane misplanned: '$result'"
   fi
 
+  # ---- deleted cwd (removed worktree) → left running, not stranded ----
+  result=$(printf '%%6\tclaude\t/nonexistent/worktree-gone\t✳ images4\n' | refresh_plan '')
+  if [ "$result" = "$(printf 'skip-cwd\t%%6\t/nonexistent/worktree-gone')" ]; then
+    pass "deleted-cwd pane is left running"
+  else
+    fail "deleted-cwd pane misplanned: '$result'"
+  fi
+
   # ---- unnamed session (default title) → left running ----
-  result=$(printf '%%5\tclaude\t⠂ Claude Code\n' | refresh_plan '')
+  result=$(printf '%%5\tclaude\t/tmp\t⠂ Claude Code\n' | refresh_plan '')
   if [ "$result" = "$(printf 'skip-unnamed\t%%5\t⠂ Claude Code')" ]; then
     pass "unnamed session is left running"
   else
@@ -188,7 +196,7 @@ test_claude_refresh() {
   fi
 
   # ---- non-claude panes emit nothing; mixed listing keeps order ----
-  result=$(printf '%%1\tzsh\tsome title\n%%2\tclaude\t✳ reviews3\n%%3\tnvim\tMac.local\n%%4\tclaude\thostname.local\n' \
+  result=$(printf '%%1\tzsh\t/tmp\tsome title\n%%2\tclaude\t/tmp\t✳ reviews3\n%%3\tnvim\t/tmp\tMac.local\n%%4\tclaude\t/tmp\thostname.local\n' \
     | refresh_plan '')
   expected="$(printf 'restart\t%%2\treviews3\nskip-unnamed\t%%4\thostname.local')"
   if [ "$result" = "$expected" ]; then
