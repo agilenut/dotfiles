@@ -40,6 +40,15 @@ local function main()
   -- pyproject_tool_root walks past pyprojects that don't declare the tool
   vim.cmd.edit(fixtures .. '/mypy-mono/subpkg/x.py')
   emit('mypy_root', project.pyproject_tool_root(0, 'mypy'))
+  emit('mypy_gate_root', project.mypy_root(0))
+  vim.cmd.edit(fixtures .. '/plain/x.py')
+  emit('mypy_gate_plain', project.mypy_root(0))
+
+  -- actionlint path scope: direct children of .github/workflows/ only
+  vim.cmd.edit(fixtures .. '/wf-repo/.github/workflows/ci.yml')
+  emit('workflows_dir_on', project.in_workflows_dir(0))
+  vim.cmd.edit(fixtures .. '/wf-repo/.github/workflows/templates/x.yml')
+  emit('workflows_dir_off', project.in_workflows_dir(0))
 
   -- local_bin: all three pin dirs, plus the PATH-name fallback
   vim.cmd.edit(fixtures .. '/bin-repo/sub/x.md')

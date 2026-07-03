@@ -69,6 +69,22 @@ function M.has_pyproject_tool(bufnr, tool)
   return M.pyproject_tool_root(bufnr, tool) ~= nil
 end
 
+---Root dir of the buffer's mypy config (mypy.ini/.mypy.ini, or the declaring
+---pyproject.toml); nil when the repo has none. Doubles as mypy's run gate.
+---@param bufnr integer
+---@return string|nil
+function M.mypy_root(bufnr)
+  return vim.fs.root(bufnr, { 'mypy.ini', '.mypy.ini' }) or M.pyproject_tool_root(bufnr, 'mypy')
+end
+
+---True when the buffer's file sits DIRECTLY in .github/workflows/ —
+---GitHub ignores subdirectories, so actionlint should too.
+---@param bufnr integer
+---@return boolean
+function M.in_workflows_dir(bufnr)
+  return vim.fs.dirname(vim.api.nvim_buf_get_name(bufnr)):find('/%.github/workflows$') ~= nil
+end
+
 ---Resolve `name` to the buffer's project-local executable (searching upward
 ---from the file), falling back to plain `name` on PATH (mason).
 ---@param bufnr integer

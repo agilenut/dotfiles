@@ -1279,18 +1279,18 @@ do
   -- pyproject.toml must not steal the cwd from the declaring config.
   local lint_cwd = {
     mypy = function()
-      return vim.fs.root(0, { 'mypy.ini', '.mypy.ini' }) or require('project').pyproject_tool_root(0, 'mypy')
+      return require('project').mypy_root(0)
     end,
   }
 
   -- Per-linter run conditions beyond filetype and config gating: path
   -- scoping, event scoping for slow linters, pyproject content gates.
-  -- basedpyright is the primary Python type checker; mypy is a config-gated
-  -- bridge for un-migrated repos (tool verdicts).
+  -- Predicates live in project.lua so the <leader>bi buffer info reads the
+  -- same gates. basedpyright is the primary Python type checker; mypy is a
+  -- config-gated bridge for un-migrated repos (tool verdicts).
   local lint_when = {
     actionlint = function()
-      -- Direct children only — GitHub ignores subdirs of workflows/.
-      return vim.fs.dirname(vim.api.nvim_buf_get_name(0)):find('/%.github/workflows$') ~= nil
+      return require('project').in_workflows_dir(0)
     end,
     mypy = function(ev)
       -- Gate = "a mypy config resolves": same source as lint_cwd.mypy, so
@@ -1590,15 +1590,23 @@ do
     for _, f in ipairs(require('conform').list_formatters(buf)) do
       formatters[#formatters + 1] = f.name .. ' → ' .. (f.command or '?')
     end
-    -- Linters configured for the filetype; config-gated ones (same
-    -- project.config_files gate the lint autocmd reads) marked when off.
-    -- Path/event scoping (actionlint, mypy) isn't reflected here.
+    -- Linters configured for the filetype, annotated with the same gates the
+    -- lint autocmd reads (project.config_files / mypy_root / in_workflows_dir).
     local project = require 'project'
+    local lint_off = {
+      mypy = function() return project.mypy_root(buf) == nil and 'off: no config' or 'on save' end,
+      actionlint = function() return not project.in_workflows_dir(buf) and 'off: not a workflow' or nil end,
+    }
     local linters = {}
     for _, name in ipairs(require('lint').linters_by_ft[ft] or {}) do
+      local note
       local configs = project.config_files[name]
-      local off = configs and not project.has_config(buf, configs)
-      linters[#linters + 1] = off and (name .. ' (off: no config)') or name
+      if configs and not project.has_config(buf, configs) then
+        note = 'off: no config'
+      elseif lint_off[name] then
+        note = lint_off[name]()
+      end
+      linters[#linters + 1] = note and (name .. ' (' .. note .. ')') or name
     end
     buffer_info_open = true
     vim.notify(table.concat({

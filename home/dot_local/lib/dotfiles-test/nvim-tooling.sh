@@ -49,7 +49,8 @@ test_nvim_tooling() {
     "$fixtures/black-repo" "$fixtures/black-isort-repo" \
     "$fixtures/isort-cfg-repo" "$fixtures/mono/blackpkg" \
     "$fixtures/mypy-mono/subpkg" "$fixtures/bin-repo/sub" \
-    "$fixtures/stylelint-repo" "$fixtures/plain"
+    "$fixtures/stylelint-repo" "$fixtures/plain" \
+    "$fixtures/wf-repo/.github/workflows/templates"
 
   printf '[tool.ruff]\n' >"$fixtures/ruff-repo/pyproject.toml"
   # Subtable form must count as the tool being declared.
@@ -136,6 +137,10 @@ test_nvim_tooling() {
   assert_nvim_case mono_root 'ruff_organize_imports,ruff_format'
   assert_nvim_case plain_repo 'ruff_organize_imports,ruff_format'
   assert_nvim_case mypy_root "$fixtures/mypy-mono"
+  assert_nvim_case mypy_gate_root "$fixtures/mypy-mono"
+  assert_nvim_case mypy_gate_plain 'nil'
+  assert_nvim_case workflows_dir_on 'true'
+  assert_nvim_case workflows_dir_off 'false'
   assert_nvim_case local_bin "$fixtures/bin-repo/node_modules/.bin/zzz-tool"
   assert_nvim_case local_bin_vendor "$fixtures/bin-repo/vendor/bin/zzz-pint"
   assert_nvim_case local_bin_venv "$fixtures/bin-repo/.venv/bin/zzz-venv"
