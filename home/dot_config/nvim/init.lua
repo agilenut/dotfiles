@@ -660,9 +660,33 @@ do
         parts[#parts + 1] = '↑' .. ahead .. ' ↓' .. behind
       end
     end
-    local dirty = git('status', '--porcelain')
-    if dirty and #dirty > 0 then
-      parts[#parts + 1] = '● ' .. #dirty
+    -- Porcelain XY: X = index (staged), Y = worktree (unstaged); '??' = new.
+    -- A file can be both staged and unstaged (e.g. 'MM'), counted in each.
+    local staged, unstaged, untracked = 0, 0, 0
+    for _, line in ipairs(git('status', '--porcelain') or {}) do
+      if line:sub(1, 2) == '??' then
+        untracked = untracked + 1
+      else
+        if line:sub(1, 1):match '[^ ]' then
+          staged = staged + 1
+        end
+        if line:sub(2, 2):match '[^ ]' then
+          unstaged = unstaged + 1
+        end
+      end
+    end
+    local status = {}
+    if staged > 0 then
+      status[#status + 1] = staged .. ' staged'
+    end
+    if unstaged > 0 then
+      status[#status + 1] = unstaged .. ' unstaged'
+    end
+    if untracked > 0 then
+      status[#status + 1] = untracked .. ' untracked'
+    end
+    if #status > 0 then
+      parts[#parts + 1] = table.concat(status, ' · ')
     end
     return table.concat(parts, '   ')
   end
