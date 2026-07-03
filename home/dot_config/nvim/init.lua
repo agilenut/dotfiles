@@ -660,33 +660,31 @@ do
         parts[#parts + 1] = '↑' .. ahead .. ' ↓' .. behind
       end
     end
-    -- Porcelain XY: X = index (staged), Y = worktree (unstaged); '??' = new.
-    -- A file can be both staged and unstaged (e.g. 'MM'), counted in each.
-    local staged, unstaged, untracked = 0, 0, 0
+    -- File change counts in the +/~/- convention (matches gitsigns/neo-tree):
+    -- added (new/untracked), modified, deleted. Only non-zero shown.
+    local added, modified, deleted = 0, 0, 0
     for _, line in ipairs(git('status', '--porcelain') or {}) do
-      if line:sub(1, 2) == '??' then
-        untracked = untracked + 1
+      local xy = line:sub(1, 2)
+      if xy == '??' or xy:find 'A' then
+        added = added + 1
+      elseif xy:find 'D' then
+        deleted = deleted + 1
       else
-        if line:sub(1, 1):match '[^ ]' then
-          staged = staged + 1
-        end
-        if line:sub(2, 2):match '[^ ]' then
-          unstaged = unstaged + 1
-        end
+        modified = modified + 1
       end
     end
-    local status = {}
-    if staged > 0 then
-      status[#status + 1] = staged .. ' staged'
+    local changes = {}
+    if added > 0 then
+      changes[#changes + 1] = '+' .. added
     end
-    if unstaged > 0 then
-      status[#status + 1] = unstaged .. ' unstaged'
+    if modified > 0 then
+      changes[#changes + 1] = '~' .. modified
     end
-    if untracked > 0 then
-      status[#status + 1] = untracked .. ' untracked'
+    if deleted > 0 then
+      changes[#changes + 1] = '-' .. deleted
     end
-    if #status > 0 then
-      parts[#parts + 1] = table.concat(status, ' · ')
+    if #changes > 0 then
+      parts[#parts + 1] = table.concat(changes, ' ')
     end
     return table.concat(parts, '   ')
   end
