@@ -452,6 +452,7 @@ do
     -- Document existing key chains
     spec = {
       { '<leader>b', group = '[b]uffer' },
+      { '<leader>S', group = '[S]ession', icon = { icon = '\u{f0c7}', color = 'green' } },
       { '<leader>s', group = '[s]earch', icon = { icon = '', color = 'cyan' }, mode = { 'n', 'v' } },
       { '<leader>t', group = '[t]oggle', icon = { icon = '', color = 'yellow' } },
       { '<leader>g', group = '[g]it', icon = { cat = 'filetype', name = 'git' } },
@@ -635,6 +636,26 @@ do
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
 
+  -- Sessions: save/restore a project's open buffers + layout. Saved sessions
+  -- surface on the dashboard (see items below); autowrite keeps the active
+  -- one current on exit. autoread stays off so a fresh nvim lands on the
+  -- dashboard rather than silently restoring.
+  local session_dir = vim.fn.stdpath 'data' .. '/sessions'
+  vim.fn.mkdir(session_dir, 'p')
+  require('mini.sessions').setup {
+    autowrite = true,
+    directory = session_dir,
+  }
+  local function project_session()
+    return vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+  end
+  vim.keymap.set('n', '<leader>Ss', function()
+    require('mini.sessions').write(project_session())
+    vim.notify('Session saved: ' .. project_session())
+  end, { desc = 'Session [s]ave (project)' })
+  vim.keymap.set('n', '<leader>Sl', function() require('mini.sessions').select 'read' end, { desc = 'Session [l]oad' })
+  vim.keymap.set('n', '<leader>Sd', function() require('mini.sessions').select 'delete' end, { desc = 'Session [d]elete' })
+
   -- Start screen (dashboard). Auto-opens on `nvim` with no file; buf_delete
   -- also lands here when the last buffer closes. Type to filter items,
   -- <Up>/<Down> (or <C-n>/<C-p>) to move, <CR> to activate.
@@ -729,6 +750,7 @@ do
     }, '\n'),
     footer = git_status,
     items = {
+      starter.sections.sessions(5, true),
       starter.sections.recent_files(8, false),
       { name = 'Find files', action = 'Telescope find_files', section = 'Actions' },
       { name = 'Live grep', action = 'Telescope live_grep', section = 'Actions' },
