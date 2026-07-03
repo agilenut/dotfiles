@@ -1555,8 +1555,16 @@ do
   vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
 
   -- File metadata dropped from the statusline (full path, type, encoding, size,
-  -- attached LSP servers), on demand as a notify toast.
+  -- attached LSP servers), plus the buffer's resolved formatters (with binary
+  -- path — shows whether the repo's pin or mason won) and configured linters.
+  -- Sticky toast: stays up until <leader>bi is pressed again.
+  local buffer_info_open = false
   vim.keymap.set('n', '<leader>bi', function()
+    if buffer_info_open then
+      require('notify').dismiss { silent = true, pending = false }
+      buffer_info_open = false
+      return
+    end
     local buf = 0
     local path = vim.api.nvim_buf_get_name(buf)
     local full = path ~= '' and vim.fn.fnamemodify(path, ':~') or '[No Name]'
@@ -1577,13 +1585,31 @@ do
     for _, c in ipairs(vim.lsp.get_clients { bufnr = buf }) do
       names[#names + 1] = c.name
     end
+    -- Available formatters with their resolved binary (project pin or mason).
+    local formatters = {}
+    for _, f in ipairs(require('conform').list_formatters(buf)) do
+      formatters[#formatters + 1] = f.name .. ' → ' .. (f.command or '?')
+    end
+    -- Linters configured for the filetype; config-gated ones (same
+    -- project.config_files gate the lint autocmd reads) marked when off.
+    -- Path/event scoping (actionlint, mypy) isn't reflected here.
+    local project = require 'project'
+    local linters = {}
+    for _, name in ipairs(require('lint').linters_by_ft[ft] or {}) do
+      local configs = project.config_files[name]
+      local off = configs and not project.has_config(buf, configs)
+      linters[#linters + 1] = off and (name .. ' (off: no config)') or name
+    end
+    buffer_info_open = true
     vim.notify(table.concat({
       'Path:  ' .. full,
       'Type:  ' .. (ft ~= '' and ft or '(none)') .. '   ' .. enc .. '   ' .. vim.bo[buf].fileformat,
       'Size:  ' .. size,
       'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
-    }, '\n'), vim.log.levels.INFO, { title = 'File info' })
-  end, { desc = 'Buffer [i]nfo (path, type, size, LSP)' })
+      'Format: ' .. (#formatters > 0 and table.concat(formatters, '\n        ') or '(lsp or none)'),
+      'Lint:  ' .. (#linters > 0 and table.concat(linters, ', ') or '(none)'),
+    }, '\n'), vim.log.levels.INFO, { title = 'Buffer info', timeout = false })
+  end, { desc = 'Buffer [i]nfo (path, type, LSP, format, lint)' })
 end
 
 -- ============================================================
