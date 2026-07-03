@@ -665,8 +665,11 @@ do
   -- dashboard open, so it reflects the current state.
   local function git_status()
     local cwd = vim.fn.getcwd()
+    -- --no-optional-locks: never take .git/index.lock for the status refresh
+    -- (would collide with a concurrent commit). Belt-and-suspenders with the
+    -- global GIT_OPTIONAL_LOCKS=0 this config already sets.
     local function git(...)
-      local res = vim.fn.systemlist { 'git', '-C', cwd, ... }
+      local res = vim.fn.systemlist { 'git', '--no-optional-locks', '-C', cwd, ... }
       return vim.v.shell_error == 0 and res or nil
     end
     local branch = git('branch', '--show-current')
