@@ -691,6 +691,35 @@ do
     return table.concat(parts, '   ')
   end
 
+  -- Per-item icons: colored file-type icons (nvim-web-devicons) for recent
+  -- files, glyphs for actions. Inserted as separate units (like the bullet
+  -- hook), so type-to-filter — which matches item names — is unaffected.
+  local devicons = require 'nvim-web-devicons'
+  -- Nerd-font glyphs by codepoint (raw glyphs don't survive some edits).
+  local action_icons = {
+    ['Find files'] = '\u{f002}', -- search
+    ['Live grep'] = '\u{f0b0}', -- filter
+    ['New file'] = '\u{f15b}', -- file
+    ['Config'] = '\u{f013}', -- gear
+    ['Quit'] = '\u{f011}', -- power
+  }
+  local function adding_icons(content)
+    local coords = starter.content_coords(content, 'item')
+    for i = #coords, 1, -1 do
+      local l, u = coords[i].line, coords[i].unit
+      local item = content[l][u].item
+      local icon, hl
+      if item.section == 'Actions' then
+        icon, hl = action_icons[item.name] or '', 'MiniStarterItemPrefix'
+      else
+        local fname = item.name:match '^(.-) %(' or item.name
+        icon, hl = devicons.get_icon(fname, fname:match '%.([^.]+)$', { default = true })
+      end
+      table.insert(content[l], u, { string = icon .. '  ', type = 'item_icon', hl = hl })
+    end
+    return content
+  end
+
   starter.setup {
     header = table.concat({
       '███╗   ██╗██╗   ██╗██╗███╗   ███╗',
@@ -710,7 +739,7 @@ do
       { name = 'Quit', action = 'qa', section = 'Actions' },
     },
     content_hooks = {
-      starter.gen_hook.adding_bullet(),
+      adding_icons,
       starter.gen_hook.aligning('center', 'center'),
     },
   }
