@@ -1033,17 +1033,11 @@ do
 
     -- Python: basedpyright for types, ruff for lint (+ format via conform)
     basedpyright = {
-      -- Force push diagnostics: basedpyright registers pull diagnostics but
-      -- answers workspace/diagnostic with empty reports (basedpyright 1.39 +
-      -- nvim 0.12), which silently kills cross-file diagnostics. Without the
-      -- pull capability the server publishes for the whole workspace.
-      before_init = function(params, _)
-        params.capabilities.textDocument.diagnostic = nil
-      end,
       settings = {
-        -- Analyze the whole project (not just open files) so Trouble shows
-        -- problems across the project. Heavier on large repos.
-        basedpyright = { analysis = { diagnosticMode = 'workspace' } },
+        -- Open files only, matching VS Code (Pylance defaults the same and
+        -- none of the repos override it). Whole-repo checking is CI's job.
+        -- Also sidesteps basedpyright 1.39's empty workspace/diagnostic pulls.
+        basedpyright = { analysis = { diagnosticMode = 'openFilesOnly' } },
       },
     },
     ruff = {},
