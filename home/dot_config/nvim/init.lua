@@ -1195,12 +1195,20 @@ do
     formatters_by_ft = {
       lua = { 'stylua' },
       -- Python: ruff is the formatter (tool verdicts); repos pinned to black
-      -- with no ruff config (uperix) bridge to black until migrated. isort
-      -- needs its own config — its defaults aren't black-compatible, and a
-      -- repo that never configured it shouldn't get imports reordered.
+      -- with no ruff config (uperix) bridge to black until migrated. Between
+      -- black and ruff the NEARER declaration wins (monorepo subpackages own
+      -- their tooling); same depth keeps ruff. isort needs its own config —
+      -- its defaults aren't black-compatible, and a repo that never
+      -- configured it shouldn't get imports reordered.
       python = function(bufnr)
         local project = require 'project'
-        if project.has_pyproject_tool(bufnr, 'black') and not project.uses_ruff(bufnr) then
+        local black_root = project.pyproject_tool_root(bufnr, 'black')
+        local ruff_root = project.pyproject_tool_root(bufnr, 'ruff')
+        local ruff_toml = vim.fs.root(bufnr, { 'ruff.toml', '.ruff.toml' })
+        if ruff_toml and (not ruff_root or #ruff_toml > #ruff_root) then
+          ruff_root = ruff_toml
+        end
+        if black_root and (not ruff_root or #black_root > #ruff_root) then
           if project.has_pyproject_tool(bufnr, 'isort') or project.has_config(bufnr, { '.isort.cfg' }) then
             return { 'isort', 'black' }
           end
@@ -1266,6 +1274,15 @@ do
     python = { 'mypy' },
   }
 
+  -- mypy resolves its config from cwd only (no upward walk). Run it from
+  -- the root of the config that satisfied the gate — a nearer unrelated
+  -- pyproject.toml must not steal the cwd from the declaring config.
+  local lint_cwd = {
+    mypy = function()
+      return vim.fs.root(0, { 'mypy.ini', '.mypy.ini' }) or require('project').pyproject_tool_root(0, 'mypy')
+    end,
+  }
+
   -- Per-linter run conditions beyond filetype and config gating: path
   -- scoping, event scoping for slow linters, pyproject content gates.
   -- basedpyright is the primary Python type checker; mypy is a config-gated
@@ -1276,17 +1293,10 @@ do
       return vim.fs.dirname(vim.api.nvim_buf_get_name(0)):find('/%.github/workflows$') ~= nil
     end,
     mypy = function(ev)
+      -- Gate = "a mypy config resolves": same source as lint_cwd.mypy, so
+      -- gate and spawn cwd can never disagree on markers.
       return ev.event == 'BufWritePost' -- slow, and lints the file on disk
-        and (require('project').has_config(0, { 'mypy.ini', '.mypy.ini' }) or require('project').has_pyproject_tool(0, 'mypy'))
-    end,
-  }
-
-  -- mypy resolves its config from cwd only (no upward walk). Run it from
-  -- the root of the config that satisfied the gate — a nearer unrelated
-  -- pyproject.toml must not steal the cwd from the declaring config.
-  local lint_cwd = {
-    mypy = function()
-      return vim.fs.root(0, { 'mypy.ini', '.mypy.ini' }) or require('project').pyproject_tool_root(0, 'mypy')
+        and lint_cwd.mypy() ~= nil
     end,
   }
 

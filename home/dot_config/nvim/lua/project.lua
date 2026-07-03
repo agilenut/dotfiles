@@ -69,13 +69,6 @@ function M.has_pyproject_tool(bufnr, tool)
   return M.pyproject_tool_root(bufnr, tool) ~= nil
 end
 
----True when the repo pins ruff config (pyproject [tool.ruff] or ruff.toml).
----@param bufnr integer
----@return boolean
-function M.uses_ruff(bufnr)
-  return M.has_pyproject_tool(bufnr, 'ruff') or M.has_config(bufnr, { 'ruff.toml', '.ruff.toml' })
-end
-
 ---Resolve `name` to the buffer's project-local executable (searching upward
 ---from the file), falling back to plain `name` on PATH (mason).
 ---@param bufnr integer
