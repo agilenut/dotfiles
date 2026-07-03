@@ -645,12 +645,33 @@ do
   -- Don't persist empty windows; close neo-tree before a write since its
   -- special buffer restores blank/broken from a saved session.
   vim.opt.sessionoptions:remove 'blank'
+  -- Close neo-tree for the write (its special buffer restores blank), then
+  -- reopen it after so a manual save doesn't disturb the current view.
+  local neotree_reopen = false
+  local function neotree_is_open()
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if vim.bo[vim.api.nvim_win_get_buf(w)].filetype == 'neo-tree' then
+        return true
+      end
+    end
+    return false
+  end
   require('mini.sessions').setup {
     autowrite = true,
     directory = session_dir,
     hooks = {
       pre = {
-        write = function() pcall(vim.cmd, 'Neotree close') end,
+        write = function()
+          neotree_reopen = neotree_is_open()
+          pcall(vim.cmd, 'Neotree close')
+        end,
+      },
+      post = {
+        write = function()
+          if neotree_reopen then
+            pcall(vim.cmd, 'Neotree show')
+          end
+        end,
       },
     },
   }
