@@ -1636,9 +1636,11 @@ do
       'Path:  ' .. full,
       'Type:  ' .. (ft ~= '' and ft or '(none)') .. '   ' .. enc .. '   ' .. vim.bo[buf].fileformat,
       'Size:  ' .. size,
+      -- LSP diagnostics ARE linting (ruff, eslint, …); the CLI line is only
+      -- the no-server tools nvim-lint spawns.
       'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
       'Format: ' .. (#formatters > 0 and table.concat(formatters, '\n        ') or '(lsp or none)'),
-      'Lint:  ' .. (#linters > 0 and table.concat(linters, ', ') or '(none)'),
+      'CLI lint: ' .. (#linters > 0 and table.concat(linters, ', ') or '(none)'),
     }, '\n'), vim.log.levels.INFO, { title = 'Buffer info', timeout = false })
   end, { desc = 'Buffer [i]nfo (path, type, LSP, format, lint)' })
 end
