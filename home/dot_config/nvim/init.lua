@@ -1564,6 +1564,25 @@ do
   end
   vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
 
+  -- Copy the buffer's path to the clipboard. bp = repo-relative (what
+  -- pre-commit / lefthook --files expect); bP = absolute.
+  local function copy_path(relative)
+    local abs = vim.fn.expand '%:p'
+    if abs == '' then
+      vim.notify('No file for this buffer', vim.log.levels.WARN)
+      return
+    end
+    local path = abs
+    if relative then
+      local root = vim.fs.root(0, '.git')
+      path = root and abs:sub(#root + 2) or vim.fn.fnamemodify(abs, ':.')
+    end
+    vim.fn.setreg('+', path)
+    vim.notify('Copied: ' .. path, vim.log.levels.INFO)
+  end
+  vim.keymap.set('n', '<leader>bp', function() copy_path(true) end, { desc = 'Copy [p]ath (repo-relative)' })
+  vim.keymap.set('n', '<leader>bP', function() copy_path(false) end, { desc = 'Copy [P]ath (absolute)' })
+
   -- File metadata dropped from the statusline (full path, type, encoding, size,
   -- attached LSP servers), plus the buffer's resolved formatters (with binary
   -- path — shows whether the repo's pin or mason won) and configured linters.
