@@ -639,8 +639,44 @@ do
   -- also lands here when the last buffer closes. Type to filter items,
   -- <Up>/<Down> (or <C-n>/<C-p>) to move, <CR> to activate.
   local starter = require 'mini.starter'
+  -- Footer: git status for the launch dir's repo — branch, ahead/behind vs
+  -- upstream, dirty-file count. Empty (hidden) outside a repo. Runs on each
+  -- dashboard open, so it reflects the current state.
+  local function git_status()
+    local cwd = vim.fn.getcwd()
+    local function git(...)
+      local res = vim.fn.systemlist { 'git', '-C', cwd, ... }
+      return vim.v.shell_error == 0 and res or nil
+    end
+    local branch = git('branch', '--show-current')
+    if not branch or not branch[1] or branch[1] == '' then
+      return ''
+    end
+    local parts = { '  ' .. branch[1] }
+    local ab = git('rev-list', '--left-right', '--count', 'HEAD...@{upstream}')
+    if ab and ab[1] then
+      local ahead, behind = ab[1]:match '(%d+)%s+(%d+)'
+      if ahead and not (ahead == '0' and behind == '0') then
+        parts[#parts + 1] = '↑' .. ahead .. ' ↓' .. behind
+      end
+    end
+    local dirty = git('status', '--porcelain')
+    if dirty and #dirty > 0 then
+      parts[#parts + 1] = '● ' .. #dirty
+    end
+    return table.concat(parts, '   ')
+  end
+
   starter.setup {
-    header = 'nvim',
+    header = table.concat({
+      '███╗   ██╗██╗   ██╗██╗███╗   ███╗',
+      '████╗  ██║██║   ██║██║████╗ ████║',
+      '██╔██╗ ██║██║   ██║██║██╔████╔██║',
+      '██║╚██╗██║╚██╗ ██╔╝██║██║╚██╔╝██║',
+      '██║ ╚████║ ╚████╔╝ ██║██║ ╚═╝ ██║',
+      '╚═╝  ╚═══╝  ╚═══╝  ╚═╝╚═╝     ╚═╝',
+    }, '\n'),
+    footer = git_status,
     items = {
       starter.sections.recent_files(8, false),
       { name = 'Find files', action = 'Telescope find_files', section = 'Actions' },
