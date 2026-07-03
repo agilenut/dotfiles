@@ -642,9 +642,17 @@ do
   -- dashboard rather than silently restoring.
   local session_dir = vim.fn.stdpath 'data' .. '/sessions'
   vim.fn.mkdir(session_dir, 'p')
+  -- Don't persist empty windows; close neo-tree before a write since its
+  -- special buffer restores blank/broken from a saved session.
+  vim.opt.sessionoptions:remove 'blank'
   require('mini.sessions').setup {
     autowrite = true,
     directory = session_dir,
+    hooks = {
+      pre = {
+        write = function() pcall(vim.cmd, 'Neotree close') end,
+      },
+    },
   }
   local function project_session()
     return vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
@@ -1559,7 +1567,12 @@ do
       end
     end,
   })
-  vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[e]xplorer (Neo-tree)' })
+  -- Reveal the current file when there is one; from a no-file buffer (e.g. the
+  -- dashboard) `reveal` errors with no root, so fall back to a plain toggle.
+  vim.keymap.set('n', '<leader>e', function()
+    local file = vim.api.nvim_buf_get_name(0)
+    vim.cmd(file ~= '' and vim.fn.filereadable(file) == 1 and 'Neotree toggle reveal' or 'Neotree toggle')
+  end, { desc = '[e]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
   vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = 'Git changed files ([e]xplorer)' })
 
