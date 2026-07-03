@@ -1564,6 +1564,25 @@ do
   end
   vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
 
+  -- Close every other listed buffer, keeping the current one. Skips buffers
+  -- with unsaved changes (same guard as [d]elete) and reports how many.
+  vim.keymap.set('n', '<leader>bo', function()
+    local cur = vim.api.nvim_get_current_buf()
+    local skipped = 0
+    for _, b in ipairs(vim.fn.getbufinfo { buflisted = 1 }) do
+      if b.bufnr ~= cur then
+        if vim.bo[b.bufnr].modified then
+          skipped = skipped + 1
+        else
+          pcall(vim.api.nvim_buf_delete, b.bufnr, {})
+        end
+      end
+    end
+    if skipped > 0 then
+      vim.notify(skipped .. ' buffer(s) with unsaved changes kept', vim.log.levels.WARN)
+    end
+  end, { desc = 'Buffer close [o]thers' })
+
   -- Copy the buffer's path to the clipboard. bp = repo-relative (what
   -- pre-commit / lefthook --files expect); bP = absolute.
   local function copy_path(relative)
