@@ -635,6 +635,26 @@ do
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
 
+  -- Start screen (dashboard). Auto-opens on `nvim` with no file; buf_delete
+  -- also lands here when the last buffer closes. Type to filter items,
+  -- <Up>/<Down> (or <C-n>/<C-p>) to move, <CR> to activate.
+  local starter = require 'mini.starter'
+  starter.setup {
+    header = 'nvim',
+    items = {
+      starter.sections.recent_files(8, false),
+      { name = 'Find files', action = 'Telescope find_files', section = 'Actions' },
+      { name = 'Live grep', action = 'Telescope live_grep', section = 'Actions' },
+      { name = 'New file', action = 'enew', section = 'Actions' },
+      { name = 'Config', action = 'edit ' .. vim.fn.stdpath 'config' .. '/init.lua', section = 'Actions' },
+      { name = 'Quit', action = 'qa', section = 'Actions' },
+    },
+    content_hooks = {
+      starter.gen_hook.adding_bullet(),
+      starter.gen_hook.aligning('center', 'center'),
+    },
+  }
+
   -- Statusline. Mini's defaults, with a few tweaks via a custom content function:
   -- a short mode label (N/I/V) at any width; the LSP-client + fileinfo
   -- (filetype/encoding/size) sections dropped (that info is on <leader>bi); and
@@ -1552,7 +1572,14 @@ do
         end
       end
     end
-    repl = repl or vim.api.nvim_create_buf(true, false)
+    if not repl then
+      -- No other buffer left: land on the dashboard instead of a blank scratch.
+      require('mini.starter').open()
+      if vim.api.nvim_buf_is_valid(cur) then
+        pcall(vim.api.nvim_buf_delete, cur, {})
+      end
+      return
+    end
     for _, win in ipairs(vim.api.nvim_list_wins()) do
       if vim.api.nvim_win_get_buf(win) == cur then
         vim.api.nvim_win_set_buf(win, repl)
