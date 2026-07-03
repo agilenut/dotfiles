@@ -1588,7 +1588,7 @@ do
     -- Available formatters with their resolved binary (project pin or mason).
     local formatters = {}
     for _, f in ipairs(require('conform').list_formatters(buf)) do
-      formatters[#formatters + 1] = f.name .. ' → ' .. (f.command or '?')
+      formatters[#formatters + 1] = f.name .. ' → ' .. (f.command and vim.fn.fnamemodify(f.command, ':~') or '?')
     end
     -- Linters configured for the filetype, annotated with the same gates the
     -- lint autocmd reads (project.config_files / mypy_root / in_workflows_dir).
