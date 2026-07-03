@@ -1585,10 +1585,33 @@ do
     for _, c in ipairs(vim.lsp.get_clients { bufnr = buf }) do
       names[#names + 1] = c.name
     end
-    -- Available formatters with their resolved binary (project pin or mason).
+    -- Available formatters with their resolved binary, compacted to answer
+    -- "which pin won": repo-relative for project pins, 'mason:' for mason
+    -- installs, '(PATH)' for bare-name fallbacks.
+    local mason_bin = vim.fn.stdpath 'data' .. '/mason/bin/'
+    local repo_root = vim.fs.root(buf, '.git')
+    local function short_cmd(cmd)
+      if not cmd then
+        return '?'
+      end
+      if not cmd:find('/', 1, true) then
+        -- Bare name: resolve like the spawn would, to spot mason installs.
+        local resolved = vim.fn.exepath(cmd)
+        if resolved == '' then
+          return cmd .. ' (not on PATH)'
+        end
+        cmd = resolved
+      end
+      if cmd:sub(1, #mason_bin) == mason_bin then
+        return 'mason: ' .. cmd:sub(#mason_bin + 1)
+      elseif repo_root and cmd:sub(1, #repo_root + 1) == repo_root .. '/' then
+        return cmd:sub(#repo_root + 2)
+      end
+      return vim.fn.fnamemodify(cmd, ':~')
+    end
     local formatters = {}
     for _, f in ipairs(require('conform').list_formatters(buf)) do
-      formatters[#formatters + 1] = f.name .. ' → ' .. (f.command and vim.fn.fnamemodify(f.command, ':~') or '?')
+      formatters[#formatters + 1] = f.name .. ' → ' .. short_cmd(f.command)
     end
     -- Linters configured for the filetype, annotated with the same gates the
     -- lint autocmd reads (project.config_files / mypy_root / in_workflows_dir).
