@@ -50,6 +50,15 @@ local function main()
   vim.cmd.edit(fixtures .. '/wf-repo/.github/workflows/templates/x.yml')
   emit('workflows_dir_off', project.in_workflows_dir(0))
 
+  -- tailwind_root: attaches only where a real Tailwind signal exists
+  -- (package.json dep or a tailwind config), not in every git repo
+  vim.cmd.edit(fixtures .. '/tw-dep/src/x.tsx')
+  emit('tailwind_dep', project.tailwind_root(0))
+  vim.cmd.edit(fixtures .. '/tw-config/x.tsx')
+  emit('tailwind_config', project.tailwind_root(0))
+  vim.cmd.edit(fixtures .. '/plain/x.py')
+  emit('tailwind_none', project.tailwind_root(0))
+
   -- local_bin: all three pin dirs, plus the PATH-name fallback
   vim.cmd.edit(fixtures .. '/bin-repo/sub/x.md')
   emit('local_bin', project.local_bin(0, 'zzz-tool'))

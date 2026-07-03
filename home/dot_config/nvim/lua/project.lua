@@ -85,6 +85,38 @@ function M.in_workflows_dir(bufnr)
   return vim.fs.dirname(vim.api.nvim_buf_get_name(bufnr)):find('/%.github/workflows$') ~= nil
 end
 
+---Root dir of the buffer's Tailwind project — a tailwind config file, or a
+---package.json with a `tailwindcss` dependency; nil when neither is found.
+---Scopes the tailwindcss LSP, whose lspconfig default otherwise attaches in
+---any git repo (its root_dir falls back to `.git`).
+---@param bufnr integer
+---@return string|nil
+function M.tailwind_root(bufnr)
+  local fname = vim.api.nvim_buf_get_name(bufnr)
+  local cfg = vim.fs.find({
+    'tailwind.config.js',
+    'tailwind.config.cjs',
+    'tailwind.config.mjs',
+    'tailwind.config.ts',
+  }, { upward = true, path = fname })[1]
+  if cfg then
+    return vim.fs.dirname(cfg)
+  end
+  for _, pkg in ipairs(vim.fs.find('package.json', { upward = true, path = fname, limit = math.huge })) do
+    local ok, lines = pcall(vim.fn.readfile, pkg)
+    if ok then
+      local decoded, data = pcall(vim.json.decode, table.concat(lines, '\n'))
+      if decoded and type(data) == 'table' then
+        local deps = vim.tbl_extend('force', data.dependencies or {}, data.devDependencies or {})
+        if deps.tailwindcss then
+          return vim.fs.dirname(pkg)
+        end
+      end
+    end
+  end
+  return nil
+end
+
 ---Resolve `name` to the buffer's project-local executable (searching upward
 ---from the file), falling back to plain `name` on PATH (mason).
 ---@param bufnr integer

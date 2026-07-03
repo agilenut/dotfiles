@@ -50,7 +50,8 @@ test_nvim_tooling() {
     "$fixtures/isort-cfg-repo" "$fixtures/mono/blackpkg" \
     "$fixtures/mypy-mono/subpkg" "$fixtures/bin-repo/sub" \
     "$fixtures/stylelint-repo" "$fixtures/plain" \
-    "$fixtures/wf-repo/.github/workflows/templates"
+    "$fixtures/wf-repo/.github/workflows/templates" \
+    "$fixtures/tw-dep/src" "$fixtures/tw-config"
 
   printf '[tool.ruff]\n' >"$fixtures/ruff-repo/pyproject.toml"
   # Subtable form must count as the tool being declared.
@@ -74,6 +75,9 @@ test_nvim_tooling() {
   printf '[tool.mypy]\n' >"$fixtures/mypy-mono/pyproject.toml"
   printf '[tool.pytest.ini_options]\n' >"$fixtures/mypy-mono/subpkg/pyproject.toml"
   printf '{}\n' >"$fixtures/stylelint-repo/.stylelintrc.json"
+  # Tailwind detection: package.json dep vs a config file vs neither.
+  printf '{"devDependencies":{"tailwindcss":"^4"}}\n' >"$fixtures/tw-dep/package.json"
+  printf 'export default {}\n' >"$fixtures/tw-config/tailwind.config.js"
 
   # Fake tool binaries so formatter availability is fixture-local.
   local repo
@@ -141,6 +145,9 @@ test_nvim_tooling() {
   assert_nvim_case mypy_gate_plain 'nil'
   assert_nvim_case workflows_dir_on 'true'
   assert_nvim_case workflows_dir_off 'false'
+  assert_nvim_case tailwind_dep "$fixtures/tw-dep"
+  assert_nvim_case tailwind_config "$fixtures/tw-config"
+  assert_nvim_case tailwind_none 'nil'
   assert_nvim_case local_bin "$fixtures/bin-repo/node_modules/.bin/zzz-tool"
   assert_nvim_case local_bin_vendor "$fixtures/bin-repo/vendor/bin/zzz-pint"
   assert_nvim_case local_bin_venv "$fixtures/bin-repo/.venv/bin/zzz-venv"

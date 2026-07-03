@@ -1049,9 +1049,18 @@ do
     yamlls = {},
     jsonls = {},
     taplo = {},
-    -- Tailwind class completion (invoicing, v4 CSS-first). classFunctions
+    -- Tailwind class completion (invoicing, elenkis app). classFunctions
     -- extends completion/hover/linting into the class-builder helpers.
+    -- Scoped root_dir: lspconfig falls back to .git, which attaches the
+    -- server in every repo (e.g. tack, a Laravel/SCSS repo with no Tailwind);
+    -- require a real Tailwind signal instead.
     tailwindcss = {
+      root_dir = function(bufnr, on_dir)
+        local root = require('project').tailwind_root(bufnr)
+        if root then
+          on_dir(root)
+        end
+      end,
       settings = {
         tailwindCSS = {
           classFunctions = { 'cva', 'cx', 'clsx', 'cn' },
