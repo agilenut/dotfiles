@@ -1629,7 +1629,18 @@ do
       elseif lint_off[name] then
         note = lint_off[name]()
       end
-      linters[#linters + 1] = note and (name .. ' (' .. note .. ')') or name
+      -- Active linters resolve a binary the same way formatters do — show it.
+      local entry = name
+      if not (note and note:find('^off')) then
+        local cmd = require('lint').linters[name].cmd
+        if type(cmd) == 'function' then
+          cmd = cmd() -- evaluated with the info'd buffer current, like the autocmd
+        end
+        if type(cmd) == 'string' then
+          entry = name .. ' → ' .. short_cmd(cmd)
+        end
+      end
+      linters[#linters + 1] = note and (entry .. ' (' .. note .. ')') or entry
     end
     buffer_info_open = true
     vim.notify(table.concat({
@@ -1640,7 +1651,7 @@ do
       -- the no-server tools nvim-lint spawns.
       'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
       'Format: ' .. (#formatters > 0 and table.concat(formatters, '\n        ') or '(lsp or none)'),
-      'CLI lint: ' .. (#linters > 0 and table.concat(linters, ', ') or '(none)'),
+      'CLI lint: ' .. (#linters > 0 and table.concat(linters, '\n          ') or '(none)'),
     }, '\n'), vim.log.levels.INFO, { title = 'Buffer info', timeout = false })
   end, { desc = 'Buffer [i]nfo (path, type, LSP, format, lint)' })
 end
