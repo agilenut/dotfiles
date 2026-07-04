@@ -1601,10 +1601,12 @@ do
     end,
   })
   -- Reveal the current file when there is one; from a no-file buffer (e.g. the
-  -- dashboard) `reveal` errors with no root, so fall back to a plain toggle.
+  -- dashboard) reveal must be off, else follow_current_file tries to reveal the
+  -- scratch buffer and prompts "change cwd to ministarter://…?".
   vim.keymap.set('n', '<leader>e', function()
     local file = vim.api.nvim_buf_get_name(0)
-    vim.cmd(file ~= '' and vim.fn.filereadable(file) == 1 and 'Neotree toggle reveal' or 'Neotree toggle')
+    local real = file ~= '' and vim.fn.filereadable(file) == 1
+    vim.cmd(real and 'Neotree toggle reveal' or 'Neotree toggle reveal=false')
   end, { desc = '[e]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
   vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = 'Git changed files ([e]xplorer)' })
