@@ -713,31 +713,37 @@ do
         parts[#parts + 1] = '↑' .. ahead .. ' ↓' .. behind
       end
     end
-    -- File change counts in the +/~/- convention (matches gitsigns/neo-tree):
-    -- added (new/untracked), modified, deleted. Only non-zero shown.
-    local added, modified, deleted = 0, 0, 0
-    for _, line in ipairs(git('status', '--porcelain') or {}) do
-      local xy = line:sub(1, 2)
-      if xy == '??' or xy:find 'A' then
-        added = added + 1
-      elseif xy:find 'D' then
-        deleted = deleted + 1
-      else
-        modified = modified + 1
+    -- posh-git style: staged (index) | unstaged (worktree), each as
+    -- +added ~modified -deleted, then !untracked. Porcelain XY = X:index,
+    -- Y:worktree. Shown only when the tree is dirty.
+    local staged, unstaged, untracked = { a = 0, m = 0, d = 0 }, { a = 0, m = 0, d = 0 }, 0
+    local function bump(t, code)
+      if code == 'A' then
+        t.a = t.a + 1
+      elseif code == 'D' then
+        t.d = t.d + 1
+      elseif code ~= ' ' then
+        t.m = t.m + 1 -- M, R, C, U, T
       end
     end
-    local changes = {}
-    if added > 0 then
-      changes[#changes + 1] = '+' .. added
+    for _, line in ipairs(git('status', '--porcelain') or {}) do
+      if line:sub(1, 2) == '??' then
+        untracked = untracked + 1
+      else
+        bump(staged, line:sub(1, 1))
+        bump(unstaged, line:sub(2, 2))
+      end
     end
-    if modified > 0 then
-      changes[#changes + 1] = '~' .. modified
-    end
-    if deleted > 0 then
-      changes[#changes + 1] = '-' .. deleted
-    end
-    if #changes > 0 then
-      parts[#parts + 1] = table.concat(changes, ' ')
+    if staged.a + staged.m + staged.d + unstaged.a + unstaged.m + unstaged.d + untracked > 0 then
+      local seg = string.format(
+        '+%d ~%d -%d | +%d ~%d -%d',
+        staged.a, staged.m, staged.d,
+        unstaged.a, unstaged.m, unstaged.d
+      )
+      if untracked > 0 then
+        seg = seg .. ' !' .. untracked
+      end
+      parts[#parts + 1] = seg
     end
     return table.concat(parts, '   ')
   end
