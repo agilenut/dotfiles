@@ -665,6 +665,12 @@ do
           neotree_reopen = neotree_is_open()
           pcall(vim.cmd, 'Neotree close')
         end,
+        -- Close neo-tree before a restore too: it holds nui.input window
+        -- handles the restore invalidates, which crash a scheduled
+        -- nvim_set_current_win. Unmounting neo-tree first clears them.
+        read = function()
+          pcall(vim.cmd, 'Neotree close')
+        end,
       },
       post = {
         write = function()
