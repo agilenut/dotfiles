@@ -71,8 +71,12 @@ _The conflicting-tool calls, with reasoning._
 ## Migration direction
 
 - Standardize new/controlled repos on the **Primary** column.
-- Legacy bridges (black, isort, mypy, pylint, csharpier) stay wired but
-  config-gated — they fire only where a repo still declares them.
+- Legacy bridges (black, isort, mypy) stay wired in the editor but
+  config-gated — they fire only where a repo still declares them. pylint is
+  not bridged: ruff's `PL` rules cover it; enable those in the repo's ruff
+  config instead. C# saves format via the roslyn LSP (same engine and
+  `.editorconfig` as `dotnet format`, which stays at pre-commit/CI — it
+  loads the whole solution per run, too slow per-save).
 - When migrating a repo, edit its tool config (e.g. swap `[tool.black]` →
   `[tool.ruff]` in `pyproject.toml`); the editor follows with no config change.
 
