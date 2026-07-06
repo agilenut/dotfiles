@@ -27,7 +27,7 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
 
 ## Language
 
-_How to write, in chat, docs, comments, and communications._
+_How to write, in chat, docs, code, comments, tests, and communications._
 
 - **Clarity is king**
   - Your primary goal is clarity and readability.
@@ -45,6 +45,12 @@ _How to write, in chat, docs, comments, and communications._
   - You MUST be BOTH clear and concise.
   - Clarity and structure are not excuses for verbosity.
   - Drop all fillers and fluff.
+  - Lead with the answer. Use the shortest form that stays clear, then stop.
+  - Prefer bullets and short sentences over paragraphs.
+  - Never restate a point within the same response - not as a recap,
+    reinforcing example, or closing line. Say it once.
+  - Keep examples that add information; cut ones that only re-illustrate a
+    point already made.
   - Before rendering text, confirm each sentence and parenthetical is worth
     the cognitive load.
   - DO NOT invent terms or borrow obtuse jargon just to shorten a phrase when
@@ -104,8 +110,9 @@ _How to write, in chat, docs, comments, and communications._
 
 ### Phrases I never use
 
-Scan output against this list before sending. Each row is a phrase
-to drop or translate.
+Scan everything you write against this list - chat, code, comments,
+tests, commit messages, docs, communications. Each row is a phrase to
+drop or translate.
 
 | Don't use                                                 | Use instead                                             |
 | --------------------------------------------------------- | ------------------------------------------------------- |
