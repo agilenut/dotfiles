@@ -50,7 +50,8 @@ alias rmrf='rm -rf'
 
 # Editing
 # -----------------------------------------------------------------------------
-alias e=$EDITOR
+# `e` opens the editor; with no args it opens the current directory.
+e() { ${EDITOR:-nvim} "${@:-.}"; }
 alias vi='nvim'
 alias vim='nvim'
 

@@ -452,6 +452,8 @@ do
     -- Document existing key chains
     spec = {
       { '<leader>b', group = '[b]uffer' },
+      { '<leader><Tab>', group = 'tabs', icon = { icon = '\u{f0db}', color = 'cyan' } },
+      { '<leader>S', group = '[S]ession', icon = { icon = '\u{f0c7}', color = 'green' } },
       { '<leader>s', group = '[s]earch', icon = { icon = '', color = 'cyan' }, mode = { 'n', 'v' } },
       { '<leader>t', group = '[t]oggle', icon = { icon = '', color = 'yellow' } },
       { '<leader>g', group = '[g]it', icon = { cat = 'filetype', name = 'git' } },
@@ -634,6 +636,178 @@ do
   -- - sd'   - [S]urround [D]elete [']quotes
   -- - sr)'  - [S]urround [R]eplace [)] [']
   require('mini.surround').setup()
+
+  -- Sessions: save/restore a project's open buffers + layout. Saved sessions
+  -- surface on the dashboard (see items below); autowrite keeps the active
+  -- one current on exit. autoread stays off so a fresh nvim lands on the
+  -- dashboard rather than silently restoring.
+  local session_dir = vim.fn.stdpath 'data' .. '/sessions'
+  vim.fn.mkdir(session_dir, 'p')
+  -- Don't persist empty windows; close neo-tree before a write since its
+  -- special buffer restores blank/broken from a saved session.
+  vim.opt.sessionoptions:remove 'blank'
+  -- Close neo-tree for the write (its special buffer restores blank), then
+  -- reopen it after so a manual save doesn't disturb the current view.
+  local neotree_reopen = false
+  local function neotree_is_open()
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if vim.bo[vim.api.nvim_win_get_buf(w)].filetype == 'neo-tree' then
+        return true
+      end
+    end
+    return false
+  end
+  require('mini.sessions').setup {
+    autowrite = true,
+    directory = session_dir,
+    hooks = {
+      pre = {
+        write = function()
+          neotree_reopen = neotree_is_open()
+          pcall(vim.cmd, 'Neotree close')
+        end,
+        -- Close neo-tree before a restore too: it holds nui.input window
+        -- handles the restore invalidates, which crash a scheduled
+        -- nvim_set_current_win. Unmounting neo-tree first clears them.
+        read = function()
+          pcall(vim.cmd, 'Neotree close')
+        end,
+      },
+      post = {
+        write = function()
+          if neotree_reopen then
+            pcall(vim.cmd, 'Neotree show')
+          end
+        end,
+      },
+    },
+  }
+  local function project_session()
+    return vim.fn.fnamemodify(vim.fn.getcwd(), ':t')
+  end
+  vim.keymap.set('n', '<leader>Ss', function()
+    require('mini.sessions').write(project_session())
+    vim.notify('Session saved: ' .. project_session())
+  end, { desc = 'Session [s]ave (project)' })
+  vim.keymap.set('n', '<leader>Sl', function() require('mini.sessions').select 'read' end, { desc = 'Session [l]oad' })
+  vim.keymap.set('n', '<leader>Sd', function() require('mini.sessions').select 'delete' end, { desc = 'Session [d]elete' })
+
+  -- Start screen (dashboard). Auto-opens on `nvim` with no file; buf_delete
+  -- also lands here when the last buffer closes. Type to filter items,
+  -- <Up>/<Down> (or <C-n>/<C-p>) to move, <CR> to activate.
+  local starter = require 'mini.starter'
+  -- Footer: git status for the launch dir's repo — branch, ahead/behind vs
+  -- upstream, dirty-file count. Empty (hidden) outside a repo. Runs on each
+  -- dashboard open, so it reflects the current state.
+  local function git_status()
+    local cwd = vim.fn.getcwd()
+    -- --no-optional-locks: never take .git/index.lock for the status refresh
+    -- (would collide with a concurrent commit). Belt-and-suspenders with the
+    -- global GIT_OPTIONAL_LOCKS=0 this config already sets.
+    local function git(...)
+      local res = vim.fn.systemlist { 'git', '--no-optional-locks', '-C', cwd, ... }
+      return vim.v.shell_error == 0 and res or nil
+    end
+    local branch = git('branch', '--show-current')
+    if not branch or not branch[1] or branch[1] == '' then
+      return ''
+    end
+    local parts = { '  ' .. branch[1] }
+    local ab = git('rev-list', '--left-right', '--count', 'HEAD...@{upstream}')
+    if ab and ab[1] then
+      local ahead, behind = ab[1]:match '(%d+)%s+(%d+)'
+      if ahead and not (ahead == '0' and behind == '0') then
+        parts[#parts + 1] = '↑' .. ahead .. ' ↓' .. behind
+      end
+    end
+    -- posh-git style: staged (index) | unstaged (worktree), each as
+    -- +added ~modified -deleted, then !untracked. Porcelain XY = X:index,
+    -- Y:worktree. Shown only when the tree is dirty.
+    local staged, unstaged, untracked = { a = 0, m = 0, d = 0 }, { a = 0, m = 0, d = 0 }, 0
+    local function bump(t, code)
+      if code == 'A' then
+        t.a = t.a + 1
+      elseif code == 'D' then
+        t.d = t.d + 1
+      elseif code ~= ' ' then
+        t.m = t.m + 1 -- M, R, C, U, T
+      end
+    end
+    for _, line in ipairs(git('status', '--porcelain') or {}) do
+      if line:sub(1, 2) == '??' then
+        untracked = untracked + 1
+      else
+        bump(staged, line:sub(1, 1))
+        bump(unstaged, line:sub(2, 2))
+      end
+    end
+    if staged.a + staged.m + staged.d + unstaged.a + unstaged.m + unstaged.d + untracked > 0 then
+      local seg = string.format(
+        '+%d ~%d -%d | +%d ~%d -%d',
+        staged.a, staged.m, staged.d,
+        unstaged.a, unstaged.m, unstaged.d
+      )
+      if untracked > 0 then
+        seg = seg .. ' !' .. untracked
+      end
+      parts[#parts + 1] = seg
+    end
+    return table.concat(parts, '   ')
+  end
+
+  -- Per-item icons: colored file-type icons (nvim-web-devicons) for recent
+  -- files, glyphs for actions. Inserted as separate units (like the bullet
+  -- hook), so type-to-filter — which matches item names — is unaffected.
+  local devicons = require 'nvim-web-devicons'
+  -- Nerd-font glyphs by codepoint (raw glyphs don't survive some edits).
+  local action_icons = {
+    ['Find files'] = '\u{f002}', -- search
+    ['Live grep'] = '\u{f0b0}', -- filter
+    ['New file'] = '\u{f15b}', -- file
+    ['Config'] = '\u{f013}', -- gear
+    ['Quit'] = '\u{f011}', -- power
+  }
+  local function adding_icons(content)
+    local coords = starter.content_coords(content, 'item')
+    for i = #coords, 1, -1 do
+      local l, u = coords[i].line, coords[i].unit
+      local item = content[l][u].item
+      local icon, hl
+      if item.section == 'Actions' then
+        icon, hl = action_icons[item.name] or '', 'MiniStarterItemPrefix'
+      else
+        local fname = item.name:match '^(.-) %(' or item.name
+        icon, hl = devicons.get_icon(fname, fname:match '%.([^.]+)$', { default = true })
+      end
+      table.insert(content[l], u, { string = icon .. '  ', type = 'item_icon', hl = hl })
+    end
+    return content
+  end
+
+  starter.setup {
+    header = table.concat({
+      '███╗   ██╗██╗   ██╗██╗███╗   ███╗',
+      '████╗  ██║██║   ██║██║████╗ ████║',
+      '██╔██╗ ██║██║   ██║██║██╔████╔██║',
+      '██║╚██╗██║╚██╗ ██╔╝██║██║╚██╔╝██║',
+      '██║ ╚████║ ╚████╔╝ ██║██║ ╚═╝ ██║',
+      '╚═╝  ╚═══╝  ╚═══╝  ╚═╝╚═╝     ╚═╝',
+    }, '\n'),
+    footer = git_status,
+    items = {
+      starter.sections.sessions(5, true),
+      starter.sections.recent_files(8, false),
+      { name = 'Find files', action = 'Telescope find_files', section = 'Actions' },
+      { name = 'Live grep', action = 'Telescope live_grep', section = 'Actions' },
+      { name = 'New file', action = 'enew', section = 'Actions' },
+      { name = 'Config', action = 'edit ' .. vim.fn.stdpath 'config' .. '/init.lua', section = 'Actions' },
+      { name = 'Quit', action = 'qa', section = 'Actions' },
+    },
+    content_hooks = {
+      adding_icons,
+      starter.gen_hook.aligning('center', 'center'),
+    },
+  }
 
   -- Statusline. Mini's defaults, with a few tweaks via a custom content function:
   -- a short mode label (N/I/V) at any width; the LSP-client + fileinfo
@@ -1034,9 +1208,10 @@ do
     -- Python: basedpyright for types, ruff for lint (+ format via conform)
     basedpyright = {
       settings = {
-        -- Analyze the whole project (not just open files) so Trouble shows
-        -- problems across the project. Heavier on large repos.
-        basedpyright = { analysis = { diagnosticMode = 'workspace' } },
+        -- Open files only, matching VS Code (Pylance defaults the same and
+        -- none of the repos override it). Whole-repo checking is CI's job.
+        -- Also sidesteps basedpyright 1.39's empty workspace/diagnostic pulls.
+        basedpyright = { analysis = { diagnosticMode = 'openFilesOnly' } },
       },
     },
     ruff = {},
@@ -1048,6 +1223,37 @@ do
     yamlls = {},
     jsonls = {},
     taplo = {},
+    -- Tailwind class completion (invoicing, elenkis app). classFunctions
+    -- extends completion/hover/linting into the class-builder helpers.
+    -- Scoped root_dir: lspconfig falls back to .git, which attaches the
+    -- server in every repo (e.g. tack, a Laravel/SCSS repo with no Tailwind);
+    -- require a real Tailwind signal instead.
+    tailwindcss = {
+      root_dir = function(bufnr, on_dir)
+        local root = require('project').tailwind_root(bufnr)
+        if root then
+          on_dir(root)
+        end
+      end,
+      settings = {
+        tailwindCSS = {
+          classFunctions = { 'cva', 'cx', 'clsx', 'cn' },
+        },
+      },
+    },
+    -- Azure infra-as-code (elenkis infra/). cmd set explicitly: the
+    -- lspconfig default ships none, and mason-lspconfig's shim only applies
+    -- via its setup(), which this config doesn't use.
+    bicep = { cmd = { 'bicep-lsp' } },
+    -- CSS/SCSS: completion/hover only — validation off (stylelint via
+    -- nvim-lint is the linter, matching the repos' .vscode settings).
+    cssls = {
+      settings = {
+        css = { validate = false },
+        scss = { validate = false },
+        less = { validate = false },
+      },
+    },
     -- Markdown navigation (markdownlint comes later via nvim-lint)
     marksman = {},
 
@@ -1108,6 +1314,12 @@ do
     'pint',
     -- Linters with no LSP (run via nvim-lint, reading the repo's config)
     'markdownlint-cli2',
+    'stylelint',
+    'actionlint',
+    -- Python bridge tools for repos not yet migrated to ruff/basedpyright
+    'black',
+    'isort',
+    'mypy',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -1139,6 +1351,15 @@ end
 do
   -- [[ Formatting ]]
   vim.pack.add { gh 'stevearc/conform.nvim' }
+  -- conform's builtin prettier/pint/stylelint definitions already prefer the
+  -- repo's node_modules/.bin or vendor/bin binary. The python builtins run
+  -- bare commands, so route them through the repo's .venv pin (mason as
+  -- fallback).
+  local local_tool = function(name)
+    return function(_, ctx)
+      return require('project').local_bin(ctx.buf, name)
+    end
+  end
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function()
@@ -1157,14 +1378,37 @@ do
     -- .editorconfig / .prettierrc / etc. Project-local installs are preferred.
     formatters_by_ft = {
       lua = { 'stylua' },
-      python = { 'ruff_organize_imports', 'ruff_format' },
+      -- Python: ruff is the formatter (tool verdicts); repos pinned to black
+      -- with no ruff config (uperix) bridge to black until migrated. Between
+      -- black and ruff the NEARER declaration wins (monorepo subpackages own
+      -- their tooling); same depth keeps ruff. isort needs its own config —
+      -- its defaults aren't black-compatible, and a repo that never
+      -- configured it shouldn't get imports reordered.
+      python = function(bufnr)
+        local project = require 'project'
+        local black_root = project.pyproject_tool_root(bufnr, 'black')
+        local ruff_root = project.pyproject_tool_root(bufnr, 'ruff')
+        local ruff_toml = vim.fs.root(bufnr, { 'ruff.toml', '.ruff.toml' })
+        if ruff_toml and (not ruff_root or #ruff_toml > #ruff_root) then
+          ruff_root = ruff_toml
+        end
+        if black_root and (not ruff_root or #black_root > #ruff_root) then
+          if project.has_pyproject_tool(bufnr, 'isort') or project.has_config(bufnr, { '.isort.cfg' }) then
+            return { 'isort', 'black' }
+          end
+          return { 'black' }
+        end
+        return { 'ruff_organize_imports', 'ruff_format' }
+      end,
       javascript = { 'prettier' },
       javascriptreact = { 'prettier' },
       typescript = { 'prettier' },
       typescriptreact = { 'prettier' },
       vue = { 'prettier' },
-      css = { 'prettier' },
-      scss = { 'prettier' },
+      -- stylelint --fix first (skipped without a config), then prettier —
+      -- mirrors the lint side so save-fixes match what pre-commit would do.
+      css = { 'stylelint', 'prettier' },
+      scss = { 'stylelint', 'prettier' },
       html = { 'prettier' },
       json = { 'prettier' },
       jsonc = { 'prettier' },
@@ -1175,6 +1419,19 @@ do
       toml = { 'taplo' },
       php = { 'pint' },
       -- C#: no entry — roslyn's editorconfig-based LSP formatting (lsp_format fallback).
+    },
+    formatters = {
+      ruff_format = { command = local_tool 'ruff' },
+      ruff_organize_imports = { command = local_tool 'ruff' },
+      black = { command = local_tool 'black' },
+      isort = { command = local_tool 'isort' },
+      -- stylelint errors without a config; run it only where one exists.
+      stylelint = {
+        condition = function(_, ctx)
+          local project = require 'project'
+          return project.has_config(ctx.buf, project.config_files.stylelint)
+        end,
+      },
     },
   }
 
@@ -1193,13 +1450,91 @@ do
   -- (eslint, ruff, etc.) don't need nvim-lint — their server reports diagnostics.
   lint.linters_by_ft = {
     markdown = { 'markdownlint-cli2' },
+    css = { 'stylelint' },
+    scss = { 'stylelint' },
+    yaml = { 'actionlint' },
+    -- No pylint: ruff (LSP, always on) covers its PL rule family; enable
+    -- more PL rules in a repo's ruff config rather than bridging pylint.
+    python = { 'mypy' },
   }
+
+  -- mypy resolves its config from cwd only (no upward walk). Run it from
+  -- the root of the config that satisfied the gate — a nearer unrelated
+  -- pyproject.toml must not steal the cwd from the declaring config.
+  local lint_cwd = {
+    mypy = function()
+      return require('project').mypy_root(0)
+    end,
+  }
+
+  -- Per-linter run conditions beyond filetype and config gating: path
+  -- scoping, event scoping for slow linters, pyproject content gates.
+  -- Predicates live in project.lua so the <leader>bi buffer info reads the
+  -- same gates. basedpyright is the primary Python type checker; mypy is a
+  -- config-gated bridge for un-migrated repos (tool verdicts).
+  local lint_when = {
+    actionlint = function()
+      return require('project').in_workflows_dir(0)
+    end,
+    mypy = function(ev)
+      -- Gate = "a mypy config resolves": same source as lint_cwd.mypy, so
+      -- gate and spawn cwd can never disagree on markers.
+      return ev.event == 'BufWritePost' -- slow, and lints the file on disk
+        and lint_cwd.mypy() ~= nil
+    end,
+  }
+
+  -- Mirror nvim-lint's ft resolution (exact match, else dotted-ft union) so
+  -- linters keep running if a runtime update makes workflows 'yaml.ghaction'.
+  local linters_for_ft = function(ft)
+    local names = lint.linters_by_ft[ft]
+    if names then
+      return names
+    end
+    local seen = {}
+    for _, part in ipairs(vim.split(ft, '.', { plain = true })) do
+      for _, name in ipairs(lint.linters_by_ft[part] or {}) do
+        seen[name] = true
+      end
+    end
+    return vim.tbl_keys(seen)
+  end
+
+  -- Run the repo's pinned binary when one exists (mason fallback).
+  -- nvim-lint evaluates cmd with the linted buffer current, so bufnr 0 works.
+  for _, name in ipairs { 'markdownlint-cli2', 'stylelint', 'mypy' } do
+    lint.linters[name].cmd = function()
+      return require('project').local_bin(0, name)
+    end
+  end
 
   vim.api.nvim_create_autocmd({ 'BufWritePost', 'BufReadPost', 'InsertLeave' }, {
     group = vim.api.nvim_create_augroup('nvim-lint', { clear = true }),
-    callback = function()
-      if vim.bo.modifiable then
-        lint.try_lint()
+    callback = function(ev)
+      if not vim.bo.modifiable then
+        return
+      end
+      -- Linters with an entry in project.config_files are opt-in by config:
+      -- they run only where that config exists (stylelint errors without one).
+      -- lint_when adds non-config conditions (path/event scoping).
+      local names = vim.tbl_filter(function(name)
+        local project = require 'project'
+        local configs = project.config_files[name]
+        if configs and not project.has_config(0, configs) then
+          return false
+        end
+        local when = lint_when[name]
+        return not when or when(ev)
+      end, linters_for_ft(vim.bo.filetype))
+      -- Lint from the buffer's dir so stdin linters (markdownlint-cli2,
+      -- stylelint) resolve their config from the file's location — matching
+      -- pre-commit's per-file resolution — rather than nvim's cwd. Linters
+      -- in lint_cwd override this with their own root.
+      local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
+      local default_cwd = vim.uv.fs_stat(dir) and dir or nil
+      for _, name in ipairs(names) do
+        local cwd = lint_cwd[name] and lint_cwd[name]() or default_cwd
+        lint.try_lint(name, { cwd = cwd })
       end
     end,
   })
@@ -1266,7 +1601,14 @@ do
       end
     end,
   })
-  vim.keymap.set('n', '<leader>e', '<cmd>Neotree toggle reveal<cr>', { desc = '[e]xplorer (Neo-tree)' })
+  -- Reveal the current file when there is one; from a no-file buffer (e.g. the
+  -- dashboard) reveal must be off, else follow_current_file tries to reveal the
+  -- scratch buffer and prompts "change cwd to ministarter://…?".
+  vim.keymap.set('n', '<leader>e', function()
+    local file = vim.api.nvim_buf_get_name(0)
+    local real = file ~= '' and vim.fn.filereadable(file) == 1
+    vim.cmd(real and 'Neotree toggle reveal' or 'Neotree toggle reveal=false')
+  end, { desc = '[e]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
   vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = 'Git changed files ([e]xplorer)' })
 
@@ -1391,7 +1733,14 @@ do
         end
       end
     end
-    repl = repl or vim.api.nvim_create_buf(true, false)
+    if not repl then
+      -- No other buffer left: land on the dashboard instead of a blank scratch.
+      require('mini.starter').open()
+      if vim.api.nvim_buf_is_valid(cur) then
+        pcall(vim.api.nvim_buf_delete, cur, {})
+      end
+      return
+    end
     for _, win in ipairs(vim.api.nvim_list_wins()) do
       if vim.api.nvim_win_get_buf(win) == cur then
         vim.api.nvim_win_set_buf(win, repl)
@@ -1403,9 +1752,84 @@ do
   end
   vim.keymap.set('n', '<leader>bd', buf_delete, { desc = 'Buffer [d]elete' })
 
+  -- Close every other listed buffer, keeping the current one. Skips buffers
+  -- with unsaved changes (same guard as [d]elete) and reports how many.
+  vim.keymap.set('n', '<leader>bo', function()
+    local cur = vim.api.nvim_get_current_buf()
+    local skipped = 0
+    for _, b in ipairs(vim.fn.getbufinfo { buflisted = 1 }) do
+      if b.bufnr ~= cur then
+        if vim.bo[b.bufnr].modified then
+          skipped = skipped + 1
+        else
+          pcall(vim.api.nvim_buf_delete, b.bufnr, {})
+        end
+      end
+    end
+    if skipped > 0 then
+      vim.notify(skipped .. ' buffer(s) with unsaved changes kept', vim.log.levels.WARN)
+    end
+  end, { desc = 'Buffer close [o]thers' })
+
+  -- Copy the buffer's path to the clipboard. bp = repo-relative (what
+  -- pre-commit / lefthook --files expect); bP = absolute.
+  local function copy_path(relative)
+    local abs = vim.fn.expand '%:p'
+    if abs == '' then
+      vim.notify('No file for this buffer', vim.log.levels.WARN)
+      return
+    end
+    local path = abs
+    if relative then
+      local root = vim.fs.root(0, '.git')
+      path = root and abs:sub(#root + 2) or vim.fn.fnamemodify(abs, ':.')
+    end
+    vim.fn.setreg('+', path)
+    vim.notify('Copied: ' .. path, vim.log.levels.INFO)
+  end
+  vim.keymap.set('n', '<leader>bp', function() copy_path(true) end, { desc = 'Copy [p]ath (repo-relative)' })
+  vim.keymap.set('n', '<leader>bP', function() copy_path(false) end, { desc = 'Copy [P]ath (absolute)' })
+
+  -- Tabs + per-tab cwd. Aimed at multi-repo folders (uperix's bare worktrees):
+  -- give each tab its own repo via a tab-local cwd (:tcd), so git tools scope
+  -- cleanly per tab. Nav with ]t / [t (gt / gT also work).
+  vim.keymap.set('n', ']t', '<cmd>tabnext<cr>', { desc = 'Next tab' })
+  vim.keymap.set('n', '[t', '<cmd>tabprevious<cr>', { desc = 'Prev tab' })
+  vim.keymap.set('n', '<leader><Tab>n', '<cmd>tabnew<cr>', { desc = 'Tab [n]ew' })
+  vim.keymap.set('n', '<leader><Tab>x', '<cmd>tabclose<cr>', { desc = 'Tab close ([x])' })
+  vim.keymap.set('n', '<leader><Tab>o', '<cmd>tabonly<cr>', { desc = 'Tab close [o]thers' })
+  vim.keymap.set('n', '<leader><Tab>d', function()
+    local root = vim.fs.root(0, '.git')
+    if not root then
+      vim.notify('No git repo for this buffer', vim.log.levels.WARN)
+      return
+    end
+    vim.cmd('tcd ' .. vim.fn.fnameescape(root))
+    vim.notify('tab cwd → ' .. vim.fn.fnamemodify(root, ':~'))
+  end, { desc = 'Tab cwd → this file\'s repo ([d]ir)' })
+  vim.keymap.set('n', '<leader><Tab>r', function()
+    local root = vim.fs.root(0, '.git')
+    if not root then
+      vim.notify('No git repo for this buffer', vim.log.levels.WARN)
+      return
+    end
+    local file = vim.api.nvim_buf_get_name(0)
+    vim.cmd('tabnew' .. (file ~= '' and ' ' .. vim.fn.fnameescape(file) or ''))
+    vim.cmd('tcd ' .. vim.fn.fnameescape(root))
+    vim.notify('repo tab: ' .. vim.fn.fnamemodify(root, ':t'))
+  end, { desc = 'New [r]epo tab (file + tcd its root)' })
+
   -- File metadata dropped from the statusline (full path, type, encoding, size,
-  -- attached LSP servers), on demand as a notify toast.
+  -- attached LSP servers), plus the buffer's resolved formatters (with binary
+  -- path — shows whether the repo's pin or mason won) and configured linters.
+  -- Sticky toast: stays up until <leader>bi is pressed again.
+  local buffer_info_open = false
   vim.keymap.set('n', '<leader>bi', function()
+    if buffer_info_open then
+      require('notify').dismiss { silent = true, pending = false }
+      buffer_info_open = false
+      return
+    end
     local buf = 0
     local path = vim.api.nvim_buf_get_name(buf)
     local full = path ~= '' and vim.fn.fnamemodify(path, ':~') or '[No Name]'
@@ -1426,13 +1850,75 @@ do
     for _, c in ipairs(vim.lsp.get_clients { bufnr = buf }) do
       names[#names + 1] = c.name
     end
+    -- Available formatters with their resolved binary, compacted to answer
+    -- "which pin won": repo-relative for project pins, 'mason:' for mason
+    -- installs, '(PATH)' for bare-name fallbacks.
+    local mason_bin = vim.fn.stdpath 'data' .. '/mason/bin/'
+    local repo_root = vim.fs.root(buf, '.git')
+    local function short_cmd(cmd)
+      if not cmd then
+        return '?'
+      end
+      if not cmd:find('/', 1, true) then
+        -- Bare name: resolve like the spawn would, to spot mason installs.
+        local resolved = vim.fn.exepath(cmd)
+        if resolved == '' then
+          return cmd .. ' (not on PATH)'
+        end
+        cmd = resolved
+      end
+      if cmd:sub(1, #mason_bin) == mason_bin then
+        return 'mason: ' .. cmd:sub(#mason_bin + 1)
+      elseif repo_root and cmd:sub(1, #repo_root + 1) == repo_root .. '/' then
+        return cmd:sub(#repo_root + 2)
+      end
+      return vim.fn.fnamemodify(cmd, ':~')
+    end
+    local formatters = {}
+    for _, f in ipairs(require('conform').list_formatters(buf)) do
+      formatters[#formatters + 1] = f.name .. ' → ' .. short_cmd(f.command)
+    end
+    -- Linters configured for the filetype, annotated with the same gates the
+    -- lint autocmd reads (project.config_files / mypy_root / in_workflows_dir).
+    local project = require 'project'
+    local lint_off = {
+      mypy = function() return project.mypy_root(buf) == nil and 'off: no config' or 'on save' end,
+      actionlint = function() return not project.in_workflows_dir(buf) and 'off: not a workflow' or nil end,
+    }
+    local linters = {}
+    for _, name in ipairs(require('lint').linters_by_ft[ft] or {}) do
+      local note
+      local configs = project.config_files[name]
+      if configs and not project.has_config(buf, configs) then
+        note = 'off: no config'
+      elseif lint_off[name] then
+        note = lint_off[name]()
+      end
+      -- Active linters resolve a binary the same way formatters do — show it.
+      local entry = name
+      if not (note and note:find('^off')) then
+        local cmd = require('lint').linters[name].cmd
+        if type(cmd) == 'function' then
+          cmd = cmd() -- evaluated with the info'd buffer current, like the autocmd
+        end
+        if type(cmd) == 'string' then
+          entry = name .. ' → ' .. short_cmd(cmd)
+        end
+      end
+      linters[#linters + 1] = note and (entry .. ' (' .. note .. ')') or entry
+    end
+    buffer_info_open = true
     vim.notify(table.concat({
       'Path:  ' .. full,
       'Type:  ' .. (ft ~= '' and ft or '(none)') .. '   ' .. enc .. '   ' .. vim.bo[buf].fileformat,
       'Size:  ' .. size,
+      -- LSP diagnostics ARE linting (ruff, eslint, …); the CLI line is only
+      -- the no-server tools nvim-lint spawns.
       'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
-    }, '\n'), vim.log.levels.INFO, { title = 'File info' })
-  end, { desc = 'Buffer [i]nfo (path, type, size, LSP)' })
+      'Format: ' .. (#formatters > 0 and table.concat(formatters, '\n        ') or '(lsp or none)'),
+      'CLI lint: ' .. (#linters > 0 and table.concat(linters, '\n          ') or '(none)'),
+    }, '\n'), vim.log.levels.INFO, { title = 'Buffer info', timeout = false })
+  end, { desc = 'Buffer [i]nfo (path, type, LSP, format, lint)' })
 end
 
 -- ============================================================
@@ -1479,7 +1965,9 @@ do
       -- <c-k>: Toggle signature help
       --
       -- See `:help blink-cmp-config-keymap` for defining your own keymap
-      preset = 'default',
+      -- super-tab: <Tab> accepts the selected item (VS Code-like); <C-y> also
+      -- still accepts. Tab stays context-aware — snippet-jump/indent otherwise.
+      preset = 'super-tab',
 
       -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
       --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
