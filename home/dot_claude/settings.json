@@ -441,7 +441,6 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "best",
   "hooks": {
     "PreToolUse": [
       {
