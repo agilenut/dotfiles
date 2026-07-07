@@ -65,7 +65,10 @@ test_continuum_autosave() {
 
   # ---- repair behavior, on an isolated tmux server ----
   if [ ! -x "$save_script" ]; then
-    skip "tmux-continuum plugin not installed"
+    # note, not skip: plugins are a per-machine bootstrap step (prefix I)
+    # that CI never runs — a skip would exit-2 the suite there.
+    note_with_followup "tmux-continuum plugin not installed (repair test not run)" \
+      "Install tmux plugins (start tmux, press C-a I), then re-run dotfiles-test"
   else
     local sock="dt-continuum-$$"
     local segment="#(${save_script})"
@@ -113,7 +116,9 @@ test_continuum_autosave() {
   # ---- live server: segment present and saves actually happening ----
   local live_sr
   if ! live_sr=$(tmux show-option -gqv status-right 2>/dev/null); then
-    skip "no live tmux server (segment + save-freshness checks)"
+    # note, not skip: CI has no live server — a skip would exit-2 the suite.
+    note_with_followup "no live tmux server (segment + save-freshness checks not run)" \
+      "Run dotfiles-test while tmux is running to verify continuum auto-save health"
     return
   fi
   if [[ "$live_sr" == *"continuum_save.sh"* ]]; then
