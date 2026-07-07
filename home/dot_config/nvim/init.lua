@@ -1257,7 +1257,14 @@ do
         basedpyright = { analysis = { diagnosticMode = 'openFilesOnly' } },
       },
     },
-    ruff = {},
+    -- ruff owns lint and import-sorting; basedpyright owns hover (its is
+    -- richer: types, signatures, docstrings). Disable ruff's hover so K always
+    -- hits basedpyright rather than ruff's minimal noqa/rule popup.
+    ruff = {
+      on_init = function(client)
+        client.server_capabilities.hoverProvider = false
+      end,
+    },
     -- PHP
     intelephense = {},
     -- Shell (bash/sh; zsh has no language server)
