@@ -38,10 +38,12 @@ vim.api.nvim_create_autocmd('ColorScheme', { callback = theme_notify })
 -- on every popup open, so the row always reflects the current value.
 local TOGGLE_ON, TOGGLE_OFF = '', ''
 local function toggle(key, name, get, set)
+  -- name carries the [k]ey-hint brackets for which-key; strip them for toasts.
+  local plain = name:gsub('[%[%]]', '')
   vim.keymap.set('n', key, function()
     local on = not get()
     set(on)
-    vim.notify((on and 'Enabled ' or 'Disabled ') .. name)
+    vim.notify((on and 'Enabled ' or 'Disabled ') .. plain)
   end, { desc = 'Toggle ' .. name })
   require('which-key').add {
     {
@@ -68,19 +70,19 @@ local function safe_get(fn)
   end
 end
 
-toggle('<leader>th', 'inlay hints', function()
+toggle('<leader>th', 'inlay [h]ints', function()
   return vim.lsp.inlay_hint.is_enabled { bufnr = 0 }
 end, function(s)
   vim.lsp.inlay_hint.enable(s, { bufnr = 0 })
 end)
-toggle('<leader>tx', 'diagnostic text', function()
+toggle('<leader>tx', 'diagnostic te[x]t', function()
   return vim.diagnostic.config().virtual_text ~= false
 end, function(s)
   vim.diagnostic.config { virtual_text = s }
 end)
 toggle(
   '<leader>tm',
-  'markdown render',
+  '[m]arkdown render',
   safe_get(function()
     return require('render-markdown.state').enabled
   end),
@@ -88,14 +90,14 @@ toggle(
     vim.cmd('RenderMarkdown ' .. (s and 'enable' or 'disable'))
   end
 )
-toggle('<leader>tf', 'format on save', function()
+toggle('<leader>tf', '[f]ormat on save', function()
   return not vim.g.disable_autoformat
 end, function(s)
   vim.g.disable_autoformat = not s
 end)
 toggle(
   '<leader>gB',
-  'line blame',
+  'line [B]lame',
   safe_get(function()
     return require('gitsigns.config').config.current_line_blame
   end),
