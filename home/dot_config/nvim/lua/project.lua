@@ -82,7 +82,7 @@ end
 ---@param bufnr integer
 ---@return boolean
 function M.in_workflows_dir(bufnr)
-  return vim.fs.dirname(vim.api.nvim_buf_get_name(bufnr)):find('/%.github/workflows$') ~= nil
+  return vim.fs.dirname(vim.api.nvim_buf_get_name(bufnr)):find '/%.github/workflows$' ~= nil
 end
 
 ---Root dir of the buffer's Tailwind project — a tailwind config file, or a
