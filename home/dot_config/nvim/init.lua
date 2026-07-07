@@ -9,7 +9,10 @@
 require 'config.foundation' -- options, keymaps, autocmds (sets <leader>; must run before plugins)
 require 'pack' -- vim.pack build hooks (PackChanged autocmd)
 
-require 'plugins.ui' -- guess-indent, tmux-navigator, gitsigns, inline-diff, which-key, colorscheme, todo-comments, trouble, mini
+require 'plugins.ui' -- guess-indent, tmux-navigator, gitsigns, inline-diff, which-key
+require 'plugins.colorscheme' -- vscode.nvim + palette-driven highlight fixes
+require 'plugins.diagnostics' -- todo-comments, trouble (Problems panel)
+require 'plugins.mini' -- mini.nvim: ai, surround, sessions, starter (dashboard), statusline
 require 'plugins.navigation' -- telescope + LSP pickers
 require 'plugins.lsp' -- fidget, LSP servers, mason, roslyn
 require 'plugins.formatting' -- conform
