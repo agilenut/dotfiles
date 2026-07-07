@@ -11,16 +11,24 @@
 
 repos:
   # Shell formatting (shfmt)
-  # Uses .editorconfig for settings (indent_size, binary_next_line, etc.)
+  # Uses .editorconfig for settings (indent_size, binary_next_line, etc.).
+  # v3.13+ parses zsh natively (variant detected from the .zsh filename), so
+  # zsh files are formatted and validated too - not just bash/sh.
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.10.0-1
+    rev: v3.13.1-1
     hooks:
       - id: shfmt
         # Verbose wrapper that:
         # - Prints "Checking: <file>" for each file
         # - Prints "  Modified: <file>" when a file is reformatted
         # - Lets errors pass through to stderr naturally
-        # - Uses --filename with .zsh suffix for extensionless files (dot_zshenv, etc.)
+        # - Extensionless files get a shell-matching extension appended (via
+        #   --filename) for two reasons: it sets shfmt's variant AND makes the
+        #   file match the editorconfig shell section. The extension follows the
+        #   shebang - .bash / .sh - so a bash script keeps the bash variant;
+        #   since shfmt v3.13 the zsh variant rejects bash-isms like ${!arr[@]},
+        #   so a blanket .zsh would break every extensionless bash script.
+        #   Shebang-less files (zsh config like dot_zshenv) default to .zsh.
         # - Empty shfmt output means file was ignored via editorconfig
         entry: |
           bash -c '
@@ -28,7 +36,14 @@ repos:
             for f; do
               echo "Checking: $f"
               fn="$f"
-              [[ ! "$f" =~ \.(sh|bash|zsh)$ ]] && fn="${f}.zsh"
+              if [[ ! "$f" =~ \.(sh|bash|zsh)$ ]]; then
+                case "$(head -1 "$f")" in
+                  "#!"*bash*) fn="${f}.bash" ;;
+                  "#!"*zsh*)  fn="${f}.zsh" ;;
+                  "#!"*sh*)   fn="${f}.sh" ;;
+                  *)          fn="${f}.zsh" ;;
+                esac
+              fi
               before=$(cksum "$f")
               if formatted=$(shfmt --apply-ignore --filename "$fn" < "$f" 2>&1); then
                 if [[ -n "$formatted" ]]; then
