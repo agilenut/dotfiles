@@ -1,0 +1,19 @@
+# Read by both nvim's conform (format on save) and the pre-commit stylua
+# hook (pinned to the same version) so they produce identical output.
+#
+# collapse_simple_statement = Never: keep single-statement function/if
+#   bodies multi-line - collapsing them onto one line pushes many past a
+#   comfortable width and reads worse than the expanded form.
+# column_width = 130: low enough to wrap genuinely long lines, high enough
+#   that keymap calls (~127 chars) stay on one line instead of exploding to
+#   one argument per line. Roughly the floor before that starts happening.
+#
+# indent/eol duplicate .editorconfig because stylua's config replaces
+# editorconfig rather than merging with it; kept equal by hand.
+column_width              = 130
+line_endings              = "Unix"
+indent_type               = "Spaces"
+indent_width              = 2
+quote_style               = "AutoPreferSingle"
+call_parentheses          = "None"
+collapse_simple_statement = "Never"
