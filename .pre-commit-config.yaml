@@ -103,6 +103,13 @@ repos:
         types: [text]
         files: \.toml(\.tmpl)?$
 
+  # GitHub Actions workflow linting (actionlint) - validates syntax, expressions,
+  # and shellcheck's the run: steps. Only matches .github/workflows/.
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
   # Markdown linting (markdownlint-cli) - lint only, prettier handles formatting
   # Settings in .markdownlint.yaml
   - repo: https://github.com/igorshubovych/markdownlint-cli
