@@ -106,6 +106,19 @@ repos:
         # Override default entry to remove --list-different (which suppresses unchanged files)
         entry: prettier --write --ignore-unknown
         exclude: \.tmpl$
+
+  # Lua formatting (stylua) - config in home/dot_config/nvim/stylua.toml.
+  # Pinned to the same version nvim's conform runs (mason stylua) so on-save
+  # and pre-commit produce identical output.
+  - repo: https://github.com/JohnnyMorganz/StyLua
+    rev: v2.4.1
+    hooks:
+      - id: stylua
+        # Scoped to the nvim config - the only lua with a stylua.toml (which
+        # both this hook and nvim's conform read). Other lua (test helpers)
+        # isn't stylua-managed, so leaving it out avoids default-style churn.
+        files: ^home/dot_config/nvim/.*\.lua$
+
   # Basic file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

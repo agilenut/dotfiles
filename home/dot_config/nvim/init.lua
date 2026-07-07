@@ -145,7 +145,9 @@ do
   --  Schedule the setting after `UiEnter` because it can increase startup-time.
   --  Remove this option if you want your OS clipboard to remain independent.
   --  See `:help 'clipboard'`
-  vim.schedule(function() vim.o.clipboard = 'unnamedplus' end)
+  vim.schedule(function()
+    vim.o.clipboard = 'unnamedplus'
+  end)
 
   -- Enable break indent
   vim.o.breakindent = true
@@ -269,7 +271,9 @@ do
   vim.api.nvim_create_autocmd('TextYankPost', {
     desc = 'Highlight when yanking (copying) text',
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
-    callback = function() vim.hl.on_yank() end,
+    callback = function()
+      vim.hl.on_yank()
+    end,
   })
 end
 
@@ -305,7 +309,9 @@ do
       local stderr = result.stderr or ''
       local stdout = result.stdout or ''
       local output = stderr ~= '' and stderr or stdout
-      if output == '' then output = 'No output from build command.' end
+      if output == '' then
+        output = 'No output from build command.'
+      end
       vim.notify(('Build failed for %s:\n%s'):format(name, output), vim.log.levels.ERROR)
     end
   end
@@ -318,7 +324,9 @@ do
     callback = function(ev)
       local name = ev.data.spec.name
       local kind = ev.data.kind
-      if kind ~= 'install' and kind ~= 'update' then return end
+      if kind ~= 'install' and kind ~= 'update' then
+        return
+      end
 
       if name == 'telescope-fzf-native.nvim' and vim.fn.executable 'make' == 1 then
         run_build(name, { 'make' }, ev.data.path)
@@ -326,12 +334,16 @@ do
       end
 
       if name == 'LuaSnip' then
-        if vim.fn.has 'win32' ~= 1 and vim.fn.executable 'make' == 1 then run_build(name, { 'make', 'install_jsregexp' }, ev.data.path) end
+        if vim.fn.has 'win32' ~= 1 and vim.fn.executable 'make' == 1 then
+          run_build(name, { 'make', 'install_jsregexp' }, ev.data.path)
+        end
         return
       end
 
       if name == 'nvim-treesitter' then
-        if not ev.data.active then vim.cmd.packadd 'nvim-treesitter' end
+        if not ev.data.active then
+          vim.cmd.packadd 'nvim-treesitter'
+        end
         vim.cmd 'TSUpdate'
         return
       end
@@ -343,7 +355,9 @@ end
 ---function to have less repetition in the following sections.
 ---@param repo string
 ---@return string
-local function gh(repo) return 'https://github.com/' .. repo end
+local function gh(repo)
+  return 'https://github.com/' .. repo
+end
 
 -- ============================================================
 -- SECTION 3: UI / CORE UX PLUGINS
@@ -375,7 +389,9 @@ do
   --
   -- Here we only install `nvim-web-devicons` (which adds pretty icons) if we have a Nerd Font,
   -- since otherwise the icons won't display properly.
-  if vim.g.have_nerd_font then vim.pack.add { gh 'nvim-tree/nvim-web-devicons' } end
+  if vim.g.have_nerd_font then
+    vim.pack.add { gh 'nvim-tree/nvim-web-devicons' }
+  end
 
   -- Here is a more advanced configuration example that passes options to `gitsigns.nvim`
   --
@@ -392,11 +408,17 @@ do
     },
     on_attach = function(bufnr)
       local gs = require 'gitsigns'
-      local function map(l, r, desc) vim.keymap.set('n', l, r, { buffer = bufnr, desc = desc }) end
+      local function map(l, r, desc)
+        vim.keymap.set('n', l, r, { buffer = bufnr, desc = desc })
+      end
       -- Jump between changed hunks (staged + unstaged). Always gitsigns nav — no
       -- diff-mode special-case, so a stray `:diffthis` can't silently break it.
-      map(']c', function() gs.nav_hunk('next', { target = 'all' }) end, 'Next git [c]hange')
-      map('[c', function() gs.nav_hunk('prev', { target = 'all' }) end, 'Prev git [c]hange')
+      map(']c', function()
+        gs.nav_hunk('next', { target = 'all' })
+      end, 'Next git [c]hange')
+      map('[c', function()
+        gs.nav_hunk('prev', { target = 'all' })
+      end, 'Prev git [c]hange')
       -- Hunk staging from the editor (stage_hunk toggles stage/unstage). Bigger
       -- git ops live in lazygit (<space>gg); inline diffs are on <leader>gd.
       map('<leader>ghs', gs.stage_hunk, 'Hunk [s]tage/unstage')
@@ -407,7 +429,9 @@ do
       map('<leader>ghR', gs.reset_buffer, 'Buffer [R]eset all (discard)')
       -- Blame: gb = popup with the full commit for the current line. The ambient
       -- line-blame toggle (gB) lives with the other toggles in the notifications section.
-      map('<leader>gb', function() gs.blame_line { full = true } end, 'Git [b]lame line')
+      map('<leader>gb', function()
+        gs.blame_line { full = true }
+      end, 'Git [b]lame line')
     end,
   }
 
@@ -424,7 +448,9 @@ do
   local function inline_diff_keep_syntax()
     for _, g in ipairs { 'InlineDiffAdd', 'InlineDiffWordAdd' } do
       local hl = vim.api.nvim_get_hl(0, { name = g })
-      if hl.bg then vim.api.nvim_set_hl(0, g, { bg = hl.bg }) end
+      if hl.bg then
+        vim.api.nvim_set_hl(0, g, { bg = hl.bg })
+      end
     end
   end
   vim.keymap.set('n', '<leader>gd', function()
@@ -549,7 +575,8 @@ do
   -- bright #f44747 we dropped). Covers inline text/signs/underline, Trouble, and
   -- neo-tree badges, which all read the Diagnostic* groups.
   local function fix_diagnostic_palette()
-    local colors = { Error = palette.ui.diag_error, Warn = palette.ui.diag_warn, Info = palette.ui.diag_info, Hint = palette.ui.diag_hint }
+    local colors =
+      { Error = palette.ui.diag_error, Warn = palette.ui.diag_warn, Info = palette.ui.diag_info, Hint = palette.ui.diag_hint }
     for sev, c in pairs(colors) do
       vim.api.nvim_set_hl(0, 'Diagnostic' .. sev, { fg = c })
       vim.api.nvim_set_hl(0, 'DiagnosticSign' .. sev, { fg = c })
@@ -582,7 +609,9 @@ do
   local function fix_cursorline()
     local base = vim.api.nvim_get_hl(0, { name = 'CursorLine', link = false }).bg or 0x222222
     local r, g, b = math.floor(base / 65536) % 256, math.floor(base / 256) % 256, base % 256
-    local function up(c) return math.floor(c + (255 - c) * 0.16) end
+    local function up(c)
+      return math.floor(c + (255 - c) * 0.16)
+    end
     local bright = up(r) * 65536 + up(g) * 256 + up(b)
     vim.api.nvim_set_hl(0, 'CursorLine', { bg = bright })
     vim.api.nvim_set_hl(0, 'NeoTreeCursorLine', { bg = bright })
@@ -689,8 +718,12 @@ do
     require('mini.sessions').write(project_session())
     vim.notify('Session saved: ' .. project_session())
   end, { desc = 'Session [s]ave (project)' })
-  vim.keymap.set('n', '<leader>Sl', function() require('mini.sessions').select 'read' end, { desc = 'Session [l]oad' })
-  vim.keymap.set('n', '<leader>Sd', function() require('mini.sessions').select 'delete' end, { desc = 'Session [d]elete' })
+  vim.keymap.set('n', '<leader>Sl', function()
+    require('mini.sessions').select 'read'
+  end, { desc = 'Session [l]oad' })
+  vim.keymap.set('n', '<leader>Sd', function()
+    require('mini.sessions').select 'delete'
+  end, { desc = 'Session [d]elete' })
 
   -- Start screen (dashboard). Auto-opens on `nvim` with no file; buf_delete
   -- also lands here when the last buffer closes. Type to filter items,
@@ -742,11 +775,7 @@ do
       end
     end
     if staged.a + staged.m + staged.d + unstaged.a + unstaged.m + unstaged.d + untracked > 0 then
-      local seg = string.format(
-        '+%d ~%d -%d | +%d ~%d -%d',
-        staged.a, staged.m, staged.d,
-        unstaged.a, unstaged.m, unstaged.d
-      )
+      local seg = string.format('+%d ~%d -%d | +%d ~%d -%d', staged.a, staged.m, staged.d, unstaged.a, unstaged.m, unstaged.d)
       if untracked > 0 then
         seg = seg .. ' !' .. untracked
       end
@@ -816,7 +845,9 @@ do
   local statusline = require 'mini.statusline'
   -- Cursor location as LINE:COLUMN.
   ---@diagnostic disable-next-line: duplicate-set-field
-  statusline.section_location = function() return '%2l:%-2v' end
+  statusline.section_location = function()
+    return '%2l:%-2v'
+  end
 
   -- Errors + warnings only — mini's built-in section shows all four levels in the
   -- section's flat color. Icons colored via the themed Diagnostic* groups.
@@ -825,8 +856,12 @@ do
     local c = vim.diagnostic.count(0)
     local e, w = c[vim.diagnostic.severity.ERROR] or 0, c[vim.diagnostic.severity.WARN] or 0
     local parts = {}
-    if e > 0 then parts[#parts + 1] = '%#DiagnosticError#' .. DIAG_ERROR .. ' ' .. e end
-    if w > 0 then parts[#parts + 1] = '%#DiagnosticWarn#' .. DIAG_WARN .. ' ' .. w end
+    if e > 0 then
+      parts[#parts + 1] = '%#DiagnosticError#' .. DIAG_ERROR .. ' ' .. e
+    end
+    if w > 0 then
+      parts[#parts + 1] = '%#DiagnosticWarn#' .. DIAG_WARN .. ' ' .. w
+    end
     return table.concat(parts, ' ')
   end
 
@@ -928,7 +963,9 @@ do
     gh 'nvim-telescope/telescope.nvim',
     gh 'nvim-telescope/telescope-ui-select.nvim',
   }
-  if vim.fn.executable 'make' == 1 then table.insert(telescope_plugins, gh 'nvim-telescope/telescope-fzf-native.nvim') end
+  if vim.fn.executable 'make' == 1 then
+    table.insert(telescope_plugins, gh 'nvim-telescope/telescope-fzf-native.nvim')
+  end
 
   -- NOTE: You can install multiple plugins at once
   vim.pack.add(telescope_plugins)
@@ -980,7 +1017,9 @@ do
   vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = 'Search [c]ommands' })
   vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
-  vim.keymap.set('n', '<leader>sa', function() builtin.find_files { hidden = true, no_ignore = true } end, { desc = 'Search [a]ll files (incl. hidden + ignored)' })
+  vim.keymap.set('n', '<leader>sa', function()
+    builtin.find_files { hidden = true, no_ignore = true }
+  end, { desc = 'Search [a]ll files (incl. hidden + ignored)' })
   vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = 'Git [s]tatus (changed files)' })
   vim.keymap.set('n', '<leader>gg', function()
     vim.cmd 'tabnew'
@@ -992,7 +1031,9 @@ do
       buffer = vim.api.nvim_get_current_buf(),
       once = true,
       callback = function()
-        vim.schedule(function() vim.cmd 'bdelete!' end)
+        vim.schedule(function()
+          vim.cmd 'bdelete!'
+        end)
       end,
     })
   end, { desc = 'Git (lazy[g]it)' })
@@ -1042,20 +1083,17 @@ do
 
   -- It's also possible to pass additional configuration options.
   --  See `:help telescope.builtin.live_grep()` for information about particular keys
-  vim.keymap.set(
-    'n',
-    '<leader>s/',
-    function()
-      builtin.live_grep {
-        grep_open_files = true,
-        prompt_title = 'Live Grep in Open Files',
-      }
-    end,
-    { desc = 'Search [/] in open files' }
-  )
+  vim.keymap.set('n', '<leader>s/', function()
+    builtin.live_grep {
+      grep_open_files = true,
+      prompt_title = 'Live Grep in Open Files',
+    }
+  end, { desc = 'Search [/] in open files' })
 
   -- Shortcut for searching your Neovim configuration files
-  vim.keymap.set('n', '<leader>sn', function() builtin.find_files { cwd = vim.fn.stdpath 'config' } end, { desc = 'Search [n]eovim files' })
+  vim.keymap.set('n', '<leader>sn', function()
+    builtin.find_files { cwd = vim.fn.stdpath 'config' }
+  end, { desc = 'Search [n]eovim files' })
 end
 
 -- ============================================================
@@ -1178,7 +1216,12 @@ do
 
         if client.workspace_folders then
           local path = client.workspace_folders[1].name
-          if path ~= vim.fn.stdpath 'config' and (vim.uv.fs_stat(path .. '/.luarc.json') or vim.uv.fs_stat(path .. '/.luarc.jsonc')) then return end
+          if
+            path ~= vim.fn.stdpath 'config'
+            and (vim.uv.fs_stat(path .. '/.luarc.json') or vim.uv.fs_stat(path .. '/.luarc.jsonc'))
+          then
+            return
+          end
         end
 
         client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
@@ -1435,7 +1478,9 @@ do
     },
   }
 
-  vim.keymap.set({ 'n', 'v' }, '<leader>f', function() require('conform').format { async = true } end, { desc = '[f]ormat buffer' })
+  vim.keymap.set({ 'n', 'v' }, '<leader>f', function()
+    require('conform').format { async = true }
+  end, { desc = '[f]ormat buffer' })
 end
 
 -- ============================================================
@@ -1562,8 +1607,15 @@ do
       -- Plain single-char git markers instead of cryptic/box glyphs.
       git_status = {
         symbols = {
-          added = '+', modified = '~', deleted = '-', renamed = '»',
-          untracked = '?', ignored = '◌', unstaged = '○', staged = '✓', conflict = '!',
+          added = '+',
+          modified = '~',
+          deleted = '-',
+          renamed = '»',
+          untracked = '?',
+          ignored = '◌',
+          unstaged = '○',
+          staged = '✓',
+          conflict = '!',
         },
       },
     },
@@ -1582,7 +1634,14 @@ do
   vim.api.nvim_create_autocmd('FileType', {
     pattern = 'neo-tree',
     callback = function()
-      for _, g in ipairs { 'NeoTreeNormal', 'NeoTreeNormalNC', 'NeoTreeEndOfBuffer', 'NeoTreeFloatNormal', 'NeoTreeFloatBorder', 'NeoTreePreview' } do
+      for _, g in ipairs {
+        'NeoTreeNormal',
+        'NeoTreeNormalNC',
+        'NeoTreeEndOfBuffer',
+        'NeoTreeFloatNormal',
+        'NeoTreeFloatBorder',
+        'NeoTreePreview',
+      } do
         vim.api.nvim_set_hl(0, g, { bg = 'none' })
       end
       -- Mute neo-tree's git marker/filename colors to the project palette.
@@ -1610,7 +1669,12 @@ do
     vim.cmd(real and 'Neotree toggle reveal' or 'Neotree toggle reveal=false')
   end, { desc = '[e]xplorer (Neo-tree)' })
   -- Tree of only git-changed files, for navigating what changed.
-  vim.keymap.set('n', '<leader>ge', '<cmd>Neotree toggle source=git_status position=left<cr>', { desc = 'Git changed files ([e]xplorer)' })
+  vim.keymap.set(
+    'n',
+    '<leader>ge',
+    '<cmd>Neotree toggle source=git_status position=left<cr>',
+    { desc = 'Git changed files ([e]xplorer)' }
+  )
 
   -- neo-tree's git-status icons go stale when you stage/unstage (via gitsigns or
   -- lazygit): staging only touches .git/index, not the file, so neo-tree's libuv
@@ -1620,11 +1684,15 @@ do
   vim.api.nvim_create_autocmd('User', {
     pattern = 'GitSignsUpdate',
     callback = function()
-      if nt_refresh_pending then return end
+      if nt_refresh_pending then
+        return
+      end
       nt_refresh_pending = true
       vim.defer_fn(function()
         nt_refresh_pending = false
-        pcall(function() require('neo-tree.sources.manager').refresh 'filesystem' end)
+        pcall(function()
+          require('neo-tree.sources.manager').refresh 'filesystem'
+        end)
       end, 300)
     end,
   })
@@ -1686,7 +1754,9 @@ do
     require('which-key').add {
       {
         key,
-        desc = function() return (get() and 'Disable ' or 'Enable ') .. name end,
+        desc = function()
+          return (get() and 'Disable ' or 'Enable ') .. name
+        end,
         icon = function()
           local on = get()
           -- Explicit 'grey' (not nil) for off: the base WhichKeyIcon fallback is underlined.
@@ -1706,11 +1776,41 @@ do
     end
   end
 
-  toggle('<leader>th', 'inlay hints', function() return vim.lsp.inlay_hint.is_enabled { bufnr = 0 } end, function(s) vim.lsp.inlay_hint.enable(s, { bufnr = 0 }) end)
-  toggle('<leader>tx', 'diagnostic text', function() return vim.diagnostic.config().virtual_text ~= false end, function(s) vim.diagnostic.config { virtual_text = s } end)
-  toggle('<leader>tm', 'markdown render', safe_get(function() return require('render-markdown.state').enabled end), function(s) vim.cmd('RenderMarkdown ' .. (s and 'enable' or 'disable')) end)
-  toggle('<leader>tf', 'format on save', function() return not vim.g.disable_autoformat end, function(s) vim.g.disable_autoformat = not s end)
-  toggle('<leader>gB', 'line blame', safe_get(function() return require('gitsigns.config').config.current_line_blame end), function(s) require('gitsigns').toggle_current_line_blame(s) end)
+  toggle('<leader>th', 'inlay hints', function()
+    return vim.lsp.inlay_hint.is_enabled { bufnr = 0 }
+  end, function(s)
+    vim.lsp.inlay_hint.enable(s, { bufnr = 0 })
+  end)
+  toggle('<leader>tx', 'diagnostic text', function()
+    return vim.diagnostic.config().virtual_text ~= false
+  end, function(s)
+    vim.diagnostic.config { virtual_text = s }
+  end)
+  toggle(
+    '<leader>tm',
+    'markdown render',
+    safe_get(function()
+      return require('render-markdown.state').enabled
+    end),
+    function(s)
+      vim.cmd('RenderMarkdown ' .. (s and 'enable' or 'disable'))
+    end
+  )
+  toggle('<leader>tf', 'format on save', function()
+    return not vim.g.disable_autoformat
+  end, function(s)
+    vim.g.disable_autoformat = not s
+  end)
+  toggle(
+    '<leader>gB',
+    'line blame',
+    safe_get(function()
+      return require('gitsigns.config').config.current_line_blame
+    end),
+    function(s)
+      require('gitsigns').toggle_current_line_blame(s)
+    end
+  )
 
   -- Delete the current buffer while keeping the window/split layout: show the
   -- alternate (or another listed) buffer in its place, falling back to a fresh
@@ -1787,8 +1887,12 @@ do
     vim.fn.setreg('+', path)
     vim.notify('Copied: ' .. path, vim.log.levels.INFO)
   end
-  vim.keymap.set('n', '<leader>bp', function() copy_path(true) end, { desc = 'Copy [p]ath (repo-relative)' })
-  vim.keymap.set('n', '<leader>bP', function() copy_path(false) end, { desc = 'Copy [P]ath (absolute)' })
+  vim.keymap.set('n', '<leader>bp', function()
+    copy_path(true)
+  end, { desc = 'Copy [p]ath (repo-relative)' })
+  vim.keymap.set('n', '<leader>bP', function()
+    copy_path(false)
+  end, { desc = 'Copy [P]ath (absolute)' })
 
   -- Tabs + per-tab cwd. Aimed at multi-repo folders (uperix's bare worktrees):
   -- give each tab its own repo via a tab-local cwd (:tcd), so git tools scope
@@ -1806,7 +1910,7 @@ do
     end
     vim.cmd('tcd ' .. vim.fn.fnameescape(root))
     vim.notify('tab cwd → ' .. vim.fn.fnamemodify(root, ':~'))
-  end, { desc = 'Tab cwd → this file\'s repo ([d]ir)' })
+  end, { desc = "Tab cwd → this file's repo ([d]ir)" })
   vim.keymap.set('n', '<leader><Tab>r', function()
     local root = vim.fs.root(0, '.git')
     if not root then
@@ -1882,8 +1986,12 @@ do
     -- lint autocmd reads (project.config_files / mypy_root / in_workflows_dir).
     local project = require 'project'
     local lint_off = {
-      mypy = function() return project.mypy_root(buf) == nil and 'off: no config' or 'on save' end,
-      actionlint = function() return not project.in_workflows_dir(buf) and 'off: not a workflow' or nil end,
+      mypy = function()
+        return project.mypy_root(buf) == nil and 'off: no config' or 'on save'
+      end,
+      actionlint = function()
+        return not project.in_workflows_dir(buf) and 'off: not a workflow' or nil
+      end,
     }
     local linters = {}
     for _, name in ipairs(require('lint').linters_by_ft[ft] or {}) do
@@ -1896,7 +2004,7 @@ do
       end
       -- Active linters resolve a binary the same way formatters do — show it.
       local entry = name
-      if not (note and note:find('^off')) then
+      if not (note and note:find '^off') then
         local cmd = require('lint').linters[name].cmd
         if type(cmd) == 'function' then
           cmd = cmd() -- evaluated with the info'd buffer current, like the autocmd
@@ -1908,16 +2016,20 @@ do
       linters[#linters + 1] = note and (entry .. ' (' .. note .. ')') or entry
     end
     buffer_info_open = true
-    vim.notify(table.concat({
-      'Path:  ' .. full,
-      'Type:  ' .. (ft ~= '' and ft or '(none)') .. '   ' .. enc .. '   ' .. vim.bo[buf].fileformat,
-      'Size:  ' .. size,
-      -- LSP diagnostics ARE linting (ruff, eslint, …); the CLI line is only
-      -- the no-server tools nvim-lint spawns.
-      'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
-      'Format: ' .. (#formatters > 0 and table.concat(formatters, '\n        ') or '(lsp or none)'),
-      'CLI lint: ' .. (#linters > 0 and table.concat(linters, '\n          ') or '(none)'),
-    }, '\n'), vim.log.levels.INFO, { title = 'Buffer info', timeout = false })
+    vim.notify(
+      table.concat({
+        'Path:  ' .. full,
+        'Type:  ' .. (ft ~= '' and ft or '(none)') .. '   ' .. enc .. '   ' .. vim.bo[buf].fileformat,
+        'Size:  ' .. size,
+        -- LSP diagnostics ARE linting (ruff, eslint, …); the CLI line is only
+        -- the no-server tools nvim-lint spawns.
+        'LSP:   ' .. (#names > 0 and table.concat(names, ', ') or '(none)'),
+        'Format: ' .. (#formatters > 0 and table.concat(formatters, '\n        ') or '(lsp or none)'),
+        'CLI lint: ' .. (#linters > 0 and table.concat(linters, '\n          ') or '(none)'),
+      }, '\n'),
+      vim.log.levels.INFO,
+      { title = 'Buffer info', timeout = false }
+    )
   end, { desc = 'Buffer [i]nfo (path, type, LSP, format, lint)' })
 end
 
@@ -2026,7 +2138,9 @@ do
   ---@param language string
   local function treesitter_try_attach(buf, language)
     -- Check if a parser exists and load it
-    if not vim.treesitter.language.add(language) then return end
+    if not vim.treesitter.language.add(language) then
+      return
+    end
     -- Enable syntax highlighting and other treesitter features
     vim.treesitter.start(buf, language)
 
@@ -2040,7 +2154,9 @@ do
     local has_indent_query = vim.treesitter.query.get(language, 'indents') ~= nil
 
     -- Enable treesitter based indentation
-    if has_indent_query then vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()" end
+    if has_indent_query then
+      vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end
   end
 
   local available_parsers = require('nvim-treesitter').get_available()
@@ -2049,7 +2165,9 @@ do
       local buf, filetype = args.buf, args.match
 
       local language = vim.treesitter.language.get_lang(filetype)
-      if not language then return end
+      if not language then
+        return
+      end
 
       local installed_parsers = require('nvim-treesitter').get_installed 'parsers'
 
@@ -2058,7 +2176,9 @@ do
         treesitter_try_attach(buf, language)
       elseif vim.tbl_contains(available_parsers, language) then
         -- If a parser is available in `nvim-treesitter`, auto-install it and enable it after the installation is done
-        require('nvim-treesitter').install(language):await(function() treesitter_try_attach(buf, language) end)
+        require('nvim-treesitter').install(language):await(function()
+          treesitter_try_attach(buf, language)
+        end)
       else
         -- Try to enable treesitter features in case the parser exists but is not available from `nvim-treesitter`
         treesitter_try_attach(buf, language)
