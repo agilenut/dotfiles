@@ -128,6 +128,13 @@ Applies to launchd labels, comments, examples, template defaults, test fixtures,
 
 **Encrypted files:** when committing them (`chezmoi add --encrypt`), describe by **role** not **content** (e.g., "tack staging + prod aliases" rather than "tack-staging (1.2.3.4) + tack-prod (5.6.7.8)"). Commit messages are part of the public history; leaking decrypted values into the message undoes the encryption.
 
+## Known Issues
+
+Diagnosed limitations we've chosen to live with are recorded in
+[docs/known-issues.md](../docs/known-issues.md) with root cause and what NOT to
+try. Read it before investigating a rendering or tooling oddity so you don't
+re-chase a ruled-out cause (e.g. delta not syntax-highlighting PHP diffs).
+
 ## Gotchas
 
 - The `.tmpl` suffix is stripped from target filenames
