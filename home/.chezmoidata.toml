@@ -156,6 +156,12 @@
   name = "rectangle-pro"
   app  = "Rectangle Pro"
 
+# Homerow — keyboard-driven clicking + GUI scroll mode (ergonomics). GUI-only;
+# configured in-app (⇧⌘J scroll, etc.), not via dotfiles. Free trial, then paid.
+[[profiles.personal.apps.casks]]
+  name = "homerow"
+  app  = "Homerow"
+
 [[profiles.personal.apps.casks]]
   name = "visual-studio-code"
   app  = "Visual Studio Code"
