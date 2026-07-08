@@ -156,8 +156,9 @@
   name = "rectangle-pro"
   app  = "Rectangle Pro"
 
-# Homerow — keyboard-driven clicking + GUI scroll mode (ergonomics). GUI-only;
-# configured in-app (⇧⌘J scroll, etc.), not via dotfiles. Free trial, then paid.
+# Homerow — keyboard-driven clicking + scroll (ergonomics). Configured in-app
+# (scroll ⇧⌘J, click ⌘⇧K), not via dotfiles. Scroll works anywhere incl.
+# terminals; clicking is GUI-only.
 [[profiles.personal.apps.casks]]
   name = "homerow"
   app  = "Homerow"
