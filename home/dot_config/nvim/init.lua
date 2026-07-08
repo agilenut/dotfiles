@@ -19,7 +19,10 @@ require 'plugins.formatting' -- conform
 require 'plugins.linting' -- nvim-lint
 require 'plugins.explorer' -- neo-tree
 require 'plugins.markdown' -- render-markdown
-require 'plugins.notify' -- nvim-notify, unified toggles, buffer + tab helpers
+require 'plugins.notify' -- nvim-notify + toast theming (load first: themed toasts for the rest)
+require 'plugins.toggles' -- <leader>t toggle framework (inlay hints, diagnostics, format-on-save, ...)
+require 'plugins.buffers' -- buffer delete/close/copy-path + <leader>bi info
+require 'plugins.tabs' -- tab nav + per-tab cwd (multi-repo folders)
 require 'plugins.completion' -- LuaSnip + blink.cmp
 require 'plugins.treesitter'
 
