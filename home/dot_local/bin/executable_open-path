@@ -10,8 +10,8 @@
 # - Outside tmux: new Alacritty window attached to the fallback session
 #   (default `personal`, override with OPEN_PATH_SESSION) with the file open.
 # nvim's cwd is the nearest user-owned git repo root. Handles absolute,
-# ~/-prefixed, $PWD-relative, and repo-relative paths, with optional
-# :line[:col] suffixes.
+# ~/-prefixed, pane-relative (the active tmux pane's cwd, else $PWD), and
+# repo-relative paths, with optional :line[:col] suffixes.
 
 set -euo pipefail
 
@@ -69,18 +69,34 @@ case "$target" in
   '~/'*) target="$HOME/${target#'~/'}" ;;
 esac
 
+# Base directory for relative paths. Inside tmux the hint command's $PWD is the
+# tmux *client's* cwd (Alacritty spawns hints with the pty foreground process
+# cwd, which is the client, not the active pane), so relative paths from terminal
+# output would resolve against the wrong tree. Query the active pane's path
+# instead. TMUX_CURRENT is a session name (#S), so `-t` resolves to that
+# session's active pane - the same most-recently-active-client imprecision
+# documented at the top. OPEN_PATH_BASE forces the base (tests); falls back to
+# $PWD when the tmux query is empty or we're not in tmux.
+base="$PWD"
+if [[ -n "${OPEN_PATH_BASE+set}" ]]; then
+  base="$OPEN_PATH_BASE"
+elif [[ -n "$TMUX_CURRENT" ]]; then
+  pane_path="$(tmux display-message -p -t "$TMUX_CURRENT" '#{pane_current_path}' 2>/dev/null || true)"
+  [[ -n "$pane_path" ]] && base="$pane_path"
+fi
+
 resolved=""
 
 if [[ "$target" = /* ]]; then
   [[ -e "$target" ]] && resolved="$target"
 else
-  if [[ -e "$PWD/$target" ]]; then
-    resolved="$PWD/$target"
+  if [[ -e "$base/$target" ]]; then
+    resolved="$base/$target"
   else
-    # Walk up from $PWD looking for a repo root, then try repo-relative.
+    # Walk up from the base looking for a repo root, then try repo-relative.
     # `-O` requires .git be owned by the current user so a planted /tmp/.git
     # (or shared-host .git) can't anchor resolution to an attacker root.
-    dir="$PWD"
+    dir="$base"
     while [[ -n "$dir" && "$dir" != "/" ]]; do
       if [[ -e "$dir/.git" && -O "$dir/.git" && -e "$dir/$target" ]]; then
         resolved="$dir/$target"
@@ -104,6 +120,14 @@ while [[ -n "$dir" && "$dir" != "/" ]]; do
   fi
   dir="$(dirname "$dir")"
 done
+
+# Dry-run: print the resolution and stop before spawning nvim (used by tests).
+if [[ -n "${OPEN_PATH_DRY_RUN+set}" ]]; then
+  printf 'resolved=%s\n' "$resolved"
+  printf 'line=%s\n' "$line"
+  printf 'repo_root=%s\n' "$repo_root"
+  exit 0
+fi
 
 # Build the nvim invocation.
 nvim_cmd=(nvim)
