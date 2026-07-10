@@ -82,6 +82,14 @@ _How to write, in chat, docs, code, comments, tests, and communications._
   - Parallel construction.
   - Markdown pipe tables for multi-dimensional comparisons; avoid
     ASCII hyphen-art tables (render poorly).
+  - Openable paths / URLs in chat replies (the CLI output I read in my
+    terminal; NOT external comms, PR/GitHub, docs, commits, or code): put
+    each openable path or URL on its own line, so terminal wrapping can't
+    split the hint (Alacritty Ctrl+Shift+O). When the path is under the
+    active tmux pane's tree, prefer a short repo/cwd-relative form (it
+    resolves via open-path); otherwise use an absolute or ~ path (always
+    resolves). Add :line[:col] to land on a spot. Elsewhere, use whatever
+    path form the reader and destination need.
 - **Present actionable choices**
   - One decision at a time when presenting many.
   - Before presenting choices, confirm each one is valid and rational.
