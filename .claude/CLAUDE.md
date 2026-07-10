@@ -87,6 +87,28 @@ pre-commit run --all-files
 - **Safe to auto-apply**: Env var changes, config additions, test updates
 - **Ask before applying**: Scripts, macOS defaults, system-wide changes
 
+### Theme Changes
+
+When a change touches the palette (`home/.chezmoidata/themes.toml`) or any
+templated theme consumer — alacritty `themes/palette.toml.tmpl`, bat
+`palette.tmTheme.tmpl`, the git/delta `[delta]` block, nvim `colorscheme.lua`
+or `theme_palette.lua.tmpl`, lazygit `config.yml.tmpl`, quicklook
+`palette.theme.tmpl` — regenerate the visual gallery and get the user's eyes on
+it before committing or opening a PR:
+
+1. Run `theme-gallery` yourself (regenerates `docs/theme-gallery/<theme>.html`).
+2. Run `git diff` on the generated HTML yourself and summarize for the user
+   which colors moved (the inline hex changes) and in which tool/scope. Do NOT
+   ask the user to run the diff — that's your job.
+3. Surface the regenerated pages for the user to open and eyeball, and get their
+   explicit visual approval before committing or opening a PR.
+4. Commit the regenerated gallery in the same PR as the palette change.
+
+The rendered colors are the source of truth here; a template that "looks right"
+can still shift a color the user needs to approve. When planning theme work,
+add this gallery review as an explicit plan step; otherwise suggest it
+dynamically when a change trips the trigger above.
+
 ### Committing
 
 Before committing changes to this repo:

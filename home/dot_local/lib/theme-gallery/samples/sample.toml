@@ -1,0 +1,13 @@
+# Palette sample: toml — comments, strings, numbers, booleans, tables.
+title   = "palette demo"
+retries = 3
+ratio   = 0.75
+enabled = true
+
+[server]
+  host = "127.0.0.1"
+  port = 8080
+  tags = [ "alpha", "beta" ]
+
+  [server.tls]
+    cert = "/etc/ssl/cert.pem"
