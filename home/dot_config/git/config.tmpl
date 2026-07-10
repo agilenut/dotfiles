@@ -79,8 +79,8 @@
 	; emph styles brighten the exact changed words within a line.
 	plus-style = syntax "{{ $t.ui.diff_add_bg }}"
 	minus-style = syntax "{{ $t.ui.diff_del_bg }}"
-	plus-emph-style = syntax "#274a30"
-	minus-emph-style = syntax "#42272d"
+	plus-emph-style = syntax "{{ $t.ui.diff_add_emph_bg }}"
+	minus-emph-style = syntax "{{ $t.ui.diff_del_emph_bg }}"
 	; Calmer line-number gutter; muted tint instead of saturated green/red.
 	line-numbers-plus-style = "{{ $t.ui.git_add }}"
 	line-numbers-minus-style = "{{ $t.ui.git_delete }}"

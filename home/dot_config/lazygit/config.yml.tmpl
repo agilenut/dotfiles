@@ -14,7 +14,7 @@ gui:
     activeBorderColor:
       - blue
     inactiveBorderColor:
-      - brightblack
+      - "{{ $t.ui.muted }}"
     selectedLineBgColor:
       - "{{ $t.ui.selection }}"
     selectedRangeBgColor:
@@ -23,7 +23,7 @@ gui:
       - blue
   authorColors:
     "agilenut": blue # your commits in the theme blue
-    "*": brightblack # everyone else muted
+    "*": "{{ $t.ui.muted }}" # everyone else muted
   branchColorPatterns:
     "^feat/": "green"
     "^fix/": "red"
@@ -33,8 +33,8 @@ gui:
     "^test/": "yellow"
     "^ci/": "cyan"
     "^build/": "cyan"
-    "^chore/": brightblack
-    "^style/": brightblack
+    "^chore/": "{{ $t.ui.muted }}"
+    "^style/": "{{ $t.ui.muted }}"
 git:
   diffContextSize: 10
 {{- if lookPath "delta" }}
