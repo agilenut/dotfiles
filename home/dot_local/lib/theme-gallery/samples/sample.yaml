@@ -1,0 +1,13 @@
+# Palette sample: yaml — comments, keys, strings, numbers, lists, anchors.
+name: palette-demo
+version: 1.2
+enabled: true
+defaults: &defaults
+  retries: 3
+  timeout: "30s"
+server:
+  <<: *defaults
+  host: 0.0.0.0
+  ports:
+    - 80
+    - 443

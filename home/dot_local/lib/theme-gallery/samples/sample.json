@@ -1,0 +1,13 @@
+{
+  "title": "palette demo",
+  "retries": 3,
+  "ratio": 0.75,
+  "enabled": true,
+  "tags": ["alpha", "beta"],
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8080,
+    "path": "c:\\logs\\out.txt"
+  },
+  "nullable": null
+}

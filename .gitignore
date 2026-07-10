@@ -19,6 +19,10 @@ npm-debug.log*
 .plans/
 .reviews/
 
+# Theme gallery — committed HTML is tracked; quicklook PNGs are local-only
+# (approximate, reflect the app-selected theme). See `theme-gallery`.
+docs/theme-gallery/ql/
+
 # Vim
 *.swp
 *.swo

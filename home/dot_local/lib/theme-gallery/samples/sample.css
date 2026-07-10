@@ -1,0 +1,15 @@
+/* Palette sample: CSS — at-rules, selectors, properties, values, comments. */
+@import "reset.css";
+
+:root {
+  --accent: #569cd6;
+  --gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .card#main {
+    color: var(--accent);
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE config SYSTEM "config.dtd">
+<!-- Palette sample: XML — declaration, DOCTYPE, tags, attributes, comment. -->
+<config version="1.2" enabled="true">
+  <server host="127.0.0.1" port="8080">
+    <tag>alpha</tag>
+    <tag>beta</tag>
+  </server>
+</config>

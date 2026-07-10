@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Build an ephemeral git repo that exercises lazygit's branchColorPatterns
+# (feat/fix/refactor/perf/docs/test/ci/build/chore/style) and authorColors
+# (agilenut vs. everyone else), for the theme-gallery harness. Prints the repo
+# path on stdout. Deterministic: fixed identities and dates, isolated from the
+# user's global git config so no signing key or global hooks are required.
+set -euo pipefail
+
+dir="${1:-$(mktemp -d "${TMPDIR:-/tmp}/lazygit-fixture.XXXXXX")}"
+
+# Isolate: no global/system config (avoids gpgsign, user identity, hooks).
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+
+git init -q -b main "$dir"
+git -C "$dir" config commit.gpgsign false
+git -C "$dir" config core.hooksPath /dev/null
+
+readonly FIXED_DATE="2026-01-01T09:00:00"
+readonly ME_NAME="agilenut"
+readonly ME_EMAIL="705864+agilenut@users.noreply.github.com"
+readonly OTHER_NAME="contributor"
+readonly OTHER_EMAIL="contributor@example.com"
+
+commit_n=0
+commit_as() { # name email subject
+  local name=$1 email=$2 subject=$3
+  printf '%s\n' "$subject" >"$dir/file-$commit_n.txt"
+  git -C "$dir" add -A
+  GIT_AUTHOR_NAME=$name GIT_AUTHOR_EMAIL=$email \
+    GIT_COMMITTER_NAME=$name GIT_COMMITTER_EMAIL=$email \
+    GIT_AUTHOR_DATE=$FIXED_DATE GIT_COMMITTER_DATE=$FIXED_DATE \
+    git -C "$dir" commit -q -m "$subject"
+  commit_n=$((commit_n + 1))
+}
+
+commit_as "$ME_NAME" "$ME_EMAIL" "Initial commit"
+
+# branch:author — cover every pattern; alternate authors for authorColors.
+for spec in \
+  feat/login:me fix/crash:other refactor/core:me perf/cache:other \
+  docs/readme:me test/units:other ci/pipeline:me build/release:other \
+  chore/deps:me style/format:other; do
+  branch=${spec%%:*}
+  who=${spec##*:}
+  git -C "$dir" switch -q -c "$branch" main
+  if [[ $who == me ]]; then
+    commit_as "$ME_NAME" "$ME_EMAIL" "Work on ${branch}"
+  else
+    commit_as "$OTHER_NAME" "$OTHER_EMAIL" "Work on ${branch}"
+  fi
+done
+
+git -C "$dir" switch -q main
+printf '%s\n' "$dir"

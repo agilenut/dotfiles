@@ -127,7 +127,9 @@ repos:
       - id: prettier
         # Override default entry to remove --list-different (which suppresses unchanged files)
         entry: prettier --write --ignore-unknown
-        exclude: \.tmpl$
+        # Skip templates and the generated theme-gallery HTML (aha output isn't
+        # prettier-canonical and it's a generated artifact, not source).
+        exclude: (\.tmpl$|^docs/theme-gallery/)
 
   # Lua formatting (stylua) - config in home/dot_config/nvim/stylua.toml.
   # Pinned to the same version nvim's conform runs (mason stylua) so on-save

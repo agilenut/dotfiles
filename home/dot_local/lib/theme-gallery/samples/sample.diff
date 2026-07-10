@@ -1,0 +1,19 @@
+diff --git a/greeter.go b/greeter.go
+index 1a2b3c4..5d6e7f8 100644
+--- a/greeter.go
++++ b/greeter.go
+@@ -1,9 +1,10 @@
+ package main
+
+-const maxRetries = 3
++const maxRetries = 5
+
+ // Greet returns a greeting for the given name.
+-func Greet(name string) string {
+-	return "hi " + name
++func Greet(name string) (string, error) {
++	if name == "" {
++		return "", errEmptyName
++	}
++	return "hello " + name, nil
+ }
