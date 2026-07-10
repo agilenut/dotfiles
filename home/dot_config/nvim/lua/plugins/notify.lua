@@ -13,10 +13,25 @@ local notify = require 'notify'
 notify.setup {
   stages = 'fade',
   render = 'wrapped-compact',
-  timeout = 3000,
+  timeout = 4000,
   background_colour = require('theme_palette').ansi.background,
 }
-vim.notify = notify
+
+-- INFO/DEBUG/TRACE keep the setup default (4s); WARN/ERROR linger longer (7s)
+-- so warnings stay readable before fading - toasts often fire during events
+-- (e.g. on file open) where 4s is easy to miss. Preserve nvim-notify's table
+-- API (dismiss/history/etc.) via __index so vim.notify.dismiss() still works;
+-- an explicit opts.timeout from a caller always wins.
+vim.notify = setmetatable({}, {
+  __call = function(_, msg, level, opts)
+    opts = opts or {}
+    if opts.timeout == nil and (level == vim.log.levels.WARN or level == vim.log.levels.ERROR) then
+      opts.timeout = 7000
+    end
+    return notify(msg, level, opts)
+  end,
+  __index = notify,
+})
 
 -- nvim-notify ships bright accent colors (green INFO, orange WARN, red ERROR)
 -- that ignore the theme. Link each level's border/title/icon to the matching
