@@ -88,5 +88,27 @@ test_open_path() {
     pass "non-existent path exits nonzero"
   fi
 
+  # Launched-env recovery: seed a minimal PATH (only enough to find zsh + bash,
+  # no mise), then confirm open-path recovers node from ~/.zshenv. node is
+  # mise-managed here, so asserting the resolved node lives under mise shims
+  # proves the recovery came from zshenv - not the /opt/homebrew/bin that
+  # open-path always prepends (which would mask a broken derivation if node were
+  # ever brew-installed). Guards the regression where nvim's LSP tools (bashls,
+  # dotnet) weren't on PATH. Skipped if node isn't installed.
+  if command -v node >/dev/null 2>&1; then
+    local env_out node_path
+    env_out="$(env -i HOME="$HOME" OPEN_PATH_DRY_RUN=1 OPEN_PATH_BASE="$repo" \
+      PATH="/usr/bin:/bin" \
+      bash "$bin" "file.txt" 2>/dev/null)"
+    node_path="$(printf '%s\n' "$env_out" | sed -n 's/^node_path=//p')"
+    if [[ "$node_path" == *mise* ]]; then
+      pass "launched env recovers node from ~/.zshenv ($node_path)"
+    else
+      fail "launched env should resolve node via mise shims (got '$node_path')"
+    fi
+  else
+    skip "node not installed - can't test PATH recovery"
+  fi
+
   rm -rf "$tmp"
 }
