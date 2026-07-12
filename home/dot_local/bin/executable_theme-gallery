@@ -121,12 +121,20 @@ ansi_remap() {
     -e "s/:black;/:${PAL_BLACK};/g"
 }
 
-# Emit one titled section: <label> + the stdin ANSI converted to an HTML frame.
+# Emit one full-width titled section: <label> + stdin ANSI as an HTML frame.
 section() {
   local label=$1
   printf '<section><h2>%s</h2><pre class="frame">' "$label"
   aha --no-header | ansi_remap || true
   printf '</pre></section>\n'
+}
+
+# Emit one column of a per-file card: a small tool label + stdin ANSI frame.
+# Used inside a <div class="cols"> so tools sit side by side for one file.
+pane() {
+  printf '<div class="pane"><h3>%s</h3><pre class="frame">' "$1"
+  aha --no-header | ansi_remap || true
+  printf '</pre></div>'
 }
 
 # Pre-install treesitter parsers so none installs mid-capture — a parser
@@ -191,6 +199,9 @@ page_header() {
   body { background: $bg; color: $fg; font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; margin: 0; padding: 1.5rem; }
   h1 { font-size: 1.1rem; font-weight: 600; }
   h2 { font-size: 0.8rem; font-weight: 600; opacity: 0.7; margin: 1.5rem 0 0.35rem; text-transform: lowercase; }
+  h3 { font-size: 0.72rem; font-weight: 600; opacity: 0.5; margin: 0 0 0.3rem; text-transform: lowercase; }
+  .cols { display: flex; gap: 1rem; align-items: flex-start; }
+  .pane { flex: 1 1 0; min-width: 0; }
   .frame { border: 1px solid rgba(128,128,128,0.3); border-radius: 6px; padding: 0.75rem 1rem; overflow-x: auto; line-height: 1.35; white-space: pre; }
   pre { margin: 0; }
 </style>
@@ -217,23 +228,20 @@ build_theme() {
   {
     page_header "$t" "$bg" "$fg"
 
-    # bat — every code sample (skip the diff; delta owns that).
+    # Per file: bat and nvim side by side, so the two renderings of the same
+    # file can be compared directly (skip the diff; delta owns that).
     local f base
     for f in "$samples_dir"/*; do
       base="$(basename "$f")"
       [[ $base == sample.diff ]] && continue
-      bat --color=always --style=plain --theme=palette "$f" 2>/dev/null | section "bat — $base"
+      printf '<section class="card"><h2>%s</h2><div class="cols">' "$base"
+      bat --color=always --style=plain --theme=palette "$f" 2>/dev/null | pane "bat"
+      ncapture "$f" | pane "nvim"
+      printf '</div></section>\n'
     done
 
-    # delta — the diff sample.
+    # delta — the diff sample (full width; no bat/nvim counterpart).
     delta --paging=never <"$samples_dir/sample.diff" 2>/dev/null | section "delta — sample.diff"
-
-    # nvim — every code sample, captured through a tmux pane.
-    for f in "$samples_dir"/*; do
-      base="$(basename "$f")"
-      [[ $base == sample.diff ]] && continue
-      ncapture "$f" | section "nvim — $base"
-    done
 
     # nvim diagnostics showcase — one of each severity (diag_* palette).
     ncapture "$lib/diagnostics.txt" "$lib/diagnostics.lua" | section "nvim — diagnostics"
