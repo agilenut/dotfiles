@@ -59,6 +59,34 @@ tcapture() {
   tmux -L "$sock" kill-session -t g 2>/dev/null || true
 }
 
+# nvim capture that waits until the pane stabilises (two identical consecutive
+# captures) so LSP and treesitter finish loading before we snapshot — no
+# transient progress spinners or parser-install messages, which vary run to run
+# (cold-cache noise). Keeps the settled state (semantic tokens, diagnostics),
+# so those real colors show. Bounded; falls back to the last capture at timeout.
+# Trim trailing blank rows (empty, or only spaces/tildes after stripping ANSI).
+trim_trailing_blank() {
+  awk -v esc="$(printf '\033')" '
+    { line[NR] = $0; s = $0; gsub(esc "\\[[0-9;]*m", "", s); gsub(/[ ~]/, "", s); if (s != "") last = NR }
+    END { for (i = 1; i <= last; i++) print line[i] }'
+}
+
+ncapture() {
+  local file=$1 prev="" cur=""
+  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "nvim -n '$file'" 2>/dev/null || return 0
+  for _ in $(seq 1 15); do
+    sleep 1
+    cur="$(tmux -L "$sock" capture-pane -t g -e -p 2>/dev/null || true)"
+    [[ -n $cur && $cur == "$prev" ]] && break
+    prev="$cur"
+  done
+  tmux -L "$sock" kill-session -t g 2>/dev/null || true
+  # Drop the bottom chrome — statusline, cmdline, and fidget's bottom-right LSP
+  # progress toast (all nondeterministic) — then trim trailing blank rows. The
+  # buffer content sits in the top rows, well above the dropped zone.
+  printf '%s\n' "$cur" | head -n "$((ROWS - 8))" | trim_trailing_blank
+}
+
 # aha renders the 16 ANSI colors as bright CSS names (blue, purple, teal, …),
 # not the terminal palette — so tools that emit named ANSI (lazygit borders,
 # delta decorations) would look wrong. Remap each CSS name to the active
@@ -84,6 +112,18 @@ section() {
   printf '<section><h2>%s</h2><pre class="frame">' "$label"
   aha --no-header | ansi_remap || true
   printf '</pre></section>\n'
+}
+
+# Pre-install treesitter parsers so none installs mid-capture — a parser
+# installing shifts a sample from plain to highlighted between runs, and its
+# progress messages vary. Best-effort; bounded wait. nvim-treesitter (main
+# branch) installs async, so poll get_installed until the set is present.
+prewarm_treesitter() {
+  local langs="bash lua toml yaml json markdown markdown_inline go c_sharp xml css dockerfile python typescript tsx sql"
+  echo "theme-gallery: ensuring treesitter parsers…" >&2
+  nvim --headless \
+    -c "lua local ts=require('nvim-treesitter'); local a=ts.get_available(); local w=vim.tbl_filter(function(p) return vim.tbl_contains(a,p) end, vim.split('$langs',' ')); ts.install(w); vim.wait(300000, function() local h=ts.get_installed('parsers'); for _,p in ipairs(w) do if not vim.tbl_contains(h,p) then return false end end; return true end, 300)" \
+    -c 'qa!' >/dev/null 2>&1 || true
 }
 
 page_header() {
@@ -140,7 +180,7 @@ build_theme() {
     for f in "$samples_dir"/*; do
       base="$(basename "$f")"
       [[ $base == sample.diff ]] && continue
-      tcapture "nvim -n '$f'" 2.5 | section "nvim — $base"
+      ncapture "$f" | section "nvim — $base"
     done
 
     # lazygit — branches (block 3) and commits (block 4), each fullscreened.
@@ -196,6 +236,8 @@ main() {
       return 1
       ;;
   esac
+
+  prewarm_treesitter
 
   local t
   while IFS= read -r t; do
