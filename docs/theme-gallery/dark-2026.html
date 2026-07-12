@@ -298,43 +298,9 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#ff7b72;">EXPOSE</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">8080</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#ff7b72;">CMD</span><span style="color:#bbbebf;"> [&quot;./app&quot;, &quot;--serve&quot;]</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/Dockerfile                                                                                    </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.cs</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">// Palette sample: C# — comments, strings, numbers, keywords, types, xml-doc.</span>
-<span style="color:#6e7681;">H </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">using</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">System</span><span style="color:#bbbebf;">;     </span><span style="color:#6e7681;">■ Using directive is unnecessary.</span>
+<span style="color:#6e7681;">H </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">using</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">System</span><span style="color:#bbbebf;">;     </span><span style="color:#6e7681;">■ Using directive is unnecessary.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  4 </span><span style="color:#ff7b72;">namespace</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">Palette</span><span style="color:#bbbebf;">;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  5 </span>
@@ -345,43 +311,15 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 10 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">public</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">string</span><span style="color:#bbbebf;"> </span><span style="color:#d2a8ff;">Greet</span><span style="color:#bbbebf;">()</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">    {</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">        </span><span style="color:#ff7b72;">var</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;"> = </span><span style="color:#ff7b72;">new</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">System</span><span style="color:#bbbebf;">.</span><span style="color:#ffa657;">Text</span><span style="color:#bbbebf;">.</span><span style="color:#ffa657;">StringBuilder</span><span style="color:#bbbebf;">();</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">        </span><span style="color:#ff7b72;">var</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;"> = </span><span style="color:#ff7b72;">new</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">System</span><span style="color:#bbbebf;">.</span><span style="color:#7ee787;">Text</span><span style="color:#bbbebf;">.</span><span style="color:#7ee787;">StringBuilder</span><span style="color:#bbbebf;">();</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#bbbebf;">        </span><span style="color:#ff7b72;">for</span><span style="color:#bbbebf;"> (</span><span style="color:#ff7b72;">var</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">0</span><span style="color:#bbbebf;">; </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;"> &lt; </span><span style="color:#ffa657;">MaxRetries</span><span style="color:#bbbebf;">; </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;">++)</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 15 </span><span style="color:#bbbebf;">        {</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 16 </span><span style="color:#bbbebf;">            </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;">.</span><span style="color:#ffa657;">AppendLine</span><span style="color:#bbbebf;">(</span><span style="color:#a5d6ff;">$&quot;hello </span><span style="color:#bbbebf;">{</span><span style="color:#ffa657;">name</span><span style="color:#bbbebf;">}</span><span style="color:#a5d6ff;"> (</span><span style="color:#bbbebf;">{</span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;">}</span><span style="color:#a5d6ff;">)&quot;</span><span style="color:#bbbebf;">);</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 16 </span><span style="color:#bbbebf;">            </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">AppendLine</span><span style="color:#bbbebf;">(</span><span style="color:#a5d6ff;">$&quot;hello </span><span style="color:#bbbebf;">{</span><span style="color:#ffa657;">name</span><span style="color:#bbbebf;">}</span><span style="color:#a5d6ff;"> (</span><span style="color:#bbbebf;">{</span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;">}</span><span style="color:#a5d6ff;">)&quot;</span><span style="color:#bbbebf;">);</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span><span style="color:#bbbebf;">        }</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#bbbebf;">        </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;">.</span><span style="color:#ffa657;">ToString</span><span style="color:#bbbebf;">();</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#bbbebf;">        </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">ToString</span><span style="color:#bbbebf;">();</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 19 </span><span style="color:#bbbebf;">    }</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 20 </span><span style="color:#bbbebf;">}</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                                                                      <span style="color:#bbbebf;">           </span><span style="color:#8b949e;"> Restore complete </span><span style="color:#ff7b72;">Restore</span><span style="color:#8b949e;"> </span>
-                                                                                                      <span style="color:#bbbebf;">                           </span><span style="color:#8b949e;"> </span><span style="font-weight:bold;color:#8b949e;">roslyn</span><span style="color:#8b949e;"> </span><span style="color:#ff7b72;">✔</span><span style="color:#8b949e;"> </span>
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.cs                                                                                     </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.css</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">/* Palette sample: CSS — at-rules, selectors, properties, values, comments. */</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">@import</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;reset.css&quot;</span><span style="color:#bbbebf;">;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span>
@@ -397,40 +335,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">padding</span><span style="color:#bbbebf;">: </span><span style="color:#79c0ff;">1.5</span><span style="color:#a5d6ff;">rem</span><span style="color:#bbbebf;">;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#bbbebf;">  }</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 15 </span><span style="color:#bbbebf;">}</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.css                                                                                    </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.go</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">// Palette sample: Go — comments, strings, numbers, keywords, types, funcs.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">package</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">main</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span>
@@ -458,28 +363,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 25 »       »       </span><span style="color:#ffa657;">fmt</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">Print</span><span style="color:#bbbebf;">(</span><span style="color:#7ee787;">Greeter</span><span style="color:#bbbebf;">{</span><span style="color:#ffa657;">Name</span><span style="color:#bbbebf;">: </span><span style="color:#a5d6ff;">&quot;palette&quot;</span><span style="color:#bbbebf;">}.</span><span style="color:#d2a8ff;">Greet</span><span style="color:#bbbebf;">())</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 26 »       </span><span style="color:#bbbebf;">}</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 27 </span><span style="color:#bbbebf;">}</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.go                                                                                     </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.json</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#51504f;">{</span><span style="background-color:#51504f;"></span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">&quot;title&quot;</span><span style="color:#bbbebf;">: </span><span style="color:#a5d6ff;">&quot;palette demo&quot;</span><span style="color:#bbbebf;">,</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">&quot;retries&quot;</span><span style="color:#bbbebf;">: </span><span style="color:#79c0ff;">3</span><span style="color:#bbbebf;">,</span>
@@ -493,91 +377,26 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#bbbebf;">  },</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">&quot;nullable&quot;</span><span style="color:#bbbebf;">: </span><span style="color:#ff7b72;">null</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#51504f;">}</span><span style="background-color:#51504f;"></span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.json                                                                                   </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.lua</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">-- Palette sample: lua — comments, strings, numbers, keywords, functions.</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">M</span><span style="color:#bbbebf;"> = </span><span style="color:#ff7b72;">{}</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span><span style="color:#bbbebf;"> = </span><span style="color:#ff7b72;">{}</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  4 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">MAX</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">42</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  4 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">MAX</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">42</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  5 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">name</span><span style="color:#bbbebf;"> = </span><span style="color:#a5d6ff;">&quot;world</span><span style="color:#7ee787;">\n</span><span style="color:#a5d6ff;">&quot;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  6 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  7 --- Doc-style comment describing the greeter.</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  8 </span><span style="color:#ff7b72;">function</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">M</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">greet</span><span style="color:#bbbebf;">(</span><span style="color:#ffa657;">who</span><span style="color:#bbbebf;">)</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  8 </span><span style="color:#ff7b72;">function</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">greet</span><span style="color:#bbbebf;">(</span><span style="color:#ffa657;">who</span><span style="color:#bbbebf;">)</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  9 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">who</span><span style="color:#bbbebf;"> = </span><span style="color:#ffa657;">who</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">or</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">name</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 10 </span><span style="color:#bbbebf;">  </span><span style="color:#ff7b72;">for</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">1</span><span style="color:#bbbebf;">, </span><span style="color:#79c0ff;">MAX</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">do</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 10 </span><span style="color:#bbbebf;">  </span><span style="color:#ff7b72;">for</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">1</span><span style="color:#bbbebf;">, </span><span style="color:#ffa657;">MAX</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">do</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">if</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;"> % </span><span style="color:#79c0ff;">7</span><span style="color:#bbbebf;"> == </span><span style="color:#79c0ff;">0</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">then</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">      </span><span style="color:#d2a8ff;">print</span><span style="color:#bbbebf;">((</span><span style="color:#a5d6ff;">&quot;hello %s (%d)&quot;</span><span style="color:#bbbebf;">):</span><span style="color:#d2a8ff;">format</span><span style="color:#bbbebf;">(</span><span style="color:#ffa657;">who</span><span style="color:#bbbebf;">, </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;">))</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">      </span><span style="color:#d2a8ff;">print</span><span style="color:#bbbebf;">((</span><span style="color:#a5d6ff;">&quot;hello %s (%d)&quot;</span><span style="color:#bbbebf;">)</span><span style="color:#ffa657;">:</span><span style="color:#d2a8ff;">format</span><span style="color:#bbbebf;">(</span><span style="color:#ffa657;">who</span><span style="color:#bbbebf;">, </span><span style="color:#ffa657;">i</span><span style="color:#bbbebf;">))</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">end</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#bbbebf;">  </span><span style="color:#ff7b72;">end</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 15 </span><span style="color:#bbbebf;">  </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">true</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 16 </span><span style="color:#ff7b72;">end</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">M</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                                                                        <span style="color:#bbbebf;"> </span><span style="color:#8b949e;"> 894/3144 (28%) </span><span style="color:#ff7b72;">Loading workspace</span><span style="color:#8b949e;"> </span>
-                                                                                                        <span style="color:#bbbebf;">                         </span><span style="color:#8b949e;"> </span><span style="font-weight:bold;color:#8b949e;">lua_ls</span><span style="color:#8b949e;"> </span><span style="color:#ff7b72;">⠼</span><span style="color:#8b949e;"> </span>
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.lua                                                                                    </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span>
+</pre></section>
 <section><h2>nvim — sample.md</h2><pre class="frame"><span style="color:#ff7b72;">󰫎 </span><span style="font-weight:bold;color:#ff7b72;"></span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="font-weight:bold;color:#ff7b72;"># Palette sample: Markdown</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#bbbebf;">A short paragraph with </span><span style="font-weight:bold;color:#bbbebf;"></span><span style="font-weight:bold;color:#ff7b72;">bold</span><span style="color:#bbbebf;">, </span><span style="font-style:italic;color:#bbbebf;">italic</span><span style="color:#bbbebf;">, and </span><span style="color:#a5d6ff;"></span><span style="color:#a5d6ff;background-color:#222222;">inline code</span><span style="color:#bbbebf;background-color:#222222;"></span><span style="color:#bbbebf;">.        </span>
@@ -594,39 +413,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 15 </span><span style="color:#ffa657;">󰖟 a link</span><span style="color:#bbbebf;"> and a footnote reference.</span><span style="color:#ffa657;">󰯔 ¹</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 16 </span><span style="color:#bbbebf;">                                                           </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span><span style="color:#ffa657;">󰯔 ¹</span><span style="color:#bbbebf;">: the footnote body.</span>
-<span style="color:#bbbebf;">  </span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.md                                                                                     </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.py</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">&quot;&quot;&quot;Palette sample: Python — docstrings, strings, numbers, keywords, types.&quot;&quot;&quot;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">from</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">__future__</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">import</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">annotations</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span>
@@ -646,36 +433,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#ff7b72;">if</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">__name__</span><span style="color:#bbbebf;"> == </span><span style="color:#a5d6ff;">&quot;__main__&quot;</span><span style="color:#bbbebf;">:</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 19 </span><span style="color:#bbbebf;">    </span><span style="color:#d2a8ff;">print</span><span style="color:#bbbebf;">(</span><span style="color:#7ee787;">Greeter</span><span style="color:#bbbebf;">(</span><span style="color:#a5d6ff;">&quot;palette&quot;</span><span style="color:#bbbebf;">).</span><span style="color:#d2a8ff;">greet</span><span style="color:#bbbebf;">())</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                                                                                         <span style="color:#bbbebf;"> </span><span style="color:#8b949e;"> (3x) Completed  </span>
-                                                                                                                         <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> </span><span style="font-weight:bold;color:#8b949e;">basedpyright</span><span style="color:#8b949e;"> </span><span style="color:#ff7b72;">✔</span><span style="color:#8b949e;"> </span>
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.py                                                                                 </span><span style="color:#d29922;background-color:#373737;"> 1 </span><span style="font-weight:bold;color:#d29922;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.sh</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#ff7b72;">#!/usr/bin/env bash</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 # Palette sample: shell — comments, strings, vars, keywords, numbers.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#d2a8ff;">set</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">-euo</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">pipefail</span>
@@ -696,83 +454,21 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#bbbebf;">}</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 19 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 20 </span><span style="color:#d2a8ff;">retry</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">curl</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">-fsSL</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;https://example.com/</span><span style="color:#bbbebf;">${</span><span style="color:#ffa657;">greeting</span><span style="color:#bbbebf;">}</span><span style="color:#a5d6ff;">&quot;</span><span style="color:#bbbebf;"> || </span><span style="color:#d2a8ff;">echo</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;gave up&quot;</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.sh                                                                                     </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.sql</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">-- Palette sample: SQL — comments, keywords, strings, numbers, functions.</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">CREATE</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">TABLE</span><span style="color:#bbbebf;"> greeting (</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#bbbebf;">    id      </span><span style="color:#ff7b72;">INTEGER</span><span style="color:#bbbebf;"> PRIMARY KEY,</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  4 </span><span style="color:#bbbebf;">    name    TEXT    </span><span style="color:#ff7b72;">NOT</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">NULL</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">DEFAULT</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">'</span><span style="color:#a5d6ff;">world</span><span style="color:#7ee787;">'</span><span style="color:#bbbebf;">,</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  5 </span><span style="color:#bbbebf;">    ratio   </span><span style="color:#ff7b72;">REAL</span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">CHECK</span><span style="color:#bbbebf;"> (ratio </span><span style="color:#ff7b72;">BETWEEN</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">0.0</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">AND</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">1.0</span><span style="color:#bbbebf;">)</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">CREATE</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">TABLE</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">greeting</span><span style="color:#bbbebf;"> (</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">id</span><span style="color:#bbbebf;">      </span><span style="color:#ff7b72;">INTEGER</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">PRIMARY</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">KEY</span><span style="color:#bbbebf;">,</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  4 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">name</span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">TEXT</span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">NOT</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">NULL</span><span style="color:#bbbebf;"> </span><span style="color:#d2a8ff;">DEFAULT</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">'world'</span><span style="color:#bbbebf;">,</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  5 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">ratio</span><span style="color:#bbbebf;">   </span><span style="color:#ff7b72;">REAL</span><span style="color:#bbbebf;">    </span><span style="color:#ff7b72;">CHECK</span><span style="color:#bbbebf;"> (</span><span style="color:#ffa657;">ratio</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">BETWEEN</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">0.0</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">AND</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">1.0</span><span style="color:#bbbebf;">)</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  6 </span><span style="color:#bbbebf;">);</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  7 </span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  8 </span><span style="color:#ff7b72;">INSERT</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">INTO</span><span style="color:#bbbebf;"> greeting (id, name) </span><span style="color:#ff7b72;">VALUES</span><span style="color:#bbbebf;"> (</span><span style="color:#79c0ff;">1</span><span style="color:#bbbebf;">, </span><span style="color:#7ee787;">'</span><span style="color:#a5d6ff;">palette</span><span style="color:#7ee787;">'</span><span style="color:#bbbebf;">);</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  8 </span><span style="color:#ff7b72;">INSERT</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">INTO</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">greeting</span><span style="color:#bbbebf;"> (id, name) </span><span style="color:#ff7b72;">VALUES</span><span style="color:#bbbebf;"> (</span><span style="color:#79c0ff;">1</span><span style="color:#bbbebf;">, </span><span style="color:#a5d6ff;">'palette'</span><span style="color:#bbbebf;">);</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  9 </span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 10 </span><span style="color:#ff7b72;">SELECT</span><span style="color:#bbbebf;"> id, </span><span style="color:#7ee787;">upper</span><span style="color:#bbbebf;">(name) </span><span style="color:#ff7b72;">AS</span><span style="color:#bbbebf;"> shout</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#ff7b72;">FROM</span><span style="color:#bbbebf;"> greeting</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#ff7b72;">WHERE</span><span style="color:#bbbebf;"> ratio &gt; </span><span style="color:#79c0ff;">0.5</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#ff7b72;">ORDER</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">BY</span><span style="color:#bbbebf;"> id </span><span style="color:#ff7b72;">DESC</span>
-<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#bbbebf;">LIMIT </span><span style="color:#79c0ff;">3</span><span style="color:#bbbebf;">;</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.sql                                                                                    </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-</span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#252526;">[nvim-treesitter/install/sql]: Compiling parser</span><span style="color:#bbbebf;">              </span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 10 </span><span style="color:#ff7b72;">SELECT</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">id</span><span style="color:#bbbebf;">, </span><span style="color:#d2a8ff;">upper</span><span style="color:#bbbebf;">(</span><span style="color:#ffa657;">name</span><span style="color:#bbbebf;">) </span><span style="color:#ff7b72;">AS</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">shout</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#ff7b72;">FROM</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">greeting</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#ff7b72;">WHERE</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">ratio</span><span style="color:#bbbebf;"> &gt; </span><span style="color:#79c0ff;">0.5</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#ff7b72;">ORDER</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">BY</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">id</span><span style="color:#bbbebf;"> </span><span style="color:#d2a8ff;">DESC</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#ff7b72;">LIMIT</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">3</span><span style="color:#bbbebf;">;</span>
 </pre></section>
 <section><h2>nvim — sample.toml</h2><pre class="frame"><span style="color:#6e7681;">H </span><span style="font-weight:bold;color:#6e7681;"></span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;"># Palette sample: toml — comments, strings, numbers, booleans, tables.</span><span style="color:#bbbebf;">     </span><span style="color:#6e7681;">■ this document has been excluded</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ffa657;">title</span><span style="color:#bbbebf;">   = </span><span style="color:#a5d6ff;">&quot;palette demo&quot;</span>
@@ -787,42 +483,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">  [</span><span style="color:#ffa657;">server</span><span style="color:#bbbebf;">.</span><span style="color:#ffa657;">tls</span><span style="color:#bbbebf;">]</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">cert</span><span style="color:#bbbebf;"> = </span><span style="color:#a5d6ff;">&quot;/etc/ssl/cert.pem&quot;</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.toml                                                                                   </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.tsx</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">// Palette sample: TSX — types, strings, numbers, keywords, JSX, attributes.</span>
 <span style="color:#ff7b72;">E </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">import</span><span style="color:#bbbebf;"> { </span><span style="color:#ffa657;">useState</span><span style="color:#bbbebf;"> } </span><span style="color:#ff7b72;">from</span><span style="color:#bbbebf;"> </span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;"></span><span style="text-decoration:underline;font-style:italic;color:#a5d6ff;">&quot;react&quot;</span><span style="color:#bbbebf;">;     </span><span style="color:#ff7b72;">■ Cannot find module 'react' or its corresponding type declarations.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span>
@@ -845,33 +506,7 @@
 <span style="color:#ff7b72;">E </span><span style="color:#8b949e;"> 20 </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;"></span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;">    </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;">&lt;/</span><span style="text-decoration:underline;font-style:italic;color:#ff7b72;">button</span><span style="text-decoration:underline;font-style:italic;color:#8b949e;">&gt;</span><span style="color:#bbbebf;">     </span><span style="color:#ff7b72;">■ JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 21 </span><span style="color:#bbbebf;">  );</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 22 </span><span style="color:#bbbebf;">}</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                                              <span style="color:#bbbebf;">      </span><span style="color:#8b949e;"> Completed </span><span style="color:#ff7b72;">Analyzing 'sample.tsx' and its dependencies</span><span style="color:#8b949e;"> </span>
-                                                                              <span style="color:#bbbebf;">                                                    </span><span style="color:#8b949e;"> </span><span style="font-weight:bold;color:#8b949e;">vtsls</span><span style="color:#8b949e;"> </span><span style="color:#ff7b72;">✔</span><span style="color:#8b949e;"> </span>
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.tsx                                                                                </span><span style="color:#ff7b72;background-color:#373737;"> 6 </span><span style="font-weight:bold;color:#ff7b72;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.xml</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;">&lt;?</span><span style="color:#ff7b72;">xml</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">version</span><span style="color:#bbbebf;">=&quot;</span><span style="color:#79c0ff;">1.0</span><span style="color:#bbbebf;">&quot; </span><span style="color:#ffa657;">encoding</span><span style="color:#bbbebf;">=&quot;UTF-8&quot;</span><span style="color:#8b949e;">?&gt;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 &lt;!</span><span style="color:#ff7b72;">DOCTYPE</span><span style="color:#bbbebf;"> </span><span style="color:#7ee787;">config</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">SYSTEM</span><span style="color:#bbbebf;"> &quot;</span><span style="text-decoration:underline;color:#bbbebf;">config.dtd</span><span style="color:#bbbebf;">&quot;</span><span style="color:#8b949e;">&gt;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 &lt;!-- Palette sample: XML — declaration, DOCTYPE, tags, attributes, comment. --&gt;</span>
@@ -881,46 +516,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  7 </span><span style="color:#bbbebf;">    </span><span style="color:#8b949e;">&lt;</span><span style="color:#ff7b72;">tag</span><span style="color:#8b949e;">&gt;</span><span style="color:#bbbebf;">beta</span><span style="color:#8b949e;">&lt;/</span><span style="color:#ff7b72;">tag</span><span style="color:#8b949e;">&gt;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  8 </span><span style="color:#bbbebf;">  </span><span style="color:#8b949e;">&lt;/</span><span style="color:#ff7b72;">server</span><span style="color:#8b949e;">&gt;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  9 &lt;/</span><span style="color:#ff7b72;">config</span><span style="color:#8b949e;">&gt;</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.xml                                                                                    </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
 <section><h2>nvim — sample.yaml</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#8b949e;"># Palette sample: yaml — comments, keys, strings, numbers, lists, anchors.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#ffa657;">name</span><span style="color:#bbbebf;">: </span><span style="color:#a5d6ff;">palette-demo</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#ffa657;">version</span><span style="color:#bbbebf;">: </span><span style="color:#79c0ff;">1.2</span>
@@ -934,42 +530,23 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">ports</span><span style="color:#bbbebf;">:</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">    - </span><span style="color:#79c0ff;">80</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    - </span><span style="color:#79c0ff;">443</span>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<span style="font-weight:bold;"></span><span style="font-weight:bold;color:#121314;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;"> N </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#373737;"> ~/.local/lib/theme-gallery/samples/sample.yaml                                                                                   </span><span style="font-weight:bold;color:#bbbebf;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#373737;"></span><span style="font-weight:bold;color:#121314;background-color:#79c0ff;">  1:1
-
-</span></pre></section>
+</pre></section>
+<section><h2>nvim — diagnostics</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#bbbebf;">theme-gallery diagnostic showcase</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  2 </span><span style="color:#bbbebf;">one line per severity, colored from the diag_* palette:</span>
+<span style="color:#ff7b72;">E </span><span style="color:#8b949e;">  3 </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;"></span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;">error</span><span style="color:#bbbebf;">   — something is broken     </span><span style="color:#ff7b72;">■ something is broken</span>
+<span style="color:#d29922;">W </span><span style="color:#8b949e;">  4 </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;"></span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;"></span><span style="text-decoration:underline;font-style:italic;color:#58a6ff;">warning</span><span style="color:#bbbebf;"> — something looks suspicious     </span><span style="color:#d29922;">■ something looks suspicious</span>
+<span style="color:#58a6ff;">I </span><span style="color:#8b949e;">  5 </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;"></span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;">info</span><span style="color:#bbbebf;">    — something worth noting     </span><span style="color:#58a6ff;">■ something worth noting</span>
+<span style="color:#6e7681;">H </span><span style="color:#8b949e;">  6 </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;"></span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;">hint</span><span style="color:#bbbebf;">    — a gentle suggestion     </span><span style="color:#6e7681;">■ a gentle suggestion</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  7 </span><span style="color:#bbbebf;">(gutter signs, inline virtual text, and underline all use diag_*)</span>
+</pre></section>
+<section><h2>nvim — gitsigns (add/change/delete)</h2><pre class="frame"><span style="color:#bbbebf;">  </span><span style="font-weight:bold;color:#bbbebf;">  1 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span><span style="color:#bbbebf;"> = </span><span style="color:#ff7b72;">{}</span>
+<span style="color:#d29922;">~ </span><span style="color:#8b949e;">  2 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">x</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">10</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  3 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">y</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">2</span>
+<span style="color:#3fb950;">+ </span><span style="color:#8b949e;">  4 </span><span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">sum</span><span style="color:#bbbebf;"> = </span><span style="color:#79c0ff;">0</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  5 </span><span style="color:#ff7b72;">function</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">sum</span><span style="color:#bbbebf;">()</span>
+<span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  6 </span><span style="color:#bbbebf;">  </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">x</span><span style="color:#bbbebf;"> + </span><span style="color:#ffa657;">y</span>
+<span style="color:#f85149;">_ </span><span style="color:#8b949e;">  7 </span><span style="color:#ff7b72;">end</span>
+</pre></section>
 <section><h2>lazygit — branches</h2><pre class="frame"><span style="color:#58a6ff;">╭─[3]─Local branches </span>- Remotes - Tags<span style="color:#58a6ff;">──────────────────────────────────────────────────────────────────────────────────────────────────────╮
 │</span><span style="font-weight:bold;color:#58a6ff;"></span><span style="font-weight:bold;filter: contrast(70%) brightness(190%);color:#3fb950;"></span><span style="font-weight:bold;color:#3fb950;background-color:#276782;">  *</span><span style="font-weight:bold;background-color:#276782;"> 771a2b34 main            Initial commit                                                                                               </span><span style="color:#58a6ff;">│
 │</span><span style="color:#39c5cf;">6M</span>  e47ecc9f <span style="color:#39c5cf;">build/release</span>   Work on build/release                                                                                        <span style="color:#58a6ff;">│
