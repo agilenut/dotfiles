@@ -18,7 +18,7 @@ lib="$HOME/.local/lib/theme-gallery"
 samples_dir="$lib/samples"
 fixture_gen="$lib/make-lazygit-fixture"
 
-for dep in aha tmux bat delta nvim theme chezmoi jq; do
+for dep in aha tmux bat delta nvim highlight theme chezmoi jq; do
   command -v "$dep" >/dev/null || {
     echo "theme-gallery: missing dependency '$dep'" >&2
     exit 1
@@ -27,8 +27,7 @@ done
 
 repo="$(dirname "$(chezmoi source-path)")"
 outdir="$repo/docs/theme-gallery"
-qldir="$outdir/ql"
-mkdir -p "$outdir" "$qldir"
+mkdir -p "$outdir"
 
 original="$(chezmoi data | jq -r '.theme // "vscode-dark-modern"')"
 sock="theme-gallery-$$"
@@ -137,6 +136,16 @@ pane() {
   printf '</pre></div>'
 }
 
+# quicklook column: highlight (the engine sbarex/QL uses) renders the file with
+# the palette .theme straight to palette-hex HTML — no ANSI, so no remap. This
+# reproduces QL's colors (not sbarex's exact layout) and is diffable, so it can
+# live in the committed pages. stdin is highlight's HTML fragment.
+ql_pane() {
+  printf '<div class="pane"><h3>quicklook</h3><pre class="frame">'
+  cat
+  printf '</pre></div>'
+}
+
 # Pre-install treesitter parsers so none installs mid-capture — a parser
 # installing shifts a sample from plain to highlighted between runs, and its
 # progress messages vary. Best-effort; bounded wait. nvim-treesitter (main
@@ -224,6 +233,15 @@ build_theme() {
   pal="$(chezmoi execute-template '{{ with (index .themes .theme).ansi }}{{ .bright_black }} {{ .red }} {{ .green }} {{ .yellow }} {{ .blue }} {{ .magenta }} {{ .cyan }} {{ .white }} {{ .black }}{{ end }}')"
   read -r PAL_BRIGHT_BLACK PAL_RED PAL_GREEN PAL_YELLOW PAL_BLUE PAL_MAGENTA PAL_CYAN PAL_WHITE PAL_BLACK <<<"$pal"
 
+  # Render the quicklook .theme for the active theme, so highlight renders with
+  # the exact palette QL uses (the .tmpl reads the active `theme`). highlight
+  # only treats a --config-file as a theme if it ends in .theme, so give it a
+  # fixed name inside a temp dir.
+  local qldir qltheme
+  qldir="$(mktemp -d "${TMPDIR:-/tmp}/qltheme.XXXXXX")"
+  qltheme="$qldir/palette.theme"
+  chezmoi execute-template <"$(chezmoi source-path)/dot_config/syntax-highlight/Themes/palette.theme.tmpl" >"$qltheme"
+
   local page="$outdir/$t.html"
   {
     page_header "$t" "$bg" "$fg"
@@ -237,6 +255,9 @@ build_theme() {
       printf '<section class="card"><h2>%s</h2><div class="cols">' "$base"
       bat --color=always --style=plain --theme=palette "$f" 2>/dev/null | pane "bat"
       ncapture "$f" | pane "nvim"
+      # highlight can fail on files whose syntax it can't detect (e.g.
+      # extensionless Dockerfile); don't let that abort the gallery.
+      highlight -O html --fragment --inline-css --config-file="$qltheme" -i "$f" 2>/dev/null | ql_pane || true
       printf '</div></section>\n'
     done
 
@@ -262,45 +283,23 @@ build_theme() {
 
     printf '</body>\n</html>\n'
   } >"$page"
+  rm -rf "$qldir"
   echo "theme-gallery: wrote $page" >&2
 }
 
-# quicklook — best-effort PNGs (approximate; reflects the app-selected theme).
-# Opt-in (--with-quicklook): qlmanage can hang indefinitely on some files
-# (e.g. extensionless ones), so each call gets a background watchdog since
-# macOS has no `timeout`. Off by default to keep the run fast and reliable.
-readonly QL_TIMEOUT=15
-build_quicklook() {
-  local f qpid wpid
-  for f in "$samples_dir"/*; do
-    qlmanage -t -s 1200 -o "$qldir" "$f" >/dev/null 2>&1 &
-    qpid=$!
-    (
-      sleep "$QL_TIMEOUT"
-      kill "$qpid"
-    ) >/dev/null 2>&1 &
-    wpid=$!
-    wait "$qpid" 2>/dev/null || true
-    kill "$wpid" 2>/dev/null || true
-  done
-  echo "theme-gallery: quicklook PNGs (approximate) in $qldir" >&2
-}
-
 usage() {
-  echo "Usage: theme-gallery [--with-quicklook]"
-  echo "  Renders docs/theme-gallery/<theme>.html for every palette theme."
-  echo "  --with-quicklook  also emit approximate local-only QL PNGs (slow)."
+  echo "Usage: theme-gallery"
+  echo "  Renders docs/theme-gallery/<theme>.html for every palette theme,"
+  echo "  each with bat | nvim | quicklook columns per file."
 }
 
 main() {
-  local with_ql=0
   case "${1:-}" in
-    --with-quicklook | -q) with_ql=1 ;;
+    "") ;;
     -h | --help)
       usage
       return 0
       ;;
-    "") ;;
     *)
       usage >&2
       return 1
@@ -313,8 +312,6 @@ main() {
   while IFS= read -r t; do
     [[ -n $t ]] && build_theme "$t"
   done <<<"$(theme --list)"
-
-  ((with_ql)) && command -v qlmanage >/dev/null && build_quicklook
 
   echo "theme-gallery: done. Open $outdir/*.html" >&2
 }

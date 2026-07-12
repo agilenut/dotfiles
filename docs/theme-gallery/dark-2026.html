@@ -45,7 +45,7 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#ff7b72;">EXPOSE</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">8080</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#ff7b72;">CMD</span><span style="color:#bbbebf;"> [&quot;./app&quot;, &quot;--serve&quot;]</span>
-</pre></div></div></section>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"></pre></div></div></section>
 <section class="card"><h2>sample.cs</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">//</span><span style="color:#8b949e;"> Palette sample: C# — comments, strings, numbers, keywords, types, xml-doc.</span>
 <span style="color:#ff7b72;">using</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">System</span><span style="color:#bbbebf;">;</span>
 
@@ -86,6 +86,26 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#bbbebf;">        </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">sb</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">ToString</span><span style="color:#bbbebf;">();</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 19 </span><span style="color:#bbbebf;">    }</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 20 </span><span style="color:#bbbebf;">}</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">// Palette sample: C# — comments, strings, numbers, keywords, types, xml-doc.</span>
+<span style="color:#ff7b72">using</span> System<span style="color:#bbbebf">;</span>
+
+<span style="color:#ff7b72">namespace</span> Palette<span style="color:#bbbebf">;</span>
+
+<span style="color:#8b949e">/// &lt;summary&gt;Builds greetings for the palette demo.&lt;/summary&gt;</span>
+<span style="color:#ff7b72">public sealed class</span> <span style="color:#d2a8ff">Greeter</span><span style="color:#bbbebf">(</span><span style="color:#ff7b72">string</span> name <span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;world&quot;</span><span style="color:#bbbebf">)</span>
+<span style="color:#bbbebf">{</span>
+    <span style="color:#ff7b72">private const int</span> MaxRetries <span style="color:#bbbebf">=</span> <span style="color:#79c0ff">3</span><span style="color:#bbbebf">;</span>
+
+    <span style="color:#ff7b72">public string</span> <span style="color:#d2a8ff">Greet</span><span style="color:#bbbebf">()</span>
+    <span style="color:#bbbebf">{</span>
+        <span style="color:#ff7b72">var</span> sb <span style="color:#bbbebf">=</span> <span style="color:#ff7b72">new</span> System<span style="color:#bbbebf">.</span>Text<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">StringBuilder</span><span style="color:#bbbebf">();</span>
+        <span style="color:#ff7b72">for</span> <span style="color:#bbbebf">(</span><span style="color:#ff7b72">var</span> i <span style="color:#bbbebf">=</span> <span style="color:#79c0ff">0</span><span style="color:#bbbebf">;</span> i <span style="color:#bbbebf">&lt;</span> MaxRetries<span style="color:#bbbebf">;</span> i<span style="color:#bbbebf">++)</span>
+        <span style="color:#bbbebf">{</span>
+            sb<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">AppendLine</span><span style="color:#bbbebf">($</span><span style="color:#a5d6ff">&quot;hello</span> <span style="color:#ff7b72">{name}</span> <span style="color:#a5d6ff">(</span><span style="color:#ff7b72">{i}</span><span style="color:#a5d6ff">)&quot;</span><span style="color:#bbbebf">);</span>
+        <span style="color:#bbbebf">}</span>
+        <span style="color:#ff7b72">return</span> sb<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">ToString</span><span style="color:#bbbebf">();</span>
+    <span style="color:#bbbebf">}</span>
+<span style="color:#bbbebf">}</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.css</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">/*</span><span style="color:#8b949e;"> Palette sample: CSS — at-rules, selectors, properties, values, comments. </span><span style="color:#8b949e;">*/</span>
 <span style="color:#ff7b72;">@</span><span style="color:#ff7b72;">import</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;</span><span style="color:#a5d6ff;">reset.css</span><span style="color:#a5d6ff;">&quot;</span><span style="color:#bbbebf;">;</span>
@@ -117,6 +137,21 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">padding</span><span style="color:#bbbebf;">: </span><span style="color:#79c0ff;">1.5</span><span style="color:#a5d6ff;">rem</span><span style="color:#bbbebf;">;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#bbbebf;">  }</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 15 </span><span style="color:#bbbebf;">}</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">/* Palette sample: CSS — at-rules, selectors, properties, values, comments. */</span>
+<span style="color:#ff7b72">&#64;import</span> <span style="color:#a5d6ff">&quot;reset.css&quot;</span><span style="color:#bbbebf">;</span>
+
+<span style="color:#bbbebf">:</span>root <span style="color:#bbbebf">{</span>
+  <span style="color:#ff7b72">--accent</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">#569cd6</span><span style="color:#bbbebf">;</span>
+  <span style="color:#ff7b72">--gap</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">8px</span><span style="color:#bbbebf">;</span>
+<span style="color:#bbbebf">}</span>
+
+<span style="color:#ff7b72">&#64;media</span> <span style="color:#bbbebf">(</span><span style="color:#ff7b72">min-width</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">640px</span><span style="color:#bbbebf">) {</span>
+  <span style="color:#ff7b72">.card#main</span> <span style="color:#bbbebf">{</span>
+    <span style="color:#ff7b72">color</span><span style="color:#bbbebf">:</span> var<span style="color:#bbbebf">(--</span>accent<span style="color:#bbbebf">);</span>
+    <span style="color:#ff7b72">margin</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">0</span> auto<span style="color:#bbbebf">;</span>
+    <span style="color:#ff7b72">padding</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">1.5rem</span><span style="color:#bbbebf">;</span>
+  <span style="color:#bbbebf">}</span>
+<span style="color:#bbbebf">}</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.go</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">//</span><span style="color:#8b949e;"> Palette sample: Go — comments, strings, numbers, keywords, types, funcs.</span>
 <span style="color:#ff7b72;">package</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">main</span>
@@ -172,6 +207,33 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 25 »       »       </span><span style="color:#ffa657;">fmt</span><span style="color:#bbbebf;">.</span><span style="color:#d2a8ff;">Print</span><span style="color:#bbbebf;">(</span><span style="color:#7ee787;">Greeter</span><span style="color:#bbbebf;">{</span><span style="color:#ffa657;">Name</span><span style="color:#bbbebf;">: </span><span style="color:#a5d6ff;">&quot;palette&quot;</span><span style="color:#bbbebf;">}.</span><span style="color:#d2a8ff;">Greet</span><span style="color:#bbbebf;">())</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 26 »       </span><span style="color:#bbbebf;">}</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 27 </span><span style="color:#bbbebf;">}</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">// Palette sample: Go — comments, strings, numbers, keywords, types, funcs.</span>
+<span style="color:#ff7b72">package</span> main
+
+<span style="color:#ff7b72">import</span> <span style="color:#bbbebf">(</span>
+	<span style="color:#a5d6ff">&quot;fmt&quot;</span>
+	<span style="color:#a5d6ff">&quot;strings&quot;</span>
+<span style="color:#bbbebf">)</span>
+
+<span style="color:#ff7b72">const</span> maxRetries <span style="color:#bbbebf">=</span> <span style="color:#79c0ff">3</span>
+
+<span style="color:#8b949e">// Greeter builds greetings.</span>
+<span style="color:#ff7b72">type</span> Greeter <span style="color:#ff7b72">struct</span> <span style="color:#bbbebf">{</span>
+	Name <span style="color:#ff7b72">string</span>
+<span style="color:#bbbebf">}</span>
+
+<span style="color:#ff7b72">func</span> <span style="color:#bbbebf">(</span>g Greeter<span style="color:#bbbebf">)</span> <span style="color:#d2a8ff">Greet</span><span style="color:#bbbebf">()</span> <span style="color:#ff7b72">string</span> <span style="color:#bbbebf">{</span>
+	<span style="color:#ff7b72">if</span> g<span style="color:#bbbebf">.</span>Name <span style="color:#bbbebf">==</span> <span style="color:#a5d6ff">&quot;&quot;</span> <span style="color:#bbbebf">{</span>
+		g<span style="color:#bbbebf">.</span>Name <span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;world&quot;</span>
+	<span style="color:#bbbebf">}</span>
+	<span style="color:#ff7b72">return</span> fmt<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">Sprintf</span><span style="color:#bbbebf">(</span><span style="color:#a5d6ff">&quot;hello</span> <span style="color:#ff7b72">%s</span><span style="color:#a5d6ff"></span><span style="color:#7ee787">\n</span><span style="color:#a5d6ff">&quot;</span><span style="color:#bbbebf">,</span> strings<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">TrimSpace</span><span style="color:#bbbebf">(</span>g<span style="color:#bbbebf">.</span>Name<span style="color:#bbbebf">))</span>
+<span style="color:#bbbebf">}</span>
+
+<span style="color:#ff7b72">func</span> <span style="color:#d2a8ff">main</span><span style="color:#bbbebf">() {</span>
+	<span style="color:#ff7b72">for</span> i <span style="color:#bbbebf">:=</span> <span style="color:#79c0ff">0</span><span style="color:#bbbebf">;</span> i <span style="color:#bbbebf">&lt;</span> maxRetries<span style="color:#bbbebf">;</span> i<span style="color:#bbbebf">++ {</span>
+		fmt<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">Print</span><span style="color:#bbbebf">(</span>Greeter<span style="color:#bbbebf">{</span>Name<span style="color:#bbbebf">:</span> <span style="color:#a5d6ff">&quot;palette&quot;</span><span style="color:#bbbebf">}.</span><span style="color:#d2a8ff">Greet</span><span style="color:#bbbebf">())</span>
+	<span style="color:#bbbebf">}</span>
+<span style="color:#bbbebf">}</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.json</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#bbbebf;">{</span>
 <span style="color:#bbbebf;">  </span><span style="color:#a5d6ff;">&quot;</span><span style="color:#a5d6ff;">title</span><span style="color:#a5d6ff;">&quot;</span><span style="color:#bbbebf;">:</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;</span><span style="color:#a5d6ff;">palette demo</span><span style="color:#a5d6ff;">&quot;</span><span style="color:#bbbebf;">,</span>
@@ -199,6 +261,19 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#bbbebf;">  },</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">&quot;nullable&quot;</span><span style="color:#bbbebf;">: </span><span style="color:#ff7b72;">null</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;"></span><span style="color:#bbbebf;background-color:#51504f;">}</span><span style="background-color:#51504f;"></span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#ff7b72">{</span>
+  <span style="color:#ff7b72">&quot;title&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#a5d6ff">&quot;palette demo&quot;</span><span style="color:#bbbebf">,</span>
+  <span style="color:#ff7b72">&quot;retries&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">3</span><span style="color:#bbbebf">,</span>
+  <span style="color:#ff7b72">&quot;ratio&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">0.75</span><span style="color:#bbbebf">,</span>
+  <span style="color:#ff7b72">&quot;enabled&quot;</span><span style="color:#bbbebf">:</span> true<span style="color:#bbbebf">,</span>
+  <span style="color:#ff7b72">&quot;tags&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#ff7b72">[</span><span style="color:#a5d6ff">&quot;alpha&quot;</span><span style="color:#bbbebf">,</span> <span style="color:#a5d6ff">&quot;beta&quot;</span><span style="color:#ff7b72">]</span><span style="color:#bbbebf">,</span>
+  <span style="color:#ff7b72">&quot;server&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#ff7b72">{</span>
+    <span style="color:#ff7b72">&quot;host&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#a5d6ff">&quot;127.0.0.1&quot;</span><span style="color:#bbbebf">,</span>
+    <span style="color:#ff7b72">&quot;port&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#79c0ff">8080</span><span style="color:#bbbebf">,</span>
+    <span style="color:#ff7b72">&quot;path&quot;</span><span style="color:#bbbebf">:</span> <span style="color:#a5d6ff">&quot;c:</span><span style="color:#7ee787">\\</span><span style="color:#a5d6ff">logs</span><span style="color:#7ee787">\\</span><span style="color:#a5d6ff">out.txt&quot;</span>
+  <span style="color:#ff7b72">}</span><span style="color:#bbbebf">,</span>
+  <span style="color:#ff7b72">&quot;nullable&quot;</span><span style="color:#bbbebf">:</span> null
+<span style="color:#ff7b72">}</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.lua</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">--</span><span style="color:#8b949e;"> Palette sample: lua — comments, strings, numbers, keywords, functions.</span>
 <span style="color:#ff7b72;">local</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">=</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">{</span><span style="color:#bbbebf;">}</span>
@@ -236,6 +311,24 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 16 </span><span style="color:#ff7b72;">end</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#ff7b72;">return</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">M</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">-- Palette sample: lua — comments, strings, numbers, keywords, functions.</span>
+<span style="color:#ff7b72">local</span> M <span style="color:#bbbebf">= {}</span>
+
+<span style="color:#ff7b72">local</span> MAX <span style="color:#bbbebf">=</span> <span style="color:#79c0ff">42</span>
+<span style="color:#ff7b72">local</span> name <span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;world</span><span style="color:#7ee787">\n</span><span style="color:#a5d6ff">&quot;</span>
+
+<span style="color:#8b949e">--- Doc-style comment describing the greeter.</span>
+<span style="color:#ff7b72">function</span> M<span style="color:#bbbebf">.</span><span style="color:#d2a8ff">greet</span><span style="color:#bbbebf">(</span>who<span style="color:#bbbebf">)</span>
+  who <span style="color:#bbbebf">=</span> who <span style="color:#ff7b72">or</span> name
+  <span style="color:#ff7b72">for</span> i <span style="color:#bbbebf">=</span> <span style="color:#79c0ff">1</span><span style="color:#bbbebf">,</span> MAX <span style="color:#ff7b72">do</span>
+    <span style="color:#ff7b72">if</span> i <span style="color:#bbbebf">%</span> <span style="color:#79c0ff">7</span> <span style="color:#bbbebf">==</span> <span style="color:#79c0ff">0</span> <span style="color:#ff7b72">then</span>
+      <span style="color:#ff7b72">print</span><span style="color:#bbbebf">((</span><span style="color:#a5d6ff">&quot;hello %s (%d)&quot;</span><span style="color:#bbbebf">):</span><span style="color:#ff7b72">format</span><span style="color:#bbbebf">(</span>who<span style="color:#bbbebf">,</span> i<span style="color:#bbbebf">))</span>
+    <span style="color:#ff7b72">end</span>
+  <span style="color:#ff7b72">end</span>
+  <span style="color:#ff7b72">return true</span>
+<span style="color:#ff7b72">end</span>
+
+<span style="color:#ff7b72">return</span> M
 </pre></div></div></section>
 <section class="card"><h2>sample.md</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#ff7b72;">#</span><span style="color:#ff7b72;"> </span><span style="color:#ff7b72;">Palette sample: Markdown</span>
 
@@ -270,6 +363,23 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 15 </span><span style="color:#ffa657;">󰖟 a link</span><span style="color:#bbbebf;"> and a footnote reference.</span><span style="color:#ffa657;">󰯔 ¹</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 16 </span><span style="color:#bbbebf;">                                                           </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span><span style="color:#ffa657;">󰯔 ¹</span><span style="color:#bbbebf;">: the footnote body.</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#ff7b72"># Palette sample: Markdown</span>
+
+A short paragraph with **bold**, _italic_, and <span style="color:#a5d6ff">`inline code`</span>.
+
+<span style="color:#d2a8ff">&gt;</span> A blockquote for the Quote scope.
+
+<span style="color:#d2a8ff">-</span> list item one
+<span style="color:#d2a8ff">-</span> list item two
+
+<span style="color:#a5d6ff">```python</span>
+<span style="color:#a5d6ff">def greet(name: str) -&gt; str:</span>
+<span style="color:#a5d6ff">    return f&quot;hello {name}&quot;  # fenced code block</span>
+<span style="color:#a5d6ff">```</span>
+
+<span style="color:#ff7b72">[a link]</span><span style="color:#ff7b72">(https://example.com)</span> and a footnote reference.[^<span style="color:#79c0ff">1</span>]
+
+[^<span style="color:#79c0ff">1</span>]: the footnote body.
 </pre></div></div></section>
 <section class="card"><h2>sample.py</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">&quot;&quot;&quot;</span><span style="color:#8b949e;">Palette sample: Python — docstrings, strings, numbers, keywords, types.</span><span style="color:#8b949e;">&quot;&quot;&quot;</span>
 <span style="color:#ff7b72;">from</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">__future__</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">import</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">annotations</span>
@@ -309,6 +419,25 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 17 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#ff7b72;">if</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">__name__</span><span style="color:#bbbebf;"> == </span><span style="color:#a5d6ff;">&quot;__main__&quot;</span><span style="color:#bbbebf;">:</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 19 </span><span style="color:#bbbebf;">    </span><span style="color:#d2a8ff;">print</span><span style="color:#bbbebf;">(</span><span style="color:#7ee787;">Greeter</span><span style="color:#bbbebf;">(</span><span style="color:#a5d6ff;">&quot;palette&quot;</span><span style="color:#bbbebf;">).</span><span style="color:#d2a8ff;">greet</span><span style="color:#bbbebf;">())</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#a5d6ff">&quot;&quot;&quot;Palette sample: Python — docstrings, strings, numbers, keywords, types.&quot;&quot;&quot;</span>
+<span style="color:#ff7b72">from</span> __future__ <span style="color:#ff7b72">import</span> annotations
+
+MAX_RETRIES<span style="color:#bbbebf">:</span> <span style="color:#ff7b72">int</span> <span style="color:#bbbebf">=</span> <span style="color:#79c0ff">3</span>
+
+
+<span style="color:#ff7b72">class</span> Greeter<span style="color:#bbbebf">:</span>
+    <span style="color:#a5d6ff">&quot;&quot;&quot;Builds greetings.&quot;&quot;&quot;</span>
+
+    <span style="color:#ff7b72">def</span> <span style="color:#d2a8ff">__init__</span><span style="color:#bbbebf">(</span>self<span style="color:#bbbebf">,</span> name<span style="color:#bbbebf">:</span> <span style="color:#ff7b72">str</span> <span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;world&quot;</span><span style="color:#bbbebf">) -&gt;</span> <span style="color:#ff7b72">None</span><span style="color:#bbbebf">:</span>
+        self<span style="color:#bbbebf">.</span>name <span style="color:#bbbebf">=</span> name
+
+    <span style="color:#ff7b72">def</span> <span style="color:#d2a8ff">greet</span><span style="color:#bbbebf">(</span>self<span style="color:#bbbebf">) -&gt;</span> <span style="color:#ff7b72">str</span><span style="color:#bbbebf">:</span>
+        parts <span style="color:#bbbebf">= [</span>f<span style="color:#a5d6ff">&quot;hello</span> <span style="color:#ff7b72">{self.name}</span> <span style="color:#a5d6ff">(</span><span style="color:#ff7b72">{i}</span><span style="color:#a5d6ff">)</span><span style="color:#7ee787">\n</span><span style="color:#a5d6ff">&quot;</span> <span style="color:#ff7b72">for</span> i <span style="color:#ff7b72">in</span> <span style="color:#ff7b72">range</span><span style="color:#bbbebf">(</span>MAX_RETRIES<span style="color:#bbbebf">)]</span>
+        <span style="color:#ff7b72">return</span> <span style="color:#a5d6ff">&quot;&quot;</span><span style="color:#bbbebf">.</span><span style="color:#d2a8ff">join</span><span style="color:#bbbebf">(</span>parts<span style="color:#bbbebf">)</span>
+
+
+<span style="color:#ff7b72">if</span> __name__ <span style="color:#bbbebf">==</span> <span style="color:#a5d6ff">&quot;__main__&quot;</span><span style="color:#bbbebf">:</span>
+    <span style="color:#ff7b72">print</span><span style="color:#bbbebf">(</span><span style="color:#d2a8ff">Greeter</span><span style="color:#bbbebf">(</span><span style="color:#a5d6ff">&quot;palette&quot;</span><span style="color:#bbbebf">).</span><span style="color:#d2a8ff">greet</span><span style="color:#bbbebf">())</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.sh</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">#</span><span style="color:#8b949e;">!/usr/bin/env bash</span>
 <span style="color:#8b949e;">#</span><span style="color:#8b949e;"> Palette sample: shell — comments, strings, vars, keywords, numbers.</span>
@@ -350,6 +479,26 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 18 </span><span style="color:#bbbebf;">}</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 19 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 20 </span><span style="color:#d2a8ff;">retry</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">curl</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">-fsSL</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;https://example.com/</span><span style="color:#bbbebf;">${</span><span style="color:#ffa657;">greeting</span><span style="color:#bbbebf;">}</span><span style="color:#a5d6ff;">&quot;</span><span style="color:#bbbebf;"> || </span><span style="color:#d2a8ff;">echo</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;gave up&quot;</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">#!/usr/bin/env bash</span>
+<span style="color:#8b949e"># Palette sample: shell — comments, strings, vars, keywords, numbers.</span>
+<span style="color:#ff7b72">set -euo</span> pipefail
+
+<span style="color:#ff7b72">readonly</span> MAX_RETRIES<span style="color:#bbbebf">=</span><span style="color:#79c0ff">3</span>
+greeting<span style="color:#bbbebf">=</span><span style="color:#a5d6ff">&quot;hello</span><span style="color:#7ee787">\t</span><span style="color:#a5d6ff">world&quot;</span> <span style="color:#8b949e"># escape inside double quotes</span>
+
+retry<span style="color:#bbbebf">() {</span>
+  <span style="color:#ff7b72">local -i</span> attempt<span style="color:#bbbebf">=</span><span style="color:#79c0ff">0</span>
+  <span style="color:#ff7b72">while</span> <span style="color:#bbbebf">((</span>attempt <span style="color:#bbbebf">&lt;</span> MAX_RETRIES<span style="color:#bbbebf">));</span> <span style="color:#ff7b72">do</span>
+    <span style="color:#ff7b72">if</span> <span style="color:#a5d6ff">&quot;$&#64;&quot;</span><span style="color:#bbbebf">;</span> <span style="color:#ff7b72">then</span>
+      <span style="color:#ff7b72">return</span> <span style="color:#79c0ff">0</span>
+    <span style="color:#ff7b72">fi</span>
+    <span style="color:#bbbebf">((</span>attempt <span style="color:#bbbebf">+=</span> <span style="color:#79c0ff">1</span><span style="color:#bbbebf">))</span>
+    <span style="color:#ff7b72">printf</span> <span style="color:#a5d6ff">&#39;retry %d of %d</span><span style="color:#7ee787">\n</span><span style="color:#a5d6ff">&#39;</span> <span style="color:#a5d6ff">&quot;</span><span style="color:#ff7b72">$attempt</span><span style="color:#a5d6ff">&quot;</span> <span style="color:#a5d6ff">&quot;</span><span style="color:#ff7b72">$MAX_RETRIES</span><span style="color:#a5d6ff">&quot;</span> <span style="color:#bbbebf">&gt;&amp;</span><span style="color:#79c0ff">2</span>
+  <span style="color:#ff7b72">done</span>
+  <span style="color:#ff7b72">return</span> <span style="color:#79c0ff">1</span>
+<span style="color:#bbbebf">}</span>
+
+retry curl <span style="color:#ff7b72">-fsSL</span> <span style="color:#a5d6ff">&quot;https://example.com/</span><span style="color:#ff7b72">${greeting}</span><span style="color:#a5d6ff">&quot;</span> <span style="color:#bbbebf">||</span> <span style="color:#ff7b72">echo</span> <span style="color:#a5d6ff">&quot;gave up&quot;</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.sql</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">--</span><span style="color:#8b949e;"> Palette sample: SQL — comments, keywords, strings, numbers, functions.</span>
 <span style="color:#ff7b72;">CREATE</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">TABLE</span><span style="color:#bbbebf;"> </span><span style="color:#d2a8ff;">greeting</span><span style="color:#bbbebf;"> (</span>
@@ -379,6 +528,20 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#ff7b72;">WHERE</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">ratio</span><span style="color:#bbbebf;"> &gt; </span><span style="color:#79c0ff;">0.5</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#ff7b72;">ORDER</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">BY</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">id</span><span style="color:#bbbebf;"> </span><span style="color:#d2a8ff;">DESC</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 14 </span><span style="color:#ff7b72;">LIMIT</span><span style="color:#bbbebf;"> </span><span style="color:#79c0ff;">3</span><span style="color:#bbbebf;">;</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">-- Palette sample: SQL — comments, keywords, strings, numbers, functions.</span>
+<span style="color:#ff7b72">CREATE TABLE</span> <span style="color:#d2a8ff">greeting</span> <span style="color:#bbbebf">(</span>
+    <span style="color:#ff7b72">id</span>      <span style="color:#ff7b72">INTEGER</span> <span style="color:#ff7b72">PRIMARY KEY</span><span style="color:#bbbebf">,</span>
+    <span style="color:#ff7b72">name</span>    <span style="color:#ff7b72">TEXT</span>    <span style="color:#ff7b72">NOT NULL DEFAULT</span> <span style="color:#a5d6ff">&#39;world&#39;</span><span style="color:#bbbebf">,</span>
+    ratio   <span style="color:#ff7b72">REAL    CHECK</span> <span style="color:#bbbebf">(</span>ratio <span style="color:#ff7b72">BETWEEN</span> <span style="color:#79c0ff">0.0</span> <span style="color:#ff7b72">AND</span> <span style="color:#79c0ff">1.0</span><span style="color:#bbbebf">)</span>
+<span style="color:#bbbebf">);</span>
+
+<span style="color:#ff7b72">INSERT INTO</span> <span style="color:#d2a8ff">greeting</span> <span style="color:#bbbebf">(</span><span style="color:#ff7b72">id</span><span style="color:#bbbebf">,</span> <span style="color:#ff7b72">name</span><span style="color:#bbbebf">)</span> <span style="color:#ff7b72">VALUES</span> <span style="color:#bbbebf">(</span><span style="color:#79c0ff">1</span><span style="color:#bbbebf">,</span> <span style="color:#a5d6ff">&#39;palette&#39;</span><span style="color:#bbbebf">);</span>
+
+<span style="color:#ff7b72">SELECT id</span><span style="color:#bbbebf">,</span> <span style="color:#ff7b72">upper</span><span style="color:#bbbebf">(</span><span style="color:#ff7b72">name</span><span style="color:#bbbebf">)</span> <span style="color:#ff7b72">AS</span> shout
+<span style="color:#ff7b72">FROM</span> greeting
+<span style="color:#ff7b72">WHERE</span> ratio <span style="color:#bbbebf">&gt;</span> <span style="color:#79c0ff">0.5</span>
+<span style="color:#ff7b72">ORDER BY id DESC</span>
+<span style="color:#ff7b72">LIMIT</span> <span style="color:#79c0ff">3</span><span style="color:#bbbebf">;</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.toml</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">#</span><span style="color:#8b949e;"> Palette sample: toml — comments, strings, numbers, booleans, tables.</span>
 <span style="color:#ff7b72;">title</span><span style="color:#bbbebf;">   </span><span style="color:#bbbebf;">=</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;</span><span style="color:#a5d6ff;">palette demo</span><span style="color:#a5d6ff;">&quot;</span>
@@ -406,6 +569,19 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">  [</span><span style="color:#ffa657;">server</span><span style="color:#bbbebf;">.</span><span style="color:#ffa657;">tls</span><span style="color:#bbbebf;">]</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    </span><span style="color:#ffa657;">cert</span><span style="color:#bbbebf;"> = </span><span style="color:#a5d6ff;">&quot;/etc/ssl/cert.pem&quot;</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e"># Palette sample: toml — comments, strings, numbers, booleans, tables.</span>
+<span style="color:#ff7b72">title   </span><span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;palette demo&quot;</span>
+<span style="color:#ff7b72">retries </span><span style="color:#bbbebf">=</span> <span style="color:#79c0ff">3</span>
+<span style="color:#ff7b72">ratio   </span><span style="color:#bbbebf">=</span> <span style="color:#79c0ff">0.75</span>
+<span style="color:#ff7b72">enabled </span><span style="color:#bbbebf">=</span> <span style="color:#d2a8ff">true</span>
+
+<span style="color:#ff7b72">[server]</span>
+  <span style="color:#ff7b72">host </span><span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;127.0.0.1&quot;</span>
+  <span style="color:#ff7b72">port </span><span style="color:#bbbebf">=</span> <span style="color:#79c0ff">8080</span>
+  <span style="color:#ff7b72">tags </span><span style="color:#bbbebf">= [</span> <span style="color:#a5d6ff">&quot;alpha&quot;</span><span style="color:#bbbebf">,</span> <span style="color:#a5d6ff">&quot;beta&quot;</span> <span style="color:#bbbebf">]</span>
+
+  <span style="color:#ff7b72">[server.tls]</span>
+    <span style="color:#ff7b72">cert </span><span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;/etc/ssl/cert.pem&quot;</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.tsx</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">//</span><span style="color:#8b949e;"> Palette sample: TSX — types, strings, numbers, keywords, JSX, attributes.</span>
 <span style="color:#ff7b72;">import</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">{</span><span style="color:#bbbebf;"> </span><span style="color:#ffa657;">useState</span><span style="color:#bbbebf;"> </span><span style="color:#bbbebf;">}</span><span style="color:#bbbebf;"> </span><span style="color:#ff7b72;">from</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">&quot;</span><span style="color:#a5d6ff;">react</span><span style="color:#a5d6ff;">&quot;</span><span style="color:#bbbebf;">;</span>
@@ -451,6 +627,28 @@
 <span style="color:#ff7b72;">E </span><span style="color:#8b949e;"> 20 </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;"></span><span style="text-decoration:underline;font-style:italic;color:#bbbebf;">    </span><span style="text-decoration:underline;font-style:italic;color:#8b949e;">&lt;/</span><span style="text-decoration:underline;font-style:italic;color:#ff7b72;">button</span><span style="text-decoration:underline;font-style:italic;color:#8b949e;">&gt;</span><span style="color:#bbbebf;">     </span><span style="color:#ff7b72;">■ JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 21 </span><span style="color:#bbbebf;">  );</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 22 </span><span style="color:#bbbebf;">}</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e">// Palette sample: TSX — types, strings, numbers, keywords, JSX, attributes.</span>
+<span style="color:#ff7b72">import</span> <span style="color:#bbbebf">{</span> useState <span style="color:#bbbebf">}</span> <span style="color:#ff7b72">from</span> <span style="color:#a5d6ff">&quot;react&quot;</span><span style="color:#bbbebf">;</span>
+
+<span style="color:#ff7b72">interface</span> Props <span style="color:#bbbebf">{</span>
+  name<span style="color:#bbbebf">?:</span> <span style="color:#ff7b72">string</span><span style="color:#bbbebf">;</span>
+  retries<span style="color:#bbbebf">:</span> <span style="color:#ff7b72">number</span><span style="color:#bbbebf">;</span>
+<span style="color:#bbbebf">}</span>
+
+<span style="color:#ff7b72">export function</span> <span style="color:#d2a8ff">Greeter</span><span style="color:#bbbebf">({</span> name <span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">&quot;world&quot;</span><span style="color:#bbbebf">,</span> retries <span style="color:#bbbebf">}:</span> Props<span style="color:#bbbebf">):</span> JSX<span style="color:#bbbebf">.</span>Element <span style="color:#bbbebf">{</span>
+  <span style="color:#ff7b72">const</span> <span style="color:#bbbebf">[</span>count<span style="color:#bbbebf">,</span> setCount<span style="color:#bbbebf">] =</span> useState<span style="color:#ff7b72">&lt;number&gt;</span><span style="color:#bbbebf">(</span><span style="color:#79c0ff">0</span><span style="color:#bbbebf">);</span>
+  <span style="color:#ff7b72">const</span> label <span style="color:#bbbebf">=</span> <span style="color:#a5d6ff">`hello</span> <span style="color:#ff7b72">${name}</span> <span style="color:#a5d6ff">(</span><span style="color:#ff7b72">${count}</span><span style="color:#a5d6ff">/</span><span style="color:#ff7b72">${retries}</span><span style="color:#a5d6ff">)`</span><span style="color:#bbbebf">;</span>
+
+  <span style="color:#ff7b72">return</span> <span style="color:#bbbebf">(</span>
+    <span style="color:#ff7b72">&lt;button</span>
+      <span style="color:#ff7b72">className</span><span style="color:#bbbebf">=</span><span style="color:#a5d6ff">&quot;card&quot;</span>
+      disabled<span style="color:#bbbebf">={</span>count <span style="color:#ff7b72">&gt;</span><span style="color:#bbbebf">=</span> retries<span style="color:#bbbebf">}</span>
+      onClick<span style="color:#bbbebf">={() =</span><span style="color:#ff7b72">&gt;</span> <span style="color:#d2a8ff">setCount</span><span style="color:#bbbebf">((</span>c<span style="color:#bbbebf">) =</span><span style="color:#ff7b72">&gt;</span> c <span style="color:#bbbebf">+</span> <span style="color:#79c0ff">1</span><span style="color:#bbbebf">)}</span>
+    <span style="color:#ff7b72">&gt;</span>
+      <span style="color:#ff7b72">{label}</span>
+    <span style="color:#ff7b72">&lt;/button&gt;</span>
+  <span style="color:#bbbebf">);</span>
+<span style="color:#bbbebf">}</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.xml</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#808080;">&lt;?</span><span style="color:#ff7b72;">xml</span><span style="color:#808080;"> </span><span style="color:#92caf4;">version</span><span style="color:#808080;">=</span><span style="color:#bbbebf;">&quot;</span><span style="color:#bbbebf;">1.0</span><span style="color:#bbbebf;">&quot;</span><span style="color:#808080;"> </span><span style="color:#92caf4;">encoding</span><span style="color:#808080;">=</span><span style="color:#bbbebf;">&quot;</span><span style="color:#bbbebf;">UTF-8</span><span style="color:#bbbebf;">&quot;</span><span style="color:#808080;">?&gt;</span>
 <span style="color:#808080;">&lt;!</span><span style="color:#ff7b72;">DOCTYPE</span><span style="color:#808080;"> </span><span style="color:#ffa657;">config</span><span style="color:#808080;"> </span><span style="color:#ff7b72;">SYSTEM</span><span style="color:#808080;"> </span><span style="color:#bbbebf;">&quot;</span><span style="color:#bbbebf;">config.dtd</span><span style="color:#bbbebf;">&quot;</span><span style="color:#808080;">&gt;</span>
@@ -470,6 +668,15 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  7 </span><span style="color:#bbbebf;">    </span><span style="color:#8b949e;">&lt;</span><span style="color:#ff7b72;">tag</span><span style="color:#8b949e;">&gt;</span><span style="color:#bbbebf;">beta</span><span style="color:#8b949e;">&lt;/</span><span style="color:#ff7b72;">tag</span><span style="color:#8b949e;">&gt;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  8 </span><span style="color:#bbbebf;">  </span><span style="color:#8b949e;">&lt;/</span><span style="color:#ff7b72;">server</span><span style="color:#8b949e;">&gt;</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;">  9 &lt;/</span><span style="color:#ff7b72;">config</span><span style="color:#8b949e;">&gt;</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#ff7b72">&lt;?xml</span> <span style="color:#ff7b72">version</span>=<span style="color:#a5d6ff">&quot;1.0&quot;</span> <span style="color:#ff7b72">encoding</span>=<span style="color:#a5d6ff">&quot;UTF-8&quot;</span><span style="color:#ff7b72">?&gt;</span>
+<span style="color:#ff7b72">&lt;!DOCTYPE</span> config SYSTEM <span style="color:#a5d6ff">&quot;config.dtd&quot;</span><span style="color:#ff7b72">&gt;</span>
+<span style="color:#8b949e">&lt;!-- Palette sample: XML — declaration, DOCTYPE, tags, attributes, comment. --&gt;</span>
+<span style="color:#ff7b72">&lt;config</span> <span style="color:#ff7b72">version</span>=<span style="color:#a5d6ff">&quot;1.2&quot;</span> <span style="color:#ff7b72">enabled</span>=<span style="color:#a5d6ff">&quot;true&quot;</span><span style="color:#ff7b72">&gt;</span>
+  <span style="color:#ff7b72">&lt;server</span> <span style="color:#ff7b72">host</span>=<span style="color:#a5d6ff">&quot;127.0.0.1&quot;</span> <span style="color:#ff7b72">port</span>=<span style="color:#a5d6ff">&quot;8080&quot;</span><span style="color:#ff7b72">&gt;</span>
+    <span style="color:#ff7b72">&lt;tag&gt;</span>alpha<span style="color:#ff7b72">&lt;/tag&gt;</span>
+    <span style="color:#ff7b72">&lt;tag&gt;</span>beta<span style="color:#ff7b72">&lt;/tag&gt;</span>
+  <span style="color:#ff7b72">&lt;/server&gt;</span>
+<span style="color:#ff7b72">&lt;/config&gt;</span>
 </pre></div></div></section>
 <section class="card"><h2>sample.yaml</h2><div class="cols"><div class="pane"><h3>bat</h3><pre class="frame"><span style="color:#8b949e;">#</span><span style="color:#8b949e;"> Palette sample: yaml — comments, keys, strings, numbers, lists, anchors.</span>
 <span style="color:#ff7b72;">name</span><span style="color:#bbbebf;">:</span><span style="color:#bbbebf;"> </span><span style="color:#a5d6ff;">palette-demo</span>
@@ -497,6 +704,19 @@
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 11 </span><span style="color:#bbbebf;">  </span><span style="color:#ffa657;">ports</span><span style="color:#bbbebf;">:</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 12 </span><span style="color:#bbbebf;">    - </span><span style="color:#79c0ff;">80</span>
 <span style="color:#bbbebf;">  </span><span style="color:#8b949e;"> 13 </span><span style="color:#bbbebf;">    - </span><span style="color:#79c0ff;">443</span>
+</pre></div><div class="pane"><h3>quicklook</h3><pre class="frame"><span style="color:#8b949e"># Palette sample: yaml — comments, keys, strings, numbers, lists, anchors.</span>
+<span style="color:#ff7b72">name:</span> palette<span style="color:#bbbebf">-</span>demo
+<span style="color:#ff7b72">version:</span> <span style="color:#79c0ff">1.2</span>
+<span style="color:#ff7b72">enabled:</span> true
+<span style="color:#ff7b72">defaults:</span> <span style="color:#bbbebf">&amp;</span>defaults
+  <span style="color:#ff7b72">retries:</span> <span style="color:#79c0ff">3</span>
+  <span style="color:#ff7b72">timeout:</span> <span style="color:#a5d6ff">&quot;30s&quot;</span>
+<span style="color:#ff7b72">server:</span>
+  <span style="color:#bbbebf">&lt;&lt;</span>: <span style="color:#bbbebf">*</span>defaults
+  <span style="color:#ff7b72">host:</span> <span style="color:#79c0ff">0.0</span>.0.0
+  <span style="color:#ff7b72">ports:</span>
+    <span style="color:#bbbebf">-</span> <span style="color:#79c0ff">80</span>
+    <span style="color:#bbbebf">-</span> <span style="color:#79c0ff">443</span>
 </pre></div></div></section>
 <section><h2>delta — sample.diff</h2><pre class="frame">
 <span style="color:#58a6ff;">Δ greeter.go</span>
