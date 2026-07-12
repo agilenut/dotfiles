@@ -21,10 +21,8 @@
 				<string>{{ $t.ansi.foreground }}</string>
 				<key>foreground</key>
 				<string>{{ $t.ansi.foreground }}</string>
-				<key>invisibles</key>
-				<string>#FFFFFF40</string>
 				<key>lineHighlight</key>
-				<string>#0F0F0F</string>
+				<string>{{ $t.ui.line_highlight }}</string>
 				<key>selection</key>
 				<string>{{ $t.ui.selection }}</string>
 			</dict>
@@ -39,7 +37,6 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<!-- <string>#808080</string> -->
 				<string>{{ $t.syntax.comment }}</string>
 			</dict>
 		</dict>
@@ -388,28 +385,6 @@
 		</dict>
 		<dict>
 			<key>name</key>
-			<string>Invalid trailing whitespace</string>
-			<key>scope</key>
-			<string>invalid.deprecated.trailing-whitespace</string>
-			<key>settings</key>
-			<dict>
-				<key>background</key>
-				<string>#5C3A3A</string>
-			</dict>
-		</dict>
-		<dict>
-			<key>name</key>
-			<string>Embedded source</string>
-			<key>scope</key>
-			<string>text source, string.unquoted</string>
-			<key>settings</key>
-			<dict>
-				<key>background</key>
-				<string>#282828</string>
-			</dict>
-		</dict>
-		<dict>
-			<key>name</key>
 			<string>Markup XML declaration</string>
 			<key>scope</key>
 			<string>meta.xml-processing, declaration.xml-processing</string>
@@ -611,51 +586,6 @@
 				<string>#87CEFA</string>
 			</dict>
 		</dict>
-		<!-- <dict>
-			<key>name</key>
-			<string>C#: XML Comment Tags</string>
-			<key>scope</key>
-			<string>source.cs comment.block.documentation.source.cs meta.tag.xml, source.cs comment.block.documentation.source.cs meta.tag.xml entity.name.tag.localname.xml, source.cs comment.block.documentation.source.cs meta.tag.xml entity.other.attribute-name</string>
-			<key>settings</key>
-			<dict>
-				<key>foreground</key>
-				<string>{{ $t.syntax.comment }}</string>
-			</dict>
-		</dict> -->
-    <!--<dict>
-        <key>name</key>
-        <string>C# xml-style docs</string>
-        <key>scope</key>
-        <string>comment.block.documentation.cs</string>
-        <key>settings</key>
-        <dict>
-          <key>foreground</key>
-          <string>#808080</string>
-        </dict>
-    </dict>
-    -->
-    <!-- <dict>
-        <key>name</key>
-        <string>C# xml-style docs</string>
-        <key>scope</key>
-        <string>comment.block.documentation.cs</string>
-        <key>settings</key>
-        <dict>
-          <key>foreground</key>
-          <string>#808080</string>
-        </dict>
-    </dict> -->
-    <!-- <dict>
-        <key>name</key>
-        <string>C# xml-style docs</string>
-        <key>scope</key>
-        <string>comment.block.documentation.cs entity.name.tag.localname.xml, comment.block.documentation.cs entity.other.attribute-name.xml, comment.block.documentation.cs string.quoted.double.xml</string>
-        <key>settings</key>
-        <dict>
-          <key>foreground</key>
-          <string>#FF0000</string>
-        </dict>
-    </dict> -->
 		<dict>
 			<key>name</key>
 			<string>GitGutter deleted</string>
@@ -687,28 +617,6 @@
 			<dict>
 				<key>foreground</key>
 				<string>{{ $t.ui.git_change }}</string>
-			</dict>
-		</dict>
-		<dict>
-			<key>name</key>
-			<string>GitGutter ignored</string>
-			<key>scope</key>
-			<string>markup.ignored.git_gutter</string>
-			<key>settings</key>
-			<dict>
-				<key>foreground</key>
-				<string>#565656</string>
-			</dict>
-		</dict>
-		<dict>
-			<key>name</key>
-			<string>GitGutter untracked</string>
-			<key>scope</key>
-			<string>markup.untracked.git_gutter</string>
-			<key>settings</key>
-			<dict>
-				<key>foreground</key>
-				<string>#565656</string>
 			</dict>
 		</dict>
 		<dict>

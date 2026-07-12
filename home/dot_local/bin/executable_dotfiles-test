@@ -24,6 +24,7 @@ source "$LIB_DIR/tcc-prune.sh"
 source "$LIB_DIR/smart_approve.sh"
 source "$LIB_DIR/nvim-tooling.sh"
 source "$LIB_DIR/open-path.sh"
+source "$LIB_DIR/theme-palette.sh"
 source "$LIB_DIR/git-signing.sh"
 source "$LIB_DIR/recap.sh"
 source "$LIB_DIR/manual.sh"
@@ -122,6 +123,9 @@ main() {
 
   # open-path hint resolution tests
   test_open_path
+
+  # theme palette contract tests
+  test_theme_palette
 
   # SSH config + git commit-signing tests
   test_ssh_config

@@ -48,3 +48,26 @@ the screen.
 but it strips color from the tools' output entirely - a worse outcome than the
 occasional junk, and there's no per-tool flag to skip only the probe. Decided to
 live with it. Do NOT re-investigate NO_COLOR as a fix.
+
+## lazygit silently drops unknown color tokens
+
+**Symptom:** A lazygit color set to an unrecognized token renders wrong, not
+ignored: borders/frames turn bright **white** and branch/author text turns
+**black** (near-invisible on a dark background). This bit us when the theme
+centralization used `brightblack`, which is not a lazygit color.
+
+**Root cause:** lazygit's color tokens are only the base-8 names (`black`,
+`red`, …, `white`), `default`, the modifiers
+(`bold`/`underline`/`reverse`/`strikethrough`), and `#rrggbb` hex - there is no
+`brightblack` or any `bright*` name. An unrecognized token is not an error; it
+is silently dropped, and the two code paths fall back differently: gocui
+attributes (borders, `activeBorderColor`, …) default to **white**, while text
+colors (`authorColors`, `branchColorPatterns`) go through gookit's `color.HEX`,
+which returns **black** for an invalid hex string.
+
+**The rule:** a lazygit color must be a base-8 name, a modifier, or `#rrggbb`.
+For a muted grey use the palette hex (`{{ $t.ui.muted }}`), never a `bright*`
+name. The `test_theme_palette` check in dotfiles-test now fails on any invalid
+lazygit token, so this can't silently regress.
+
+_Diagnosed 2026-07-10 (fixed in #84)._
