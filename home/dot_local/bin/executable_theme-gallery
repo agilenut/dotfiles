@@ -72,12 +72,27 @@ trim_trailing_blank() {
 }
 
 ncapture() {
-  local file=$1 prev="" cur=""
-  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "nvim -n '$file'" 2>/dev/null || return 0
-  for _ in $(seq 1 15); do
+  local file=$1 init=${2:-} prev="" cur="" launch
+  if [[ -n $init ]]; then
+    launch="nvim -n -S '$init' '$file'"
+  else
+    launch="nvim -n '$file'"
+  fi
+  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "$launch" 2>/dev/null || return 0
+  # Require several consecutive identical captures, not just one — async layers
+  # (LSP semantic tokens, gitsigns) land after a brief lull, and a single-match
+  # break would snapshot the pre-token state (nondeterministic). A longer stable
+  # window waits past token/sign arrival to the settled end-state.
+  local same=0
+  for _ in $(seq 1 25); do
     sleep 1
     cur="$(tmux -L "$sock" capture-pane -t g -e -p 2>/dev/null || true)"
-    [[ -n $cur && $cur == "$prev" ]] && break
+    if [[ -n $cur && $cur == "$prev" ]]; then
+      same=$((same + 1))
+      ((same >= 4)) && break
+    else
+      same=0
+    fi
     prev="$cur"
   done
   tmux -L "$sock" kill-session -t g 2>/dev/null || true
@@ -124,6 +139,43 @@ prewarm_treesitter() {
   nvim --headless \
     -c "lua local ts=require('nvim-treesitter'); local a=ts.get_available(); local w=vim.tbl_filter(function(p) return vim.tbl_contains(a,p) end, vim.split('$langs',' ')); ts.install(w); vim.wait(300000, function() local h=ts.get_installed('parsers'); for _,p in ipairs(w) do if not vim.tbl_contains(h,p) then return false end end; return true end, 300)" \
     -c 'qa!' >/dev/null 2>&1 || true
+}
+
+# Build an ephemeral git repo with a committed file plus working-tree add/
+# change/delete edits, so gitsigns shows all three gutter signs and changed-line
+# highlights (git_* + diff_*_bg). Prints the modified file's path. Deterministic.
+make_gitsigns_fixture() {
+  local dir
+  dir="$(mktemp -d "${TMPDIR:-/tmp}/gitsigns-fixture.XXXXXX")"
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  git init -q "$dir"
+  git -C "$dir" config commit.gpgsign false
+  git -C "$dir" config core.hooksPath /dev/null
+  cat >"$dir/demo.lua" <<'BASE'
+local M = {}
+local x = 1
+local y = 2
+function M.sum()
+  return x + y
+end
+return M
+BASE
+  git -C "$dir" add -A
+  GIT_AUTHOR_NAME=demo GIT_AUTHOR_EMAIL=demo@example.com \
+    GIT_COMMITTER_NAME=demo GIT_COMMITTER_EMAIL=demo@example.com \
+    GIT_AUTHOR_DATE='2026-01-01T09:00:00' GIT_COMMITTER_DATE='2026-01-01T09:00:00' \
+    git -C "$dir" commit -q -m base
+  # Working-tree edits vs HEAD: change (line 2), add (new line), delete (last).
+  cat >"$dir/demo.lua" <<'MOD'
+local M = {}
+local x = 10
+local y = 2
+local sum = 0
+function M.sum()
+  return x + y
+end
+MOD
+  printf '%s\n' "$dir/demo.lua"
 }
 
 page_header() {
@@ -182,6 +234,16 @@ build_theme() {
       [[ $base == sample.diff ]] && continue
       ncapture "$f" | section "nvim — $base"
     done
+
+    # nvim diagnostics showcase — one of each severity (diag_* palette).
+    ncapture "$lib/diagnostics.txt" "$lib/diagnostics.lua" | section "nvim — diagnostics"
+
+    # nvim gitsigns showcase — add/change/delete signs + line highlights
+    # (git_* and diff_*_bg palette).
+    local gs
+    gs="$(make_gitsigns_fixture)"
+    ncapture "$gs" "$lib/no-diagnostics.lua" | section "nvim — gitsigns (add/change/delete)"
+    rm -rf "$(dirname "$gs")"
 
     # lazygit — branches (block 3) and commits (block 4), each fullscreened.
     local fixture

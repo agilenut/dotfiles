@@ -1,0 +1,7 @@
+theme-gallery diagnostic showcase
+one line per severity, colored from the diag_* palette:
+error   — something is broken
+warning — something looks suspicious
+info    — something worth noting
+hint    — a gentle suggestion
+(gutter signs, inline virtual text, and underline all use diag_*)
