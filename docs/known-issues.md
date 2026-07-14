@@ -71,3 +71,28 @@ name. The `test_theme_palette` check in dotfiles-test now fails on any invalid
 lazygit token, so this can't silently regress.
 
 _Diagnosed 2026-07-10 (fixed in #84)._
+
+## QuickLook colors markdown links the same as headings
+
+**Symptom:** In the QuickLook markdown preview (sbarex Syntax Highlight, the
+`highlight` engine), links render in the same color as headings, unlike the
+nvim (render-markdown) and bat views where links are cyan.
+
+**Root cause:** `highlight`'s `markdown.lang` puts headings in keyword group
+`Id=1` and links in `Id=2`/`Id=3` - genuinely separate groups. But the theme's
+`Keywords` color array is **global across every language**: entry N colors
+keyword-group N for _all_ grammars (Python, TypeScript, JSON all use groups
+2/3 for their own secondary keywords). So recoloring the link groups to cyan
+would also recolor secondary keywords in every other language. `highlight` has
+no per-language color in its theme model - color is keyed to the group number,
+not the language.
+
+**Why we don't fix it:** shipping a custom `markdown.lang` that reassigns links
+to a different group would still share that group's global color, so it can't
+isolate markdown. QL is the secondary preview engine (nvim and bat are the
+primary reads), and its markdown support is coarse. Headings are correctly
+`keyword_storage`; links inherit the same only because groups 1-3 are all set
+to it. Not worth a custom langDef. Do NOT try to recolor `Keywords[2]`/`[3]` -
+it will change syntax highlighting in every other language.
+
+_Diagnosed 2026-07-14._
