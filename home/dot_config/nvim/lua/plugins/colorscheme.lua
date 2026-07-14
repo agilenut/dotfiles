@@ -140,3 +140,29 @@ local function fix_tabline()
 end
 fix_tabline()
 vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_tabline })
+
+-- Hide the block cursor in the row-selection panels (neo-tree, Trouble) so the
+-- line_highlight band is the only current-row marker — the bright cursor
+-- otherwise competes with it. Both panels highlight the current row with that
+-- same band (NeoTreeCursorLine / CursorLine). Swap guicursor to a fully
+-- transparent Cursor while in those buffers, restore on the way out.
+-- HiddenCursor is re-set on ColorScheme since highlights reset there.
+local function set_hidden_cursor()
+  vim.api.nvim_set_hl(0, 'HiddenCursor', { blend = 100, nocombine = true })
+end
+set_hidden_cursor()
+vim.api.nvim_create_autocmd('ColorScheme', { callback = set_hidden_cursor })
+
+local panel_ft = { ['neo-tree'] = true, ['trouble'] = true }
+local saved_guicursor
+vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
+  callback = function()
+    if panel_ft[vim.bo.filetype] then
+      saved_guicursor = saved_guicursor or vim.o.guicursor
+      vim.o.guicursor = 'a:HiddenCursor/HiddenCursor'
+    elseif saved_guicursor then
+      vim.o.guicursor = saved_guicursor
+      saved_guicursor = nil
+    end
+  end,
+})
