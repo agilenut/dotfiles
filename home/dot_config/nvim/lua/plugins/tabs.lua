@@ -26,3 +26,44 @@ vim.keymap.set('n', '<leader><Tab>r', function()
   vim.cmd('tcd ' .. vim.fn.fnameescape(root))
   vim.notify('repo tab: ' .. vim.fn.fnamemodify(root, ':t'))
 end, { desc = 'New [r]epo tab (file + tcd its root)' })
+
+-- Custom tabline: label each tab by its real file (filename tail), skipping
+-- special/sidebar buffers (neo-tree, Trouble, quickfix, help — anything with a
+-- non-empty buftype) so focusing a sidebar no longer renames the tab. Replaces
+-- the built-in tabline, so it renders the TabLine/TabLineSel groups (themed in
+-- colorscheme.lua) and the click-to-close control itself.
+local function tab_buf(tab)
+  local focused = vim.api.nvim_win_get_buf(vim.api.nvim_tabpage_get_win(tab))
+  if vim.bo[focused].buftype == '' then
+    return focused
+  end
+  for _, w in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+    local b = vim.api.nvim_win_get_buf(w)
+    if vim.bo[b].buftype == '' then
+      return b
+    end
+  end
+  return focused -- tab has only special windows
+end
+
+function _G.render_tabline()
+  local cur = vim.api.nvim_get_current_tabpage()
+  local out = {}
+  for i, tab in ipairs(vim.api.nvim_list_tabpages()) do
+    local buf = tab_buf(tab)
+    local name = vim.api.nvim_buf_get_name(buf)
+    local label = name ~= '' and vim.fn.fnamemodify(name, ':t') or '[No Name]'
+    if vim.bo[buf].modified then
+      label = label .. ' ●'
+    end
+    local hl = (tab == cur) and '%#TabLineSel#' or '%#TabLine#'
+    out[#out + 1] = ('%s%%%dT %d %s '):format(hl, i, i, label)
+  end
+  out[#out + 1] = '%#TabLineFill#%T'
+  if #vim.api.nvim_list_tabpages() > 1 then
+    out[#out + 1] = '%=%#TabLine#%999X ✕ %X'
+  end
+  return table.concat(out)
+end
+
+vim.o.tabline = '%!v:lua.render_tabline()'
