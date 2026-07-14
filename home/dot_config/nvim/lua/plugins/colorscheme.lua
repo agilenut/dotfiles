@@ -117,21 +117,26 @@ end
 fix_syntax_palette()
 vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_syntax_palette })
 
--- The theme's CursorLine is near-black (#222) and barely reads on the transparent
--- background. Lighten it so the current-row highlight is visible in the panels that
--- use a full-line cursorline — neo-tree (via NeoTreeCursorLine) and Trouble (which
--- uses CursorLine directly). Normal buffers use cursorlineopt=number, so brightening
--- CursorLine only affects those panels. Re-derive on colorscheme change; bump 0.16
--- for a stronger bar.
+-- The full-line current-row highlight (neo-tree via NeoTreeCursorLine, Trouble
+-- via CursorLine directly) is driven from the shared palette band so it matches
+-- bat's `-H` line highlight — the two current-line highlights share one token.
+-- Normal buffers use cursorlineopt=number, so this only affects those panels.
+-- ui.selection stays the stronger selection color. Re-applied on colorscheme change.
 local function fix_cursorline()
-  local base = vim.api.nvim_get_hl(0, { name = 'CursorLine', link = false }).bg or 0x222222
-  local r, g, b = math.floor(base / 65536) % 256, math.floor(base / 256) % 256, base % 256
-  local function up(c)
-    return math.floor(c + (255 - c) * 0.16)
-  end
-  local bright = up(r) * 65536 + up(g) * 256 + up(b)
-  vim.api.nvim_set_hl(0, 'CursorLine', { bg = bright })
-  vim.api.nvim_set_hl(0, 'NeoTreeCursorLine', { bg = bright })
+  vim.api.nvim_set_hl(0, 'CursorLine', { bg = palette.ui.line_highlight })
+  vim.api.nvim_set_hl(0, 'NeoTreeCursorLine', { bg = palette.ui.line_highlight })
 end
 fix_cursorline()
 vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_cursorline })
+
+-- Tabline follows the palette (vscode.nvim's defaults don't): the active tab
+-- gets the shared line_highlight band — the same current-marker the cursorline
+-- uses — while inactive tabs and the fill recede to the editor background with
+-- muted labels. Re-applied on colorscheme change.
+local function fix_tabline()
+  vim.api.nvim_set_hl(0, 'TabLineSel', { bg = palette.ui.line_highlight, fg = palette.ansi.foreground, bold = true })
+  vim.api.nvim_set_hl(0, 'TabLine', { bg = palette.ansi.background, fg = palette.ui.muted })
+  vim.api.nvim_set_hl(0, 'TabLineFill', { bg = palette.ansi.background })
+end
+fix_tabline()
+vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_tabline })
