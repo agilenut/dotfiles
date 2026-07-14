@@ -56,6 +56,7 @@ function _G.render_tabline()
     if vim.bo[buf].modified then
       label = label .. ' ●'
     end
+    label = label:gsub('%%', '%%%%') -- escape % so a filename with one isn't parsed as a statusline item
     local hl = (tab == cur) and '%#TabLineSel#' or '%#TabLine#'
     out[#out + 1] = ('%s%%%dT %d %s '):format(hl, i, i, label)
   end

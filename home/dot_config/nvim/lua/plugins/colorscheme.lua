@@ -145,7 +145,7 @@ vim.api.nvim_create_autocmd('ColorScheme', { callback = fix_tabline })
 -- line_highlight band is the only current-row marker — the bright cursor
 -- otherwise competes with it. Both panels highlight the current row with that
 -- same band (NeoTreeCursorLine / CursorLine). Swap guicursor to a fully
--- transparent Cursor while in those buffers, restore on the way out.
+-- transparent Cursor while in those buffers, restore when leaving them.
 -- HiddenCursor is re-set on ColorScheme since highlights reset there.
 local function set_hidden_cursor()
   vim.api.nvim_set_hl(0, 'HiddenCursor', { blend = 100, nocombine = true })
@@ -153,16 +153,29 @@ end
 set_hidden_cursor()
 vim.api.nvim_create_autocmd('ColorScheme', { callback = set_hidden_cursor })
 
+-- guicursor is global, so tie the restore to *leaving* a panel window (fires
+-- whatever we move to) rather than to entering a specific buffer — otherwise a
+-- window-lifecycle path with no BufEnter into a normal buffer could leave the
+-- cursor hidden. VimLeavePre is a hard backstop. default_guicursor is captured
+-- once at load, before the toggle can run.
 local panel_ft = { ['neo-tree'] = true, ['trouble'] = true }
-local saved_guicursor
+local default_guicursor = vim.o.guicursor
 vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
   callback = function()
     if panel_ft[vim.bo.filetype] then
-      saved_guicursor = saved_guicursor or vim.o.guicursor
       vim.o.guicursor = 'a:HiddenCursor/HiddenCursor'
-    elseif saved_guicursor then
-      vim.o.guicursor = saved_guicursor
-      saved_guicursor = nil
     end
+  end,
+})
+vim.api.nvim_create_autocmd({ 'BufLeave', 'WinLeave' }, {
+  callback = function()
+    if panel_ft[vim.bo.filetype] then
+      vim.o.guicursor = default_guicursor
+    end
+  end,
+})
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  callback = function()
+    vim.o.guicursor = default_guicursor
   end,
 })
