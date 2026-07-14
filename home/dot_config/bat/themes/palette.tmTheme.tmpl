@@ -495,7 +495,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>{{ $t.ansi.foreground }}</string>
+				<string>{{ $t.ui.dim }}</string>
 			</dict>
 		</dict>
 		<dict>
@@ -507,6 +507,17 @@
 			<dict>
 				<key>foreground</key>
 				<string>{{ $t.ansi.foreground }}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Markup: Link</string>
+			<key>scope</key>
+			<string>markup.underline.link, string.other.link.title.markdown, string.other.link.description.markdown</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>{{ $t.ansi.cyan }}</string>
 			</dict>
 		</dict>
 		<dict>
