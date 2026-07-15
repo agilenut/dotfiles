@@ -85,6 +85,13 @@
 	line-numbers-plus-style = "{{ $t.ui.git_add }}"
 	line-numbers-minus-style = "{{ $t.ui.git_delete }}"
 	line-numbers-zero-style = "{{ $t.ui.muted }}"
+	; Structural chrome (file underline, hunk-header box, line-number
+	; separators) muted to the inactive-border grey; the default blue
+	; filename stays the accent that lazygit's active border matches.
+	file-decoration-style = "{{ $t.ui.muted }} ul"
+	hunk-header-decoration-style = "{{ $t.ui.muted }} box"
+	line-numbers-left-style = "{{ $t.ui.muted }}"
+	line-numbers-right-style = "{{ $t.ui.muted }}"
 {{- end }}
 
 [merge]

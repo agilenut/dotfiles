@@ -101,12 +101,18 @@ ncapture() {
   printf '%s\n' "$cur" | head -n "$((ROWS - 8))" | trim_trailing_blank
 }
 
-# aha renders the 16 ANSI colors as bright CSS names (blue, purple, teal, …),
-# not the terminal palette — so tools that emit named ANSI (lazygit borders,
-# delta decorations) would look wrong. Remap each CSS name to the active
-# theme's palette hex. aha collapses normal/bright to one name, so bright maps
-# to the normal variant; its "dimgray" (both black variants) → muted grey,
-# since black text on a dark background would otherwise vanish.
+# Fix aha's output to match the real terminal:
+#   * aha renders the 16 ANSI colors as bright CSS names (blue, purple, teal, …),
+#     not the terminal palette — so tools that emit named ANSI (lazygit borders,
+#     delta decorations) would look wrong. Remap each CSS name to the active
+#     theme's palette hex. aha collapses normal/bright to one name, so bright maps
+#     to the normal variant; its "dimgray" (both black variants) → muted grey,
+#     since black text on a dark background would otherwise vanish.
+#   * aha brightens bold text with `filter: contrast(70%) brightness(190%)`.
+#     CSS `filter` also brightens the span's background-color, so a bold cell on
+#     a selection band (lazygit's selected commit row) washes the band into a
+#     pale bar and mutes the text — an artifact absent from the real terminal.
+#     Strip every `filter:` declaration; the palette hexes are already correct.
 ansi_remap() {
   sed -E \
     -e "s/:dimgray;/:${PAL_BRIGHT_BLACK};/g" \
@@ -117,7 +123,8 @@ ansi_remap() {
     -e "s/:purple;/:${PAL_MAGENTA};/g" \
     -e "s/:teal;/:${PAL_CYAN};/g" \
     -e "s/:gray;/:${PAL_WHITE};/g" \
-    -e "s/:black;/:${PAL_BLACK};/g"
+    -e "s/:black;/:${PAL_BLACK};/g" \
+    -e "s/filter:[^;]*;//g"
 }
 
 # Emit one full-width titled section: <label> + stdin ANSI as an HTML frame.
