@@ -1,8 +1,11 @@
 -- theme-gallery: sourced (nvim -S) after opening diagnostics.txt to inject one
--- diagnostic of each severity, so the diag_* palette (error/warn/info/hint —
--- gutter signs, inline virtual text, underline) renders deterministically
--- without depending on a language server. Plain text buffer → no LSP noise.
-vim.diagnostic.config { virtual_text = true, signs = true, underline = true }
+-- diagnostic of each severity, so the diag_* palette (error/warn/info/hint)
+-- renders deterministically without a language server. Severity shows via the
+-- gutter signs + inline virtual text (both palette fg, which aha renders).
+-- Underline is off: aha can't render colored undercurls (SGR 58) and corrupts
+-- them into a spurious purple background (see docs/known-issues.md). Plain text
+-- buffer → no LSP noise.
+vim.diagnostic.config { virtual_text = true, signs = true, underline = false }
 local ns = vim.api.nvim_create_namespace 'gallery_diag'
 local S = vim.diagnostic.severity
 vim.diagnostic.set(ns, 0, {

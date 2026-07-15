@@ -96,3 +96,34 @@ to it. Not worth a custom langDef. Do NOT try to recolor `Keywords[2]`/`[3]` -
 it will change syntax highlighting in every other language.
 
 _Diagnosed 2026-07-14._
+
+## Theme gallery: aha corrupts colored underlines into a purple background
+
+**Symptom:** In `docs/theme-gallery/*.html`, diagnostic/spell regions rendered
+by nvim show up with a faint **purple (`#646695`) background** plus italics —
+e.g. the whole JSX block of `sample.tsx`, or the diagnostics showcase. No such
+color exists in the editor.
+
+**Root cause:** nvim draws colored undercurls (diagnostic underlines, spell)
+with the `CSI 58;2;R;G;B m` SGR (set-underline-color). `aha` — the ANSI→HTML
+converter the gallery uses — doesn't support SGR 58, and colored undercurls
+come out as a spurious `background-color:#646695` plus a faint filter (the `2`
+parameter appears to be mis-read as SGR 2 / faint, though the exact misparse
+wasn't traced in aha's source). The editor
+itself is correct — the raw terminal shows the real undercurl colors
+(`#d16969` error, `#d7ba7d` warn, `#569cd6` info, `#6e7681` hint), no background.
+
+**Why it looks like a theme bug but isn't:** `#646695` is vscode.nvim's default
+`vscViolet`, which our config remaps — but no highlight group actually carries
+it as a background (verified: scanning every group finds none). It only appears
+in aha's output. So it's a converter limitation, not a palette defect.
+
+**What we do about it:** the gallery avoids feeding undercurls to aha rather
+than trying to make aha render them. Per-file syntax cards run nvim with
+`no-diagnostics.lua` (`vim.diagnostic.enable(false)`) so a project-less sample's
+LSP errors don't draw underlines; the diagnostics showcase uses
+`underline = false` and conveys severity via signs + inline virtual text (both
+palette fg, which aha renders). Do NOT try to make aha render colored
+undercurls — it can't, and a live terminal shows them correctly anyway.
+
+_Diagnosed 2026-07-14._
