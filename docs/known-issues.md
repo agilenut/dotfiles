@@ -106,9 +106,10 @@ color exists in the editor.
 
 **Root cause:** nvim draws colored undercurls (diagnostic underlines, spell)
 with the `CSI 58;2;R;G;B m` SGR (set-underline-color). `aha` — the ANSI→HTML
-converter the gallery uses — doesn't support SGR 58. It mis-parses the
-parameters: the `2` reads as SGR 2 (faint → aha's `contrast/brightness` filter)
-and the run ends up with a spurious `background-color:#646695`. The editor
+converter the gallery uses — doesn't support SGR 58, and colored undercurls
+come out as a spurious `background-color:#646695` plus a faint filter (the `2`
+parameter appears to be mis-read as SGR 2 / faint, though the exact misparse
+wasn't traced in aha's source). The editor
 itself is correct — the raw terminal shows the real undercurl colors
 (`#d16969` error, `#d7ba7d` warn, `#569cd6` info, `#6e7681` hint), no background.
 
