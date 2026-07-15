@@ -68,6 +68,61 @@
 		</dict>
 		<dict>
 			<key>name</key>
+			<string>Keyword: declaration → storage blue</string>
+			<key>scope</key>
+			<string>keyword.declaration</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>{{ $t.syntax.keyword_storage }}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>SQL keywords → storage blue (not control-flow; matches nvim)</string>
+			<key>scope</key>
+			<string>source.sql keyword</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>{{ $t.syntax.keyword_storage }}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Dockerfile instructions → storage blue (not control-flow)</string>
+			<key>scope</key>
+			<string>source.dockerfile keyword</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>{{ $t.syntax.keyword_storage }}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>C# using directive → storage blue (declaration, matches nvim)</string>
+			<key>scope</key>
+			<string>source.cs keyword.control.import, source.cs keyword.other.using</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>{{ $t.syntax.keyword_storage }}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Config keys (toml/yaml/json) → variable (nvim's property color)</string>
+			<key>scope</key>
+			<string>source.toml entity.name.tag, source.yaml entity.name.tag, source.json meta.mapping.key string, source.json meta.structure.dictionary.key string, source.json support.type.property-name</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>{{ $t.syntax.variable }}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
 			<string>Comparision Operator</string>
 			<key>scope</key>
 			<string>keyword.operator.comparison</string>
@@ -469,7 +524,7 @@
 				<key>fontStyle</key>
 				<string></string>
 				<key>foreground</key>
-				<string>{{ $t.ansi.foreground }}</string>
+				<string>{{ $t.syntax.string }}</string>
 			</dict>
 		</dict>
 		<dict>
