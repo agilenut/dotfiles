@@ -247,14 +247,19 @@ build_theme() {
     page_header "$t" "$bg" "$fg"
 
     # Per file: bat and nvim side by side, so the two renderings of the same
-    # file can be compared directly (skip the diff; delta owns that).
+    # file can be compared directly (skip the diff; delta owns that). Diagnostics
+    # are disabled for these syntax cards: a project-less sample (e.g. sample.tsx
+    # with unresolvable react/JSX) would otherwise draw LSP error underlines, and
+    # aha can't render colored undercurls (SGR 58) — they corrupt into a spurious
+    # purple background. Semantic tokens still load; the showcase below owns
+    # diagnostics.
     local f base
     for f in "$samples_dir"/*; do
       base="$(basename "$f")"
       [[ $base == sample.diff ]] && continue
       printf '<section class="card"><h2>%s</h2><div class="cols">' "$base"
       bat --color=always --style=plain --theme=palette "$f" 2>/dev/null | pane "bat"
-      ncapture "$f" | pane "nvim"
+      ncapture "$f" "$lib/no-diagnostics.lua" | pane "nvim"
       # highlight can fail on files whose syntax it can't detect (e.g.
       # extensionless Dockerfile); don't let that abort the gallery.
       highlight -O html --fragment --inline-css --config-file="$qltheme" -i "$f" 2>/dev/null | ql_pane || true
