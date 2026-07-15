@@ -35,6 +35,14 @@ commit_as() { # name email subject
 
 commit_as "$ME_NAME" "$ME_EMAIL" "Initial commit"
 
+# A few more commits on main so the Commits panel shows a representative
+# history (not a single row), alternating authors to exercise authorColors.
+commit_as "$OTHER_NAME" "$OTHER_EMAIL" "Add configuration loader"
+commit_as "$ME_NAME" "$ME_EMAIL" "Wire up CLI entrypoint"
+commit_as "$OTHER_NAME" "$OTHER_EMAIL" "Handle empty-input edge case"
+commit_as "$ME_NAME" "$ME_EMAIL" "Document setup steps"
+commit_as "$ME_NAME" "$ME_EMAIL" "Bump dependencies"
+
 # branch:author — cover every pattern; alternate authors for authorColors.
 for spec in \
   feat/login:me fix/crash:other refactor/core:me perf/cache:other \
