@@ -4,4 +4,4 @@ error   — something is broken
 warning — something looks suspicious
 info    — something worth noting
 hint    — a gentle suggestion
-(gutter signs, inline virtual text, and underline all use diag_*)
+(gutter signs and inline virtual text, colored from diag_*)
