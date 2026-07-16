@@ -57,6 +57,12 @@ if [[ -f "$themedir/$target.toml" ]]; then
   for a in "$cfgdir"/alacritty/*.toml; do
     [[ -f "$a" ]] && touch "$a"
   done
+elif [[ -d "$themedir" ]]; then
+  # alacritty is set up but this theme has no committed variant. Surface it
+  # loudly rather than silently leaving alacritty (and likely bat/delta/lazygit,
+  # whose selectors also key on the name) on the old theme — the palette and the
+  # generated outputs are out of sync.
+  echo "warning: no alacritty variant '$themedir/$target.toml' — run theme-gen" >&2
 fi
 
 # 3. quicklook (macOS) — copy the theme into Application Support so a re-select in

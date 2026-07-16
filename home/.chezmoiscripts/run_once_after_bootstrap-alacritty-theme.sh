@@ -2,8 +2,8 @@
 # First-deploy bootstrap: create alacritty's current.toml symlink so the main
 # config's `import` resolves before the first `theme` switch. Points at the state
 # file's theme, else the default. `theme <name>` repoints it thereafter; this
-# only fills the gap on a fresh machine (guarded so it never clobbers an existing
-# symlink the switcher already manages).
+# only fills the gap on a fresh machine. The `! -e` guard leaves an existing
+# current.toml alone but self-heals a dangling one (its theme file was deleted).
 set -euo pipefail
 
 cfgdir="${XDG_CONFIG_HOME:-$HOME/.config}"
