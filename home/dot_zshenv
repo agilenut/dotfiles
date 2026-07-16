@@ -34,6 +34,10 @@ export LG_CONFIG_FILE="$XDG_CONFIG_HOME/lazygit/themes/$THEME.yml"
 # bat selects the cached theme by name; delta reads the same for diff syntax.
 export BAT_THEME="$THEME"
 
+# delta: append the theme's [delta "<theme>"] feature (from git config) at
+# runtime; `+` keeps git config's own `features` as the fallback default.
+export DELTA_FEATURES="+$THEME"
+
 # LESS
 # -----------------------------------------------------------------------------
 
