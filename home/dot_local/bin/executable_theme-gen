@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Generate the committed per-tool, per-theme plain theme files from the semantic
+# palette and the central templates in themes/templates/.
+#
+# The palette is the single source of truth; each template is a tool's theme body
+# in Go-template syntax (chezmoi's engine). For every theme x every template this
+# renders one committed plain output — no chezmoi apply, no runtime templating.
+# Dev-machine tooling: run after editing the palette or a template, then commit
+# the regenerated outputs. Reuses `chezmoi execute-template`, so chezmoi must be
+# installed; the palette is loaded by the template itself via include/fromToml,
+# not as chezmoi data.
+set -euo pipefail
+
+src="$(chezmoi source-path)" # chezmoi source dir (…/home)
+repo="$(dirname "$src")"     # repo root
+
+# Palette location, expressed relative to the source dir (how `include` resolves
+# it inside `chezmoi execute-template`). $src/$palette gives the filesystem path.
+# PR2 repoints this to ../themes/palette.toml when the old .tmpl are removed.
+palette=".chezmoidata/themes.toml"
+palette_fs="$src/$palette"
+tmpldir="$repo/themes/templates"
+
+[[ -f "$palette_fs" ]] || {
+  echo "theme-gen: palette not found: $palette_fs" >&2
+  exit 1
+}
+[[ -d "$tmpldir" ]] || {
+  echo "theme-gen: templates dir not found: $tmpldir" >&2
+  exit 1
+}
+
+# Output path per tool (relative to the source dir). Dirs aren't derivable from
+# the tool name (nvim -> lua, quicklook -> syntax-highlight), so map each tool's
+# template basename explicitly; an unmapped template is an error, so adding a
+# tool means adding a case here. (bash 3.2: case, not associative arrays.)
+out_rel() { # $1=template basename  $2=theme name
+  case "$1" in
+    alacritty.toml.tmpl) echo "dot_config/alacritty/themes/$2.toml" ;;
+    bat.tmTheme.tmpl) echo "dot_config/bat/themes/$2.tmTheme" ;;
+    nvim.lua.tmpl) echo "dot_config/nvim/lua/themes/$2.lua" ;;
+    quicklook.theme.tmpl) echo "dot_config/syntax-highlight/Themes/$2.theme" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Available themes = the [themes.<name>.ansi] tables in the palette (names have
+# no spaces, so word-splitting the list is safe — same as the `theme` script).
+themes=()
+while IFS= read -r name; do themes+=("$name"); done < <(
+  grep -oE '^\[themes\.[a-z0-9-]+\.ansi\]' "$palette_fs" \
+    | sed -E 's/.*themes\.([a-z0-9-]+)\.ansi.*/\1/'
+)
+[[ ${#themes[@]} -gt 0 ]] || {
+  echo "theme-gen: no themes found in $palette_fs" >&2
+  exit 1
+}
+
+count=0
+tools=0
+shopt -s nullglob # an empty templates dir should skip the loop, not iterate the literal glob
+for tmpl in "$tmpldir"/*.tmpl; do
+  base="$(basename "$tmpl")"
+  out_rel "$base" _ >/dev/null || {
+    echo "theme-gen: no output mapping for template $base" >&2
+    exit 1
+  }
+  tools=$((tools + 1))
+  for name in "${themes[@]}"; do
+    # Preamble supplies what the old per-file preamble did: load the palette and
+    # bind $t (theme data) + $name, so template bodies stay verbatim. Stream the
+    # body straight from the file (not via $(cat), which strips its trailing
+    # newline) so outputs match the live .tmpl render byte-for-byte.
+    preamble="{{- \$p := include \"$palette\" | fromToml -}}{{- \$name := \"$name\" -}}{{- \$t := index \$p.themes \$name -}}"
+    dest="$src/$(out_rel "$base" "$name")"
+    mkdir -p "$(dirname "$dest")"
+    # Render to a sibling temp then move into place, so a failed render never
+    # leaves a truncated committed output (mirrors the `theme` script's temp+mv).
+    if {
+      printf '%s' "$preamble"
+      cat "$tmpl"
+    } | chezmoi execute-template >"$dest.tmp"; then
+      mv "$dest.tmp" "$dest"
+    else
+      rm -f "$dest.tmp"
+      echo "theme-gen: failed to render $base for theme $name" >&2
+      exit 1
+    fi
+    count=$((count + 1))
+  done
+done
+
+[[ $tools -gt 0 ]] || {
+  echo "theme-gen: no templates found in $tmpldir" >&2
+  exit 1
+}
+echo "theme-gen: wrote $count files (${#themes[@]} themes x $tools tools)"

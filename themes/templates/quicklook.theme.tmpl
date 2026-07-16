@@ -1,0 +1,43 @@
+Description="palette"
+
+Categories = {"dark"}
+
+Default = { Colour="{{ $t.syntax.variable }}" }
+Canvas = { Colour="{{ $t.ansi.background }}" }
+Number = { Colour="{{ $t.syntax.number }}" }
+String = { Colour="{{ $t.syntax.string }}" }
+Escape = { Colour="{{ $t.syntax.escape }}" }
+PreProcessor = { Colour="{{ $t.syntax.keyword }}" }
+StringPreProc = { Colour="{{ $t.syntax.string }}" }
+BlockComment = { Colour="{{ $t.syntax.comment }}" }
+LineComment = { Colour="{{ $t.syntax.comment }}" }
+LineNum = { Colour="{{ $t.ui.muted }}" }
+Operator = { Colour="{{ $t.syntax.operator }}" }
+Interpolation = { Colour="{{ $t.syntax.keyword_storage }}" }
+Hover = { Colour="", Custom = { { Format = "html", Style = "cursor:help;", Override = false } } }
+Error = { Colour="{{ $t.syntax.regexp }}" }
+ErrorMessage = { Colour="{{ $t.syntax.regexp }}", Custom = { { Format = "html", Style = "border:solid 1px red; margin-left: 3em;", Override = false } } }
+
+Keywords = {
+	{ Colour="{{ $t.syntax.keyword_storage }}" },
+	{ Colour="{{ $t.syntax.keyword_storage }}" },
+	{ Colour="{{ $t.syntax.keyword_storage }}" },
+	{ Colour="{{ $t.syntax.function }}" },
+	{ Colour="{{ $t.syntax.function }}" },
+	{ Colour="{{ $t.ui.muted }}" }
+}
+
+
+SemanticTokenTypes = {
+	{ Type = 'keyword', Style = { Colour="{{ $t.syntax.keyword }}" } },
+	{ Type = 'type', Style = { Colour="{{ $t.syntax.type }}" } },
+	{ Type = 'function', Style = { Colour="{{ $t.syntax.function }}" } },
+	{ Type = 'method', Style = { Colour="{{ $t.syntax.function }}" } },
+	{ Type = 'class', Style = { Colour="{{ $t.syntax.type }}" } },
+	{ Type = 'struct', Style = { Colour="{{ $t.syntax.type }}" } },
+	{ Type = 'parameter', Style = { Colour="{{ $t.syntax.variable }}" } },
+	{ Type = 'variable', Style = { Colour="{{ $t.syntax.variable }}" } },
+	{ Type = 'number', Style = { Colour="{{ $t.syntax.number }}" } },
+	{ Type = 'regexp', Style = { Colour="{{ $t.syntax.regexp }}" } },
+	{ Type = 'operator', Style = { Colour="{{ $t.syntax.operator }}" } }
+}

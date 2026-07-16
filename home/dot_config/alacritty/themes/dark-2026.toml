@@ -1,0 +1,26 @@
+# Alacritty ANSI palette — generated from the active theme "dark-2026"
+# (home/.chezmoidata/themes.toml). Do not edit by hand; run `theme <name>`.
+
+[colors.primary]
+  background = "#121314"
+  foreground = "#bbbebf"
+
+[colors.normal]
+  black   = "#121314"
+  red     = "#ff7b72"
+  green   = "#3fb950"
+  yellow  = "#d29922"
+  blue    = "#58a6ff"
+  magenta = "#bc8cff"
+  cyan    = "#39c5cf"
+  white   = "#b1bac4"
+
+[colors.bright]
+  black   = "#6e7681"
+  red     = "#ffa198"
+  green   = "#56d364"
+  yellow  = "#e3b341"
+  blue    = "#79c0ff"
+  magenta = "#d2a8ff"
+  cyan    = "#56d4dd"
+  white   = "#ffffff"
