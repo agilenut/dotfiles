@@ -40,6 +40,8 @@ out_rel() { # $1=template basename  $2=theme name
     bat.tmTheme.tmpl) echo "dot_config/bat/themes/$2.tmTheme" ;;
     nvim.lua.tmpl) echo "dot_config/nvim/lua/themes/$2.lua" ;;
     quicklook.theme.tmpl) echo "dot_config/syntax-highlight/Themes/$2.theme" ;;
+    delta.gitconfig.tmpl) echo "dot_config/delta/themes/$2.gitconfig" ;;
+    lazygit.yml.tmpl) echo "dot_config/lazygit/themes/$2.yml" ;;
     *) return 1 ;;
   esac
 }
