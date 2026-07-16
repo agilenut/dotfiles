@@ -26,7 +26,13 @@ export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 # fallback. Set here (not .zprofile) so non-login shells — tmux panes, `zsh -c`
 # scripts — derive the same theme. Each themed tool's selector is derived from
 # $THEME below. Palette + variants: home/.chezmoidata/themes.toml.
-export THEME="${THEME:-$(cat "$XDG_STATE_HOME/theme" 2>/dev/null || echo vscode-dark-modern)}"
+if [[ -z "${THEME:-}" ]]; then
+  # Read the switcher's state file; fall back if it's missing OR empty (a
+  # botched write must not collapse $THEME to "" and break every tool below).
+  THEME="$(cat "$XDG_STATE_HOME/theme" 2>/dev/null)"
+  THEME="${THEME:-vscode-dark-modern}"
+fi
+export THEME
 
 # lazygit reads one self-contained per-theme config, selected wholesale.
 export LG_CONFIG_FILE="$XDG_CONFIG_HOME/lazygit/themes/$THEME.yml"
