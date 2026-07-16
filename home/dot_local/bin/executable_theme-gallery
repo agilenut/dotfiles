@@ -45,7 +45,7 @@ readonly COLS=140 ROWS=48
 tcapture() {
   local cmd=$1 wait=$2
   shift 2
-  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "$cmd" 2>/dev/null || return 0
+  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" -e THEME="${THEME:-}" -e LG_CONFIG_FILE="${LG_CONFIG_FILE:-}" "$cmd" 2>/dev/null || return 0
   sleep "$wait"
   local key
   for key in "$@"; do
@@ -75,7 +75,7 @@ ncapture() {
   else
     launch="nvim -n '$file'"
   fi
-  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "$launch" 2>/dev/null || return 0
+  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" -e THEME="${THEME:-}" -e LG_CONFIG_FILE="${LG_CONFIG_FILE:-}" "$launch" 2>/dev/null || return 0
   # Require several consecutive identical captures, not just one — async layers
   # (LSP semantic tokens, gitsigns) land after a brief lull, and a single-match
   # break would snapshot the pre-token state (nondeterministic). A longer stable
@@ -236,6 +236,7 @@ build_theme() {
   # (syntax) + its DELTA_FEATURES feature. (delta and bat resolve against the
   # deployed git config / bat cache, so run this after `chezmoi apply`.)
   export THEME="$t" BAT_THEME="$t" DELTA_FEATURES="+$t"
+  export LG_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/lazygit/themes/$t.yml"
 
   local bg fg pal
   bg="$(chezmoi execute-template '{{ (index .themes "'"$t"'").ansi.background }}')"

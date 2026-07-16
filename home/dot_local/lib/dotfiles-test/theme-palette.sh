@@ -63,12 +63,16 @@ test_theme_palette() {
   fi
 
   # 2. No generated output carries a missing-key placeholder. Covers every tool
-  #    and theme generically — no key list to maintain.
-  if grep -rl '<no value>' \
-    "$src"/dot_config/bat/themes "$src"/dot_config/alacritty/themes \
-    "$src"/dot_config/nvim/lua/themes "$src"/dot_config/lazygit/themes \
-    "$src"/dot_config/delta/themes "$src"/dot_config/syntax-highlight/Themes \
-    2>/dev/null | grep -q .; then
+  #    and theme generically — no key list to maintain. Guard the empty scan so a
+  #    missing/renamed output tree fails loudly instead of reading green.
+  local outdirs=(
+    "$src/dot_config/bat/themes" "$src/dot_config/alacritty/themes"
+    "$src/dot_config/nvim/lua/themes" "$src/dot_config/lazygit/themes"
+    "$src/dot_config/delta/themes" "$src/dot_config/syntax-highlight/Themes"
+  )
+  if ! find "${outdirs[@]}" -type f 2>/dev/null | grep -q .; then
+    fail "no generated theme outputs found to scan under $src/dot_config"
+  elif grep -rl '<no value>' "${outdirs[@]}" 2>/dev/null | grep -q .; then
     fail "a generated theme output contains <no value> (a template references a missing palette key)"
   else
     pass "no generated theme output has a missing-key placeholder"
