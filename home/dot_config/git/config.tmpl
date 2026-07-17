@@ -64,34 +64,20 @@
 [interactive]
 	diffFilter = delta --color-only
 
-{{- $name := "vscode-dark-modern" -}}
-{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
-{{- $t := index .themes $name -}}
-{{- if not $t }}{{ fail (printf "unknown theme %q" $name) }}{{ end }}
 [delta]
 	navigate = true
 	line-numbers = true
 	side-by-side = false
-	; syntax-theme names the bat theme (regenerated per active theme), so
-	; delta's foreground highlighting follows the toggle automatically.
-	syntax-theme = palette
-	; Muted diff backgrounds; `syntax` keeps foreground highlighting.
-	; emph styles brighten the exact changed words within a line.
-	plus-style = syntax "{{ $t.ui.diff_add_bg }}"
-	minus-style = syntax "{{ $t.ui.diff_del_bg }}"
-	plus-emph-style = syntax "{{ $t.ui.diff_add_emph_bg }}"
-	minus-emph-style = syntax "{{ $t.ui.diff_del_emph_bg }}"
-	; Calmer line-number gutter; muted tint instead of saturated green/red.
-	line-numbers-plus-style = "{{ $t.ui.git_add }}"
-	line-numbers-minus-style = "{{ $t.ui.git_delete }}"
-	line-numbers-zero-style = "{{ $t.ui.muted }}"
-	; Structural chrome (file underline, hunk-header box, line-number
-	; separators) muted to the inactive-border grey; the default blue
-	; filename stays the accent that lazygit's active border matches.
-	file-decoration-style = "{{ $t.ui.muted }} ul"
-	hunk-header-decoration-style = "{{ $t.ui.muted }} box"
-	line-numbers-left-style = "{{ $t.ui.muted }}"
-	line-numbers-right-style = "{{ $t.ui.muted }}"
+	; Theme-derived styles live in per-theme [delta "<theme>"] features (committed
+	; by theme-gen, included below). The active one is selected at runtime by
+	; DELTA_FEATURES=+$THEME (derived from $THEME in .zshenv); `features` here is
+	; the fallback default when DELTA_FEATURES is unset. Structural options above
+	; stay in [delta] deliberately — options set directly here override features.
+	features = vscode-dark-modern
+{{ range $name, $_ := (include "../themes/palette.toml" | fromToml).themes }}
+[include]
+	path = ~/.config/delta/themes/{{ $name }}.gitconfig
+{{- end }}
 {{- end }}
 
 [merge]

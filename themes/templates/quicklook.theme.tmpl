@@ -1,8 +1,4 @@
-{{- $name := "vscode-dark-modern" -}}
-{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
-{{- $t := index .themes $name -}}
-{{- if not $t }}{{ fail (printf "unknown theme %q" $name) }}{{ end -}}
-Description="palette"
+Description="{{ $name }}"
 
 Categories = {"dark"}
 

@@ -1,7 +1,3 @@
-{{- $name := "vscode-dark-modern" -}}
-{{- if hasKey . "theme" }}{{ $name = .theme }}{{ end -}}
-{{- $t := index .themes $name -}}
-{{- if not $t }}{{ fail (printf "unknown theme %q" $name) }}{{ end -}}
 promptToReturnFromSubprocess: false
 os:
   editPreset: "nvim"
@@ -14,16 +10,16 @@ gui:
     activeBorderColor:
       - blue
     inactiveBorderColor:
-      - "{{ $t.ui.muted }}"
+      - "#8b949e"
     selectedLineBgColor:
-      - "{{ $t.ui.selection }}"
+      - "#253748"
     selectedRangeBgColor:
-      - "{{ $t.ui.selection }}"
+      - "#253748"
     optionsTextColor:
       - blue
   authorColors:
     "agilenut": blue # your commits in the theme blue
-    "*": "{{ $t.ui.muted }}" # everyone else muted
+    "*": "#8b949e" # everyone else muted
   branchColorPatterns:
     "^feat/": "green"
     "^fix/": "red"
@@ -33,12 +29,10 @@ gui:
     "^test/": "yellow"
     "^ci/": "cyan"
     "^build/": "cyan"
-    "^chore/": "{{ $t.ui.dim }}"
-    "^style/": "{{ $t.ui.dim }}"
+    "^chore/": "#a3a9ae"
+    "^style/": "#a3a9ae"
 git:
   diffContextSize: 10
-{{- if lookPath "delta" }}
   pagers:
     - colorArg: always
       pager: delta --paging=never
-{{- end }}

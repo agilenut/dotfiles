@@ -1,0 +1,26 @@
+# Alacritty ANSI palette — generated from the active theme "vscode-dark-modern"
+# (themes/palette.toml). Do not edit by hand; run `theme <name>`.
+
+[colors.primary]
+  background = "#1f1f1f"
+  foreground = "#c6c6c6"
+
+[colors.normal]
+  black   = "#1f1f1f"
+  red     = "#d16969"
+  green   = "#6a9955"
+  yellow  = "#ce9178"
+  blue    = "#569cd6"
+  magenta = "#9078c9"
+  cyan    = "#4ec9b0"
+  white   = "#c6c6c6"
+
+[colors.bright]
+  black   = "#6e7681"
+  red     = "#e08f8f"
+  green   = "#a4c98b"
+  yellow  = "#e0bc9f"
+  blue    = "#8cbceb"
+  magenta = "#c586c0"
+  cyan    = "#4ec9b0"
+  white   = "#e5e5e5"

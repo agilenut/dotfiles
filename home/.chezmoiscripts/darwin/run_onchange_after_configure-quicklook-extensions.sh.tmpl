@@ -11,9 +11,7 @@
 # reads the copies in Application Support, not the live config files):
 #   custom.css: {{ include "dot_config/syntax-highlight/custom.css" | sha256sum }}
 #   global.css: {{ include "dot_config/syntax-highlight/Styles/global.css" | sha256sum }}
-#   theme:      {{ include "dot_config/syntax-highlight/Themes/palette.theme.tmpl" | sha256sum }}
-#   palette:    {{ include ".chezmoidata/themes.toml" | sha256sum }}
-#   active:     {{ if hasKey . "theme" }}{{ .theme }}{{ else }}vscode-dark-modern{{ end }}
+#   themes:     {{ range $n, $_ := (include "../themes/palette.toml" | fromToml).themes }}{{ include (printf "dot_config/syntax-highlight/Themes/%s.theme" $n) | sha256sum }}{{ end }}
 
 SYNTAX_HIGHLIGHT_SRC="${HOME}/.config/syntax-highlight"
 SYNTAX_HIGHLIGHT_DEST="${HOME}/Library/Application Support/Syntax Highlight"
@@ -32,6 +30,16 @@ if [[ -d "$SYNTAX_HIGHLIGHT_SRC" ]]; then
   # Copy theme files (.theme format for the app's theme selector)
   if [[ -d "$SYNTAX_HIGHLIGHT_SRC/Themes" ]]; then
     cp -f "$SYNTAX_HIGHLIGHT_SRC/Themes/"*.theme "$SYNTAX_HIGHLIGHT_DEST/Themes/" 2>/dev/null || true
+  fi
+
+  # Seed the stable "current" theme (the app's fixed selection) from the runtime
+  # $THEME state file so it exists before the first `theme` switch; `theme <name>`
+  # overwrites it thereafter to make quicklook follow the active theme.
+  ql_active="$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/theme" 2>/dev/null || echo vscode-dark-modern)"
+  if [[ -f "$SYNTAX_HIGHLIGHT_SRC/Themes/${ql_active}.theme" ]]; then
+    sed 's/^Description=.*/Description="current"/' \
+      "$SYNTAX_HIGHLIGHT_SRC/Themes/${ql_active}.theme" \
+      >"$SYNTAX_HIGHLIGHT_DEST/Themes/current.theme"
   fi
 
   # Copy global style files (Styles/global.css is auto-applied)
