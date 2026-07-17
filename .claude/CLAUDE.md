@@ -89,20 +89,25 @@ pre-commit run --all-files
 
 ### Theme Changes
 
-When a change touches the palette (`home/.chezmoidata/themes.toml`) or any
-templated theme consumer — alacritty `themes/palette.toml.tmpl`, bat
-`palette.tmTheme.tmpl`, the git/delta `[delta]` block, nvim `colorscheme.lua`
-or `theme_palette.lua.tmpl`, lazygit `config.yml.tmpl`, quicklook
-`palette.theme.tmpl` — regenerate the visual gallery and get the user's eyes on
-it before committing or opening a PR:
+Theming is runtime `$THEME`-driven. `themes/palette.toml` is the single source
+of truth; `theme-gen` renders it × the templates in `themes/templates/` into
+committed plain per-tool per-theme outputs under `home/dot_config/<tool>/themes/`.
+Tools select at runtime from `$THEME` (derived in `dot_zshenv`); `theme <name>`
+switches by writing `$XDG_STATE_HOME/theme` — no chezmoi apply. Non-env GUI tools
+(alacritty, quicklook) follow via a switcher-written `current.*` file.
 
-1. Run `theme-gallery` yourself (regenerates `docs/theme-gallery/<theme>.html`).
-2. Run `git diff` on the generated HTML yourself and summarize for the user
+When a change touches `themes/palette.toml` or a template in `themes/templates/`
+(alacritty, bat, nvim, quicklook, delta, lazygit), regenerate and get the user's
+eyes on the result before committing or opening a PR:
+
+1. Run `theme-gen` yourself to regenerate the committed outputs.
+2. Run `theme-gallery` yourself (regenerates `docs/theme-gallery/<theme>.html`).
+3. Run `git diff` on the generated HTML yourself and summarize for the user
    which colors moved (the inline hex changes) and in which tool/scope. Do NOT
    ask the user to run the diff — that's your job.
-3. Surface the regenerated pages for the user to open and eyeball, and get their
+4. Surface the regenerated pages for the user to open and eyeball, and get their
    explicit visual approval before committing or opening a PR.
-4. Commit the regenerated gallery in the same PR as the palette change.
+5. Commit the regenerated outputs + gallery in the same PR as the palette change.
 
 The rendered colors are the source of truth here; a template that "looks right"
 can still shift a color the user needs to approve. When planning theme work,

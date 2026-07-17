@@ -21,10 +21,10 @@ hunk - which is why only PHP is affected.
 
 **Why we don't fix it:**
 
-- It is **not the theme.** `bat` colors PHP with the same `palette` theme, and
+- It is **not the theme.** `bat` colors PHP with the active theme, and
   delta fails to highlight PHP with _any_ theme (Monokai tested too). Do NOT add
-  PHP scopes to `home/dot_config/bat/themes/palette.tmTheme.tmpl` - the theme is
-  not the problem (an earlier plan note wrongly suggested this).
+  PHP scopes to the bat theme template (`themes/templates/bat.tmTheme.tmpl`) - the
+  theme is not the problem (an earlier plan note wrongly suggested this).
 - delta is already the latest release (0.19.2).
 - Raising `diff.context` enough to always include `<?php` means near-full-file
   context on every diff in every language - not worth it.
