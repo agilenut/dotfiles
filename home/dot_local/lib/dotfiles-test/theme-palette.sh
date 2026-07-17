@@ -2,9 +2,8 @@
 # Theme palette contract tests
 # shellcheck shell=bash
 
-# Guards the centralized palette (home/.chezmoidata/themes.toml) and the
-# committed per-theme outputs theme-gen generates from it. Invariants that have
-# bitten us:
+# Guards the palette (themes/palette.toml) and the committed per-theme outputs
+# theme-gen generates from it. Invariants that have bitten us:
 #   1. lazygit color values must be valid tokens (a base-8 name, a modifier, or
 #      #hex). An unknown token like `brightblack` is silently dropped, rendering
 #      white for borders / black for text (see docs/known-issues.md).
@@ -14,26 +13,24 @@
 #      for every theme. The key list is derived FROM the templates (not a
 #      hardcoded copy that drifts), so adding a token to a template is covered.
 #
-# All checks read the COMMITTED source (via chezmoi source-path), so they
-# validate what ships regardless of whether this machine has applied. chezmoi is
-# a core package — present locally and in CI (which runs `init --apply` first);
-# no check calls skip(), since the runner exits non-zero on any skip.
+# Checks 1-2 read the DEPLOYED outputs (~/.config), so they run everywhere a
+# machine has applied — locally and in CI (which runs `init --apply` first).
+# Check 3 needs the repo source (palette + templates), findable via chezmoi
+# source-path; where it isn't (CI passes chezmoi `--source` as a flag, so
+# source-path returns the empty default), it's silently omitted — check 2's
+# deployed-output scan already guards completeness. No check calls skip(), since
+# the runner exits non-zero on any skip.
 test_theme_palette() {
   section "Theme Palette"
 
-  local src repo
-  if ! command -v chezmoi >/dev/null 2>&1 || ! src="$(chezmoi source-path 2>/dev/null)"; then
-    fail "chezmoi source-path unavailable; cannot validate theme outputs"
-    return
-  fi
-  repo="$(dirname "$src")"
+  local cfg="${XDG_CONFIG_HOME:-$HOME/.config}"
 
-  # 1. lazygit token validity — every committed per-theme config. Leaf values
+  # 1. lazygit token validity — every deployed per-theme config. Leaf values
   #    only under the color blocks (theme / authorColors / branchColorPatterns),
   #    so non-color settings (widths, presets) are ignored.
   local lg valid bad="" v vals found=0
   valid='^(default|black|red|green|yellow|blue|magenta|cyan|white|bold|underline|reverse|strikethrough|#[0-9a-fA-F]{6})$'
-  for lg in "$src"/dot_config/lazygit/themes/*.yml; do
+  for lg in "$cfg"/lazygit/themes/*.yml; do
     [[ -f $lg ]] || continue
     found=1
     vals="$(awk '
@@ -55,7 +52,7 @@ test_theme_palette() {
     done <<<"$vals"
   done
   if [[ $found -eq 0 ]]; then
-    fail "no lazygit per-theme configs found under $src/dot_config/lazygit/themes"
+    fail "no lazygit per-theme configs found under $cfg/lazygit/themes (apply first)"
   elif [[ -n $bad ]]; then
     fail "lazygit has invalid color token(s):${bad} (must be a base-8 name or #hex)"
   else
@@ -64,38 +61,42 @@ test_theme_palette() {
 
   # 2. No generated output carries a missing-key placeholder. Covers every tool
   #    and theme generically — no key list to maintain. Guard the empty scan so a
-  #    missing/renamed output tree fails loudly instead of reading green.
+  #    missing/unapplied output tree fails loudly instead of reading green.
   local outdirs=(
-    "$src/dot_config/bat/themes" "$src/dot_config/alacritty/themes"
-    "$src/dot_config/nvim/lua/themes" "$src/dot_config/lazygit/themes"
-    "$src/dot_config/delta/themes" "$src/dot_config/syntax-highlight/Themes"
+    "$cfg/bat/themes" "$cfg/alacritty/themes"
+    "$cfg/nvim/lua/themes" "$cfg/lazygit/themes"
+    "$cfg/delta/themes" "$cfg/syntax-highlight/Themes"
   )
   if ! find "${outdirs[@]}" -type f 2>/dev/null | grep -q .; then
-    fail "no generated theme outputs found to scan under $src/dot_config"
+    fail "no generated theme outputs found to scan under $cfg (apply first)"
   elif grep -rl '<no value>' "${outdirs[@]}" 2>/dev/null | grep -q .; then
     fail "a generated theme output contains <no value> (a template references a missing palette key)"
   else
     pass "no generated theme output has a missing-key placeholder"
   fi
 
-  # 3. Every key the templates reference is defined for every theme. Derive the
-  #    key list from the templates so it can't drift from what they consume, then
-  #    render each for every theme; a missing key renders "<no value>".
-  local keys tmpl out
-  keys="$(grep -rhoE '\$t\.(ansi|syntax|ui)\.[a-z_]+' "$repo/themes/templates" 2>/dev/null \
-    | sed -E 's/^\$t\.//' | sort -u)"
-  if [[ -z $keys ]]; then
-    fail "no \$t.<layer>.<key> references found in $repo/themes/templates"
-  else
-    tmpl='{{ range (include "../themes/palette.toml" | fromToml).themes }}'
-    while IFS= read -r k; do [[ -n $k ]] && tmpl+="{{ .$k }}"; done <<<"$keys"
-    tmpl+='{{ end }}'
-    if ! out="$(chezmoi execute-template "$tmpl" 2>&1)"; then
-      fail "palette completeness template error: ${out}"
-    elif printf '%s' "$out" | grep -q '<no value>'; then
-      fail "a theme is missing a key the templates reference (<no value> rendered)"
+  # 3. (where the repo source is available) Every key the templates reference is
+  #    defined for every theme. Derive the key list from the templates so it
+  #    can't drift from what they consume, then render each for every theme; a
+  #    missing key renders "<no value>". Omitted where source-path isn't the repo.
+  local src repo keys tmpl out
+  if src="$(chezmoi source-path 2>/dev/null)" && repo="$(dirname "$src")" \
+    && [[ -d "$repo/themes/templates" ]]; then
+    keys="$(grep -rhoE '\$t\.(ansi|syntax|ui)\.[a-z_]+' "$repo/themes/templates" 2>/dev/null \
+      | sed -E 's/^\$t\.//' | sort -u)"
+    if [[ -z $keys ]]; then
+      fail "no \$t.<layer>.<key> references found in $repo/themes/templates"
     else
-      pass "every template-referenced ansi/syntax/ui key is defined for all themes"
+      tmpl='{{ range (include "../themes/palette.toml" | fromToml).themes }}'
+      while IFS= read -r k; do [[ -n $k ]] && tmpl+="{{ .$k }}"; done <<<"$keys"
+      tmpl+='{{ end }}'
+      if ! out="$(chezmoi execute-template "$tmpl" 2>&1)"; then
+        fail "palette completeness template error: ${out}"
+      elif printf '%s' "$out" | grep -q '<no value>'; then
+        fail "a theme is missing a key the templates reference (<no value> rendered)"
+      else
+        pass "every template-referenced ansi/syntax/ui key is defined for all themes"
+      fi
     fi
   fi
 }
