@@ -74,7 +74,10 @@ fi
 qldir="$HOME/Library/Application Support/Syntax Highlight/Themes"
 qltheme="$cfgdir/syntax-highlight/Themes/$target.theme"
 if [[ -d "$qldir" && -f "$qltheme" ]]; then
-  cp -f "$qltheme" "$qldir/current.theme"
+  # Write current.theme from the active theme but with Description="current", so
+  # the app lists ONE stable "current" entry (the per-theme files keep their own
+  # names). Reading + redirecting avoids sed -i's GNU/BSD portability split.
+  sed 's/^Description=.*/Description="current"/' "$qltheme" >"$qldir/current.theme"
   rm -rf "$HOME/Library/Caches/org.sbarex.SourceCodeSyntaxHighlight/"* 2>/dev/null || true
   command -v qlmanage >/dev/null 2>&1 && qlmanage -r cache >/dev/null 2>&1 || true
 fi

@@ -37,7 +37,9 @@ if [[ -d "$SYNTAX_HIGHLIGHT_SRC" ]]; then
   # overwrites it thereafter to make quicklook follow the active theme.
   ql_active="$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/theme" 2>/dev/null || echo vscode-dark-modern)"
   if [[ -f "$SYNTAX_HIGHLIGHT_SRC/Themes/${ql_active}.theme" ]]; then
-    cp -f "$SYNTAX_HIGHLIGHT_SRC/Themes/${ql_active}.theme" "$SYNTAX_HIGHLIGHT_DEST/Themes/current.theme"
+    sed 's/^Description=.*/Description="current"/' \
+      "$SYNTAX_HIGHLIGHT_SRC/Themes/${ql_active}.theme" \
+      >"$SYNTAX_HIGHLIGHT_DEST/Themes/current.theme"
   fi
 
   # Copy global style files (Styles/global.css is auto-applied)
