@@ -3,8 +3,8 @@
   # allow external commands to create new windows
   ipc_socket = true
 
-  # current.toml is a symlink to the active theme's committed variant
-  # (themes/<theme>.toml), repointed by `theme <name>`. Alacritty live-reloads
+  # current.toml is a copy of the active theme's committed variant
+  # (themes/<theme>.toml), rewritten by `theme <name>`. Alacritty live-reloads
   # this primary config on change; `theme` touches it so imports re-read too.
   import = [ "~/.config/alacritty/themes/current.toml" ]
 

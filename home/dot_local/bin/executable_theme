@@ -48,12 +48,16 @@ echo "$themes" | grep -qxF "$target" || {
 mkdir -p "$statedir"
 printf '%s\n' "$target" >"$statefile"
 
-# 2. alacritty — repoint current.toml (the main config imports it) at the theme's
-#    committed variant, then touch the top-level configs so open windows reload
-#    (alacritty watches each window's primary config, not its imports).
+# 2. alacritty — copy the theme's committed variant onto current.toml (the main
+#    config imports it), then touch the top-level configs so open windows reload
+#    (alacritty watches each window's primary config, not its imports). A copy,
+#    not a symlink, keeps this identical to the quicklook step below — one rule
+#    for both non-env tools. rm first so an older current.toml symlink is
+#    replaced, not followed by cp.
 themedir="$cfgdir/alacritty/themes"
 if [[ -f "$themedir/$target.toml" ]]; then
-  ln -sfn "$target.toml" "$themedir/current.toml"
+  rm -f "$themedir/current.toml"
+  cp -f "$themedir/$target.toml" "$themedir/current.toml"
   for a in "$cfgdir"/alacritty/*.toml; do
     [[ -f "$a" ]] && touch "$a"
   done
