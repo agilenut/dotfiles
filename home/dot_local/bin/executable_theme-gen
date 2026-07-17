@@ -17,7 +17,7 @@ repo="$(dirname "$src")"     # repo root
 # Palette location, expressed relative to the source dir (how `include` resolves
 # it inside `chezmoi execute-template`). $src/$palette gives the filesystem path.
 # PR2 repoints this to ../themes/palette.toml when the old .tmpl are removed.
-palette=".chezmoidata/themes.toml"
+palette="../themes/palette.toml"
 palette_fs="$src/$palette"
 tmpldir="$repo/themes/templates"
 

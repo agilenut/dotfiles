@@ -1,5 +1,5 @@
 # Alacritty ANSI palette — generated from the active theme "vscode-dark-modern"
-# (home/.chezmoidata/themes.toml). Do not edit by hand; run `theme <name>`.
+# (themes/palette.toml). Do not edit by hand; run `theme <name>`.
 
 [colors.primary]
   background = "#1f1f1f"

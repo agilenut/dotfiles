@@ -1,4 +1,4 @@
--- Generated from the active theme "vscode-dark-modern" (home/.chezmoidata/themes.toml).
+-- Generated from the active theme "vscode-dark-modern" (themes/palette.toml).
 -- Do not edit by hand; run `theme <name>` to switch, then restart nvim.
 return {
   ansi = {

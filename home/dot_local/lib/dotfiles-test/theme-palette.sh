@@ -87,7 +87,7 @@ test_theme_palette() {
   if [[ -z $keys ]]; then
     fail "no \$t.<layer>.<key> references found in $repo/themes/templates"
   else
-    tmpl='{{ range .themes }}'
+    tmpl='{{ range (include "../themes/palette.toml" | fromToml).themes }}'
     while IFS= read -r k; do [[ -n $k ]] && tmpl+="{{ .$k }}"; done <<<"$keys"
     tmpl+='{{ end }}'
     if ! out="$(chezmoi execute-template "$tmpl" 2>&1)"; then

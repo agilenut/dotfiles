@@ -74,7 +74,7 @@
 	; the fallback default when DELTA_FEATURES is unset. Structural options above
 	; stay in [delta] deliberately — options set directly here override features.
 	features = vscode-dark-modern
-{{ range $name, $_ := .themes }}
+{{ range $name, $_ := (include "../themes/palette.toml" | fromToml).themes }}
 [include]
 	path = ~/.config/delta/themes/{{ $name }}.gitconfig
 {{- end }}

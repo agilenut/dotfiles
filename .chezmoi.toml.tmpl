@@ -4,10 +4,6 @@
 {{- /* Profile selection - "personal" uses predefined values, "custom" prompts for all */ -}}
 {{- $profile := promptChoiceOnce . "profile" "Select profile" (list "personal" "custom") -}}
 
-{{- /* Active color theme - drives all themed tools from home/.chezmoidata/themes.toml.
-       Change later with the `theme <name>` script (rewrites this value + applies). */ -}}
-{{- $theme := promptChoiceOnce . "theme" "Select color theme" (list "vscode-dark-modern" "dark-2026") "vscode-dark-modern" -}}
-
 {{- /* For custom profile, prompt for values */ -}}
 {{- $name := "" -}}
 {{- $email := "" -}}
@@ -36,7 +32,6 @@ encryption = "age"
 {{ end -}}
 [data]
     profile = {{ $profile | quote }}
-    theme = {{ $theme | quote }}
 {{- if eq $profile "custom" }}
     [data.github]
         name = {{ $name | quote }}

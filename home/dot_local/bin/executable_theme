@@ -14,7 +14,7 @@ set -euo pipefail
 cfgdir="${XDG_CONFIG_HOME:-$HOME/.config}"
 statedir="${XDG_STATE_HOME:-$HOME/.local/state}"
 statefile="$statedir/theme"
-palette="$(chezmoi source-path)/.chezmoidata/themes.toml"
+palette="$(dirname "$(chezmoi source-path)")/themes/palette.toml"
 
 # Available themes = the [themes.<name>.ansi] tables in the palette.
 themes=$(grep -oE '^\[themes\.[a-z0-9-]+\.ansi\]' "$palette" \

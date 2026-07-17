@@ -239,11 +239,11 @@ build_theme() {
   export LG_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/lazygit/themes/$t.yml"
 
   local bg fg pal
-  bg="$(chezmoi execute-template '{{ (index .themes "'"$t"'").ansi.background }}')"
-  fg="$(chezmoi execute-template '{{ (index .themes "'"$t"'").ansi.foreground }}')"
+  bg="$(chezmoi execute-template '{{ (index (include "../themes/palette.toml" | fromToml).themes "'"$t"'").ansi.background }}')"
+  fg="$(chezmoi execute-template '{{ (index (include "../themes/palette.toml" | fromToml).themes "'"$t"'").ansi.foreground }}')"
 
   # ANSI palette hexes (globals) consumed by ansi_remap for this theme.
-  pal="$(chezmoi execute-template '{{ with (index .themes "'"$t"'").ansi }}{{ .bright_black }} {{ .red }} {{ .green }} {{ .yellow }} {{ .blue }} {{ .magenta }} {{ .cyan }} {{ .white }} {{ .black }}{{ end }}')"
+  pal="$(chezmoi execute-template '{{ with (index (include "../themes/palette.toml" | fromToml).themes "'"$t"'").ansi }}{{ .bright_black }} {{ .red }} {{ .green }} {{ .yellow }} {{ .blue }} {{ .magenta }} {{ .cyan }} {{ .white }} {{ .black }}{{ end }}')"
   read -r PAL_BRIGHT_BLACK PAL_RED PAL_GREEN PAL_YELLOW PAL_BLUE PAL_MAGENTA PAL_CYAN PAL_WHITE PAL_BLACK <<<"$pal"
 
   # quicklook: highlight renders with the committed per-theme .theme output (the

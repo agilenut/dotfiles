@@ -8,7 +8,7 @@
 # every theme must be cached, not just the active one. The hash below re-runs
 # this whenever any generated per-theme bat output changes (a palette or template
 # edit regenerates them via theme-gen):
-# {{ range $name, $_ := .themes }}{{ include (printf "dot_config/bat/themes/%s.tmTheme" $name) | sha256sum }}{{ end }}
+# {{ range $name, $_ := (include "../themes/palette.toml" | fromToml).themes }}{{ include (printf "dot_config/bat/themes/%s.tmTheme" $name) | sha256sum }}{{ end }}
 
 set -euo pipefail
 
