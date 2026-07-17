@@ -1,0 +1,26 @@
+; Per-theme delta feature. Activated at runtime by DELTA_FEATURES=+vscode-dark-modern
+; (the $THEME selection derives it), or as the default via `features = <default-theme>`
+; in the [delta] block. Holds ONLY theme-derived styles — structural options
+; (navigate, line-numbers, side-by-side) stay in [delta] in git config, because
+; options set directly in [delta] override features and can't be env-switched.
+[delta "vscode-dark-modern"]
+	; syntax-theme names this theme's bat theme (same name), so delta's
+	; foreground highlighting follows the active theme.
+	syntax-theme = vscode-dark-modern
+	; Muted diff backgrounds; `syntax` keeps foreground highlighting.
+	; emph styles brighten the exact changed words within a line.
+	plus-style = syntax "#1f3a29"
+	minus-style = syntax "#3d2027"
+	plus-emph-style = syntax "#274a30"
+	minus-emph-style = syntax "#42272d"
+	; Calmer line-number gutter; muted tint instead of saturated green/red.
+	line-numbers-plus-style = "#55805f"
+	line-numbers-minus-style = "#7d5159"
+	line-numbers-zero-style = "#6e7681"
+	; Structural chrome (file underline, hunk-header box, line-number
+	; separators) muted to the inactive-border grey; the default blue
+	; filename stays the accent that lazygit's active border matches.
+	file-decoration-style = "#6e7681 ul"
+	hunk-header-decoration-style = "#6e7681 box"
+	line-numbers-left-style = "#6e7681"
+	line-numbers-right-style = "#6e7681"

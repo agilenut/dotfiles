@@ -1,0 +1,26 @@
+; Per-theme delta feature. Activated at runtime by DELTA_FEATURES=+dark-2026
+; (the $THEME selection derives it), or as the default via `features = <default-theme>`
+; in the [delta] block. Holds ONLY theme-derived styles — structural options
+; (navigate, line-numbers, side-by-side) stay in [delta] in git config, because
+; options set directly in [delta] override features and can't be env-switched.
+[delta "dark-2026"]
+	; syntax-theme names this theme's bat theme (same name), so delta's
+	; foreground highlighting follows the active theme.
+	syntax-theme = dark-2026
+	; Muted diff backgrounds; `syntax` keeps foreground highlighting.
+	; emph styles brighten the exact changed words within a line.
+	plus-style = syntax "#17331f"
+	minus-style = syntax "#331a1f"
+	plus-emph-style = syntax "#21402b"
+	minus-emph-style = syntax "#3a2026"
+	; Calmer line-number gutter; muted tint instead of saturated green/red.
+	line-numbers-plus-style = "#4a9d63"
+	line-numbers-minus-style = "#d05f64"
+	line-numbers-zero-style = "#8b949e"
+	; Structural chrome (file underline, hunk-header box, line-number
+	; separators) muted to the inactive-border grey; the default blue
+	; filename stays the accent that lazygit's active border matches.
+	file-decoration-style = "#8b949e ul"
+	hunk-header-decoration-style = "#8b949e box"
+	line-numbers-left-style = "#8b949e"
+	line-numbers-right-style = "#8b949e"

@@ -25,6 +25,7 @@ source "$LIB_DIR/smart_approve.sh"
 source "$LIB_DIR/nvim-tooling.sh"
 source "$LIB_DIR/open-path.sh"
 source "$LIB_DIR/theme-palette.sh"
+source "$LIB_DIR/theme-runtime.sh"
 source "$LIB_DIR/git-signing.sh"
 source "$LIB_DIR/recap.sh"
 source "$LIB_DIR/manual.sh"
@@ -126,6 +127,7 @@ main() {
 
   # theme palette contract tests
   test_theme_palette
+  test_theme_runtime
 
   # SSH config + git commit-signing tests
   test_ssh_config

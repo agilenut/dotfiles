@@ -1,0 +1,26 @@
+; Per-theme delta feature. Activated at runtime by DELTA_FEATURES=+{{ $name }}
+; (the $THEME selection derives it), or as the default via `features = <default-theme>`
+; in the [delta] block. Holds ONLY theme-derived styles — structural options
+; (navigate, line-numbers, side-by-side) stay in [delta] in git config, because
+; options set directly in [delta] override features and can't be env-switched.
+[delta "{{ $name }}"]
+	; syntax-theme names this theme's bat theme (same name), so delta's
+	; foreground highlighting follows the active theme.
+	syntax-theme = {{ $name }}
+	; Muted diff backgrounds; `syntax` keeps foreground highlighting.
+	; emph styles brighten the exact changed words within a line.
+	plus-style = syntax "{{ $t.ui.diff_add_bg }}"
+	minus-style = syntax "{{ $t.ui.diff_del_bg }}"
+	plus-emph-style = syntax "{{ $t.ui.diff_add_emph_bg }}"
+	minus-emph-style = syntax "{{ $t.ui.diff_del_emph_bg }}"
+	; Calmer line-number gutter; muted tint instead of saturated green/red.
+	line-numbers-plus-style = "{{ $t.ui.git_add }}"
+	line-numbers-minus-style = "{{ $t.ui.git_delete }}"
+	line-numbers-zero-style = "{{ $t.ui.muted }}"
+	; Structural chrome (file underline, hunk-header box, line-number
+	; separators) muted to the inactive-border grey; the default blue
+	; filename stays the accent that lazygit's active border matches.
+	file-decoration-style = "{{ $t.ui.muted }} ul"
+	hunk-header-decoration-style = "{{ $t.ui.muted }} box"
+	line-numbers-left-style = "{{ $t.ui.muted }}"
+	line-numbers-right-style = "{{ $t.ui.muted }}"

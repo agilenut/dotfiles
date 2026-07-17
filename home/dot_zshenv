@@ -18,6 +18,32 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}" # State files - us
 
 export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 
+# THEME
+# -----------------------------------------------------------------------------
+# Single dial for runtime theme selection across tools. Precedence: a value
+# inherited from the parent (alacritty's per-window [env]) wins; else the global
+# default the `theme` switcher writes to $XDG_STATE_HOME/theme; else a built-in
+# fallback. Set here (not .zprofile) so non-login shells — tmux panes, `zsh -c`
+# scripts — derive the same theme. Each themed tool's selector is derived from
+# $THEME below. Palette + variants: home/.chezmoidata/themes.toml.
+if [[ -z "${THEME:-}" ]]; then
+  # Read the switcher's state file; fall back if it's missing OR empty (a
+  # botched write must not collapse $THEME to "" and break every tool below).
+  THEME="$(cat "$XDG_STATE_HOME/theme" 2>/dev/null)"
+  THEME="${THEME:-vscode-dark-modern}"
+fi
+export THEME
+
+# lazygit reads one self-contained per-theme config, selected wholesale.
+export LG_CONFIG_FILE="$XDG_CONFIG_HOME/lazygit/themes/$THEME.yml"
+
+# bat selects the cached theme by name; delta reads the same for diff syntax.
+export BAT_THEME="$THEME"
+
+# delta: append the theme's [delta "<theme>"] feature (from git config) at
+# runtime; `+` keeps git config's own `features` as the fallback default.
+export DELTA_FEATURES="+$THEME"
+
 # LESS
 # -----------------------------------------------------------------------------
 

@@ -13,8 +13,9 @@ local gh = require('util').gh
 --
 -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
 -- vscode.nvim — its named color slots are remapped to the active theme's
--- palette (home/.chezmoidata/themes.toml, generated into theme_palette.lua)
--- via color_overrides, so the whole colorscheme follows `theme <name>`.
+-- palette via color_overrides. theme_palette resolves the committed
+-- themes/<theme>.lua for the runtime $THEME, so the colorscheme follows the
+-- active theme (next nvim launch after a `theme <name>` switch).
 vim.pack.add { gh 'Mofiqul/vscode.nvim' }
 local palette = require 'theme_palette'
 require('vscode').setup {

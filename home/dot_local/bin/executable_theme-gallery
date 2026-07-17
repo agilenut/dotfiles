@@ -4,9 +4,9 @@
 #   docs/theme-gallery/<theme>.html      committed, diffable (inline-styled)
 #   docs/theme-gallery/ql/<sample>.png   local-only (gitignored), best-effort
 #
-# Mutates the active theme (via `theme <name>`) to render each, restoring the
-# original on exit. Run after touching palette/theme files, then review the
-# HTML before committing (see .claude/CLAUDE.md).
+# Renders each theme by setting $THEME (and the per-tool selectors) in the tool
+# env — no global theme switch, nothing to restore. Run after touching the
+# palette/templates, then review the HTML before committing (see .claude/CLAUDE.md).
 #
 # Terminal tools (bat, delta, nvim, lazygit) are captured as ANSI and piped
 # through aha to inline-styled HTML so the pages line-diff across changes.
@@ -18,7 +18,7 @@ lib="$HOME/.local/lib/theme-gallery"
 samples_dir="$lib/samples"
 fixture_gen="$lib/make-lazygit-fixture"
 
-for dep in aha tmux bat delta nvim highlight theme chezmoi jq; do
+for dep in aha tmux bat delta nvim highlight theme chezmoi; do
   command -v "$dep" >/dev/null || {
     echo "theme-gallery: missing dependency '$dep'" >&2
     exit 1
@@ -29,15 +29,13 @@ repo="$(dirname "$(chezmoi source-path)")"
 outdir="$repo/docs/theme-gallery"
 mkdir -p "$outdir"
 
-original="$(chezmoi data | jq -r '.theme // "vscode-dark-modern"')"
 sock="theme-gallery-$$"
 
 cleanup() {
   tmux -L "$sock" kill-server 2>/dev/null || true
-  theme "$original" >/dev/null 2>&1 || true
 }
-# INT/TERM too, so an interrupt or kill still restores the theme (EXIT alone
-# doesn't fire on a signal).
+# INT/TERM too, so an interrupt or kill still tears down the tmux server (EXIT
+# alone doesn't fire on a signal).
 trap cleanup EXIT INT TERM
 
 readonly COLS=140 ROWS=48
@@ -47,7 +45,7 @@ readonly COLS=140 ROWS=48
 tcapture() {
   local cmd=$1 wait=$2
   shift 2
-  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "$cmd" 2>/dev/null || return 0
+  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" -e THEME="${THEME:-}" -e LG_CONFIG_FILE="${LG_CONFIG_FILE:-}" "$cmd" 2>/dev/null || return 0
   sleep "$wait"
   local key
   for key in "$@"; do
@@ -77,7 +75,7 @@ ncapture() {
   else
     launch="nvim -n '$file'"
   fi
-  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" "$launch" 2>/dev/null || return 0
+  tmux -L "$sock" new-session -d -s g -x "$COLS" -y "$ROWS" -e THEME="${THEME:-}" -e LG_CONFIG_FILE="${LG_CONFIG_FILE:-}" "$launch" 2>/dev/null || return 0
   # Require several consecutive identical captures, not just one — async layers
   # (LSP semantic tokens, gitsigns) land after a brief lull, and a single-match
   # break would snapshot the pre-token state (nondeterministic). A longer stable
@@ -233,24 +231,26 @@ HTML
 build_theme() {
   local t=$1
   echo "theme-gallery: rendering $t" >&2
-  theme "$t" >/dev/null
+  # Render every tool AS this theme via the runtime env — no global switch to
+  # restore. nvim reads $THEME; bat takes --theme below; delta reads BAT_THEME
+  # (syntax) + its DELTA_FEATURES feature. (delta and bat resolve against the
+  # deployed git config / bat cache, so run this after `chezmoi apply`.)
+  export THEME="$t" BAT_THEME="$t" DELTA_FEATURES="+$t"
+  export LG_CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/lazygit/themes/$t.yml"
 
   local bg fg pal
-  bg="$(chezmoi execute-template '{{ (index .themes .theme).ansi.background }}')"
-  fg="$(chezmoi execute-template '{{ (index .themes .theme).ansi.foreground }}')"
+  bg="$(chezmoi execute-template '{{ (index (include "../themes/palette.toml" | fromToml).themes "'"$t"'").ansi.background }}')"
+  fg="$(chezmoi execute-template '{{ (index (include "../themes/palette.toml" | fromToml).themes "'"$t"'").ansi.foreground }}')"
 
   # ANSI palette hexes (globals) consumed by ansi_remap for this theme.
-  pal="$(chezmoi execute-template '{{ with (index .themes .theme).ansi }}{{ .bright_black }} {{ .red }} {{ .green }} {{ .yellow }} {{ .blue }} {{ .magenta }} {{ .cyan }} {{ .white }} {{ .black }}{{ end }}')"
+  pal="$(chezmoi execute-template '{{ with (index (include "../themes/palette.toml" | fromToml).themes "'"$t"'").ansi }}{{ .bright_black }} {{ .red }} {{ .green }} {{ .yellow }} {{ .blue }} {{ .magenta }} {{ .cyan }} {{ .white }} {{ .black }}{{ end }}')"
   read -r PAL_BRIGHT_BLACK PAL_RED PAL_GREEN PAL_YELLOW PAL_BLUE PAL_MAGENTA PAL_CYAN PAL_WHITE PAL_BLACK <<<"$pal"
 
-  # Render the quicklook .theme for the active theme, so highlight renders with
-  # the exact palette QL uses (the .tmpl reads the active `theme`). highlight
-  # only treats a --config-file as a theme if it ends in .theme, so give it a
-  # fixed name inside a temp dir.
-  local qldir qltheme
-  qldir="$(mktemp -d "${TMPDIR:-/tmp}/qltheme.XXXXXX")"
-  qltheme="$qldir/palette.theme"
-  chezmoi execute-template <"$(chezmoi source-path)/dot_config/syntax-highlight/Themes/palette.theme.tmpl" >"$qltheme"
+  # quicklook: highlight renders with the committed per-theme .theme output (the
+  # exact palette QL uses). highlight only treats a --config-file as a theme if
+  # it ends in .theme; the committed output already does.
+  local qltheme
+  qltheme="$(chezmoi source-path)/dot_config/syntax-highlight/Themes/$t.theme"
 
   local page="$outdir/$t.html"
   {
@@ -268,7 +268,7 @@ build_theme() {
       base="$(basename "$f")"
       [[ $base == sample.diff ]] && continue
       printf '<section class="card"><h2>%s</h2><div class="cols">' "$base"
-      bat --color=always --style=plain --theme=palette "$f" 2>/dev/null | pane "bat"
+      bat --color=always --style=plain --theme="$t" "$f" 2>/dev/null | pane "bat"
       ncapture "$f" "$lib/no-diagnostics.lua" | pane "nvim"
       # highlight can fail on files whose syntax it can't detect (e.g.
       # extensionless Dockerfile); don't let that abort the gallery.
@@ -281,7 +281,7 @@ build_theme() {
 
     # bat -H line-highlight showcase — the ui.line_highlight band. The per-file
     # bat columns use --style=plain without -H, so this is the only place it shows.
-    bat --color=always --style=plain --theme=palette -H 5 "$samples_dir/sample.go" 2>/dev/null | section "bat — line highlight (-H)"
+    bat --color=always --style=plain --theme="$t" -H 5 "$samples_dir/sample.go" 2>/dev/null | section "bat — line highlight (-H)"
 
     # nvim diagnostics showcase — one of each severity (diag_* palette).
     ncapture "$lib/diagnostics.txt" "$lib/diagnostics.lua" | section "nvim — diagnostics"
@@ -302,7 +302,6 @@ build_theme() {
 
     printf '</body>\n</html>\n'
   } >"$page"
-  rm -rf "$qldir"
   echo "theme-gallery: wrote $page" >&2
 }
 
