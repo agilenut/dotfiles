@@ -65,13 +65,18 @@ elif [[ -d "$themedir" ]]; then
   echo "warning: no alacritty variant '$themedir/$target.toml' — run theme-gen" >&2
 fi
 
-# 3. quicklook (macOS) — copy the theme into Application Support so a re-select in
-#    the Syntax Highlight app shows the new colors (the selection is app state).
+# 3. quicklook (macOS) — sbarex renders the theme SELECTED in the Syntax
+#    Highlight app, from a render cache that `qlmanage -r` does NOT clear (see
+#    docs/known-issues.md). So copy the active theme onto the stable "current"
+#    theme the app stays selected on (same idea as alacritty's current.toml),
+#    then drop the render cache so the new colors actually show. Select "current"
+#    in the app once; it follows every switch after that.
 qldir="$HOME/Library/Application Support/Syntax Highlight/Themes"
 qltheme="$cfgdir/syntax-highlight/Themes/$target.theme"
 if [[ -d "$qldir" && -f "$qltheme" ]]; then
-  cp -f "$qltheme" "$qldir/"
-  command -v qlmanage >/dev/null 2>&1 && qlmanage -r >/dev/null 2>&1 || true
+  cp -f "$qltheme" "$qldir/current.theme"
+  rm -rf "$HOME/Library/Caches/org.sbarex.SourceCodeSyntaxHighlight/"* 2>/dev/null || true
+  command -v qlmanage >/dev/null 2>&1 && qlmanage -r cache >/dev/null 2>&1 || true
 fi
 
 echo "theme set to: $target"
