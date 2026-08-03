@@ -342,6 +342,23 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
   loops) cleanly; profile before further optimization.
 - **Build vs buy**: write inline if ~20 lines and no dominant lib.
   Otherwise prefer well-supported, actively maintained, good-DX deps.
+- **Dependency vulns / transitive pins**: diagnose before overriding.
+  When an audit flags a transitive package, find why it's pulled in
+  (`pnpm why <pkg>`) and compare each parent's declared range to the
+  patched version, then take the lowest rung that works:
+
+  1. patch already in-range → update in place (`pnpm update <pkg> -r`),
+     no override
+  2. a parent's range excludes it → bump that parent to pull the patch
+     natively
+  3. pin via `overrides` / `resolutions` only as last resort, with a
+     dated comment + "remove when X"
+  4. suppress the advisory (`ignoreGhsas` etc.) only for a true
+     false-positive or an unreachable dev-only advisory with no patch -
+     ask first
+
+  A standing override is debt; don't add one just because a sibling
+  override exists.
 
 ## Errors
 
