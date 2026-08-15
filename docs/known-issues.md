@@ -127,3 +127,46 @@ palette fg, which aha renders). Do NOT try to make aha render colored
 undercurls — it can't, and a live terminal shows them correctly anyway.
 
 _Diagnosed 2026-07-14._
+
+## launchd jobs cannot list ~/Documents, and the failure is silent
+
+**Symptom:** `recap-daily` regenerated the _same_ day's recap on every hourly
+launchd fire — 14-20 full Claude Code runs per day for months — while its log
+cheerfully reported `recap written` each time. Each run also had a chance of
+raising a macOS "allow access to your Documents folder" prompt.
+
+**Root cause:** macOS TCC gates protected folders by _responsible process_.
+Under launchd that is plain `/bin/bash`, which has no Documents grant, so the
+wrapper's early-exit glob of `~/Documents/recaps/????-??-??.md` expanded to
+nothing and the script concluded no recap existed yet. Claude itself has its
+own grant, so it wrote the file normally.
+
+What made it invisible: **TCC blocks `readdir` but not `stat`.** Verified by
+running a probe under `launchctl submit`:
+
+```text
+glob count: 0                  # directory listing denied
+stat of known file: VISIBLE    # stat is not gated
+ls of dir: DENIED
+read of file: DENIED
+control (~/.claude): OK
+```
+
+So the `[[ -f "$OUT" ]]` completion check — a `stat` — kept succeeding and the
+log kept claiming success, while the listing that drove the early exit kept
+coming back empty.
+
+**What we do about it:** the wrapper tracks the last generated day in
+`$XDG_STATE_HOME/recap/last-day`, outside any protected folder, and never lists
+`$RECAP_DIR`. A test in `dotfiles-test` guards against the glob coming back.
+
+**Related:** Claude Code's TCC identity is its _versioned_ Homebrew path
+(`/opt/homebrew/Caskroom/claude-code/<version>/claude`), so every cask upgrade
+is a brand-new identity and every folder grant is re-asked. The system TCC
+database accumulates one dead entry per version. Nothing to fix in this repo —
+just expect a burst of folder prompts after a `claude-code` upgrade.
+
+Do NOT "fix" a launchd job's folder access by granting Full Disk Access to
+`/bin/bash` — keep job state out of protected folders instead.
+
+_Diagnosed 2026-08-15._

@@ -41,4 +41,33 @@ test_recap_wrapper() {
   else
     pass "$recaps_dir is writable (or will be created on first run)"
   fi
+
+  # The wrapper must decide what to generate from its state file, never by
+  # listing $RECAP_DIR. Under launchd its TCC identity is plain /bin/bash with
+  # no Documents access, so such a listing comes back empty and the wrapper
+  # regenerates the same day on every hourly fire.
+  if grep -qE '\$\{?RECAP_DIR\}?"?/\?\?\?\?-' "$wrapper"; then
+    fail "recap-daily globs \$RECAP_DIR — TCC denies that listing under launchd"
+  else
+    pass "recap-daily does not glob \$RECAP_DIR to pick the next day"
+  fi
+
+  local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/recap"
+  local state_file="$state_dir/last-day"
+
+  if [[ -d "$state_dir" ]] && [[ ! -w "$state_dir" ]]; then
+    fail "$state_dir exists but is not writable"
+  else
+    pass "$state_dir is writable (or will be created on first run)"
+  fi
+
+  # Absent is fine — the wrapper falls back to yesterday and writes it. Present
+  # but malformed is not: the wrapper ignores it and re-runs yesterday daily.
+  if [[ ! -f "$state_file" ]]; then
+    pass "no last-day state yet (wrapper seeds it on first run)"
+  elif [[ "$(cat "$state_file")" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    pass "last-day state is an ISO date ($(cat "$state_file"))"
+  else
+    fail "last-day state is not an ISO date: $(cat "$state_file")"
+  fi
 }
