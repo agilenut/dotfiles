@@ -127,3 +127,96 @@ palette fg, which aha renders). Do NOT try to make aha render colored
 undercurls — it can't, and a live terminal shows them correctly anyway.
 
 _Diagnosed 2026-07-14._
+
+## launchd jobs cannot list ~/Documents, and the failure is silent
+
+**Symptom:** `recap-daily` regenerated the _same_ day's recap on every hourly
+launchd fire — 14-20 full Claude Code runs per day for months — while its log
+cheerfully reported `recap written` each time. Each run also had a chance of
+raising a macOS "allow access to your Documents folder" prompt.
+
+**Root cause:** macOS TCC gates protected folders by _responsible process_.
+Under launchd that is plain `/bin/bash`, which has no Documents grant, so the
+wrapper's early-exit glob of `~/Documents/recaps/????-??-??.md` expanded to
+nothing and the script concluded no recap existed yet. Claude itself has its
+own grant, so it wrote the file normally.
+
+What made it invisible: **TCC blocks `readdir` but not `stat`.** Verified by
+running a probe under `launchctl submit`:
+
+```text
+glob count: 0                  # directory listing denied
+stat of known file: VISIBLE    # stat is not gated
+ls of dir: DENIED
+read of file: DENIED
+control (~/.claude): OK
+```
+
+So the `[[ -f "$OUT" ]]` completion check — a `stat` — kept succeeding and the
+log kept claiming success, while the listing that drove the early exit kept
+coming back empty.
+
+**What we do about it:** the wrapper tracks the last generated day in
+`$XDG_STATE_HOME/recap/last-day`, outside any protected folder, and never lists
+`$RECAP_DIR`. A test in `dotfiles-test` guards against the glob coming back.
+
+Do NOT "fix" a launchd job's folder access by granting Full Disk Access to
+`/bin/bash` — keep job state out of protected folders instead.
+
+**Related:** the folder prompts themselves are a separate issue — see below.
+
+_Diagnosed 2026-08-15._
+
+## Claude Code re-asks for six folders after every Homebrew upgrade
+
+**Symptom:** A burst of macOS permission prompts naming `claude` — media
+library, Downloads, Documents, data from other apps, Desktop, network volume —
+appearing in sessions where nothing was asked of those folders, and often
+overnight when nobody was at the keyboard. Easy to misread as the scheduled
+`recap` job overreaching.
+
+**Root cause:** Claude Code requests all six at startup on its own. Proven by
+copying the binary to a throwaway path (a new path is a new TCC identity),
+stripping `com.apple.quarantine`, and running it under launchd from `/` with
+the single instruction "reply with exactly the word: ok" — no skill, no file
+access requested. All six prompts appeared and were recorded:
+
+```text
+kTCCServiceMediaLibrary
+kTCCServiceSystemPolicyDownloadsFolder
+kTCCServiceSystemPolicyDocumentsFolder
+kTCCServiceSystemPolicyAppData
+kTCCServiceSystemPolicyDesktopFolder
+kTCCServiceSystemPolicyNetworkVolumes
+```
+
+**Why it repeats:** TCC keys a grant on (client path, code requirement). The
+stored `csreq` pins only identifier `com.anthropic.claude-code`, anchor Apple
+generic, and leaf OU `Q6L2SF6YDW` — it is version-agnostic. So the **path** is
+the only thing that changes between releases, and Homebrew installs to a
+version-namespaced `/opt/homebrew/Caskroom/claude-code/<version>/claude`. Every
+upgrade is a new identity and all six are re-asked. `/opt/homebrew/bin/claude`
+is a symlink, and TCC resolves it away — the grants land on the Caskroom path,
+so the symlink buys nothing. The system TCC database accumulates one dead
+entry per version.
+
+**Two things that make it confusing:**
+
+- Prompts **queue and outlive the process**. In the test the run exited at
+  14:44:06 and the dialogs were answered between 14:45:30 and 14:46:16. A
+  dialog on screen now can belong to a run that finished minutes ago, in a
+  different session.
+- A **dismissed** prompt writes no row and comes back on the next attempt.
+  Only Allow or Don't Allow is remembered.
+
+**Why `recap` looked guilty:** it launches Claude while you are away, so it is
+often the first launch after an overnight upgrade and surfaces the queued
+requests. It is the occasion, not the cause. Do NOT chase this in the recap
+wrapper.
+
+**Living with it:** answer the six once per upgrade. Full Disk Access is not a
+workaround — it is tracked per version too. The only real fix is launching from
+a stable path (the csreq would still match, so grants would carry across
+versions), which Homebrew cannot provide for a versioned cask artifact.
+
+_Diagnosed 2026-08-15._
