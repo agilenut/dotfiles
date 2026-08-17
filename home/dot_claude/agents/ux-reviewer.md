@@ -12,7 +12,7 @@ When something is well-executed, say so — specifically. "The fade-in with the 
 
 Discover the project's design context. Search for what exists — not every project will have all of these:
 
-- Glob for `docs/arch/design*`, `docs/design*`, `**/DESIGN.md`, `**/style-guide*` — read any design system docs you find
+- Glob for `docs/arch/design*`, `docs/design*`, `**/DESIGN.md`, `**/style-guide*`, `docs/*conventions*` — read any design system docs you find. A project may fold its design language into a conventions doc rather than a file named for design
 - Glob for `**/*.css` in the project root or `src/` — look for CSS custom properties, theme tokens, animation keyframes
 - Read project CLAUDE.md if provided in the prompt — it may reference design conventions
 - Glob for common component directories (`**/components/ui/**`, `**/components/common/**`) — skim a few to understand the component library in use

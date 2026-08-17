@@ -554,8 +554,15 @@ Project docs (READMEs, guides, design docs):
 - When adding a new way to do something, audit and remove or merge the
   obsolete ways. Replace, don't append.
 - Update docs in the same commit as the code change — never separately.
-- EXCEPTION: append-only-by-design docs (ADRs, CHANGELOG.md, decision
-  logs) preserve history — don't overwrite previous entries.
+- EXCEPTION: docs that record decisions preserve the history of the
+  decision, not just its current state. HOW a project does that is its
+  own convention — check its docs and CLAUDE.md before assuming. Two
+  shapes are common and both are fine: immutable entries, where a change
+  means a new entry superseding the old (ADRs, CHANGELOG.md); and living
+  topic-organized entries corrected in place. What is never fine is a
+  correction that erases the fact something changed — when correcting in
+  place, say in the entry what it previously claimed and why that was
+  wrong.
 
 Context files (CLAUDE.md, MEMORY.md, skills, agents):
 
