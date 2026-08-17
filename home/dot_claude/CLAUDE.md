@@ -335,6 +335,21 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
   non-obvious WHY. Still fill XML doc on public .NET API surface for
   tooling integration. Comments add value on top of naming, not as a
   substitute.
+  - State the **fact a reader needs, not the path you took to find it**.
+    "Safari reports the sanitized value while still showing the raw text"
+    is a fact. "I first tried X, which didn't work, so then Y" is a
+    journey, and nobody changing this code needs it.
+  - **Length is earned by the fact, not by the reasoning.** A long comment
+    about an external quirk is fine. A long comment defending a choice
+    means the choice wants a clearer name or a different shape — fix the
+    code instead of arguing for it.
+  - Write for whoever changes this next, **not for a reviewer you are
+    persuading**. A comment shaped like an argument outlives the argument
+    and reads as doubt about code that turned out fine.
+  - When a change **reverses** the choice a comment explains, delete the
+    comment and ask fresh whether the new code needs one. Rewriting its
+    justification is how a comment outlives its reason, and it quietly
+    asserts the new code is contentious too.
 - **Function size**: balance size vs count. Named functions clarify
   when reused. Don't fragment for line count alone. Splits motivated by
   testability often signal a missing object, not just a method.
@@ -553,7 +568,9 @@ Project docs (READMEs, guides, design docs):
   dedicated landing place.
 - When adding a new way to do something, audit and remove or merge the
   obsolete ways. Replace, don't append.
-- Update docs in the same commit as the code change — never separately.
+- Update docs in the same commit as the code change — never separately —
+  when the change makes an existing doc wrong or incomplete. **Changing
+  code is not itself a reason to write documentation.**
 - EXCEPTION: docs that record decisions preserve the history of the
   decision, not just its current state. HOW a project does that is its
   own convention — check its docs and CLAUDE.md before assuming. Two
