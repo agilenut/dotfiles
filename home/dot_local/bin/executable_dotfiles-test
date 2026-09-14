@@ -106,9 +106,10 @@ main() {
   test_worktree_lib
   test_worktree_e2e
 
-  # Claude tmux wrapper tests (restore + refresh)
+  # Claude tmux wrapper tests (restore + refresh + pane title guard)
   test_claude_restore
   test_claude_refresh
+  test_claude_pane_title
 
   # Tmux continuum auto-save health
   test_continuum_autosave

@@ -11,8 +11,9 @@
 # (OSC 2, added upstream Sept 2026). That overwrites the `<glyph> <session>`
 # title claude writes and tmux-resurrect restores, which claude-restore parses
 # to resume the right session - restored panes get left at a bare shell
-# instead. Window naming here comes from tmux.conf's automatic-rename-format,
-# so nothing is lost by turning the auto-title off inside tmux.
+# instead. This drops omz's preexec title too, which costs nothing here: pane
+# titles are never displayed (tmux.conf sets no pane-border-status) and window
+# names come from its automatic-rename-format.
 if [[ -n "$TMUX" ]]; then
   DISABLE_AUTO_TITLE=true
 fi

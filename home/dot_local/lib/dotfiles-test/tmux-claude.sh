@@ -5,9 +5,9 @@
 CLAUDE_RESTORE="${HOME}/.local/bin/claude-restore"
 CLAUDE_REFRESH="${HOME}/.local/bin/claude-refresh"
 
-# Asserts the claude-restore title-parse contract. The send-keys delivery and
-# real tmux-resurrect restore paths are inherently interactive — they live in
-# the manual checklist; here we cover the parse/classify branches only.
+# Asserts the claude-restore title-parse contract, plus the tmux.conf options
+# the replay depends on. The send-keys delivery and real tmux-resurrect restore
+# paths are inherently interactive — they live in the manual checklist.
 test_claude_restore() {
   section "Claude tmux session restore"
 
@@ -128,22 +128,50 @@ test_claude_restore() {
   else
     fail "missing @resurrect-hook-post-restore-all -> @restore-complete (cold-start race returns)"
   fi
+}
 
-  # ---- pane title stays claude's, not oh-my-zsh's (zshrc.d/tmux.zsh) ----
+# Asserts the guard that keeps claude's pane title readable by claude-restore.
+# oh-my-zsh's termsupport writes the pane title (OSC 2) from every precmd under
+# TERM=tmux-*, which erases the `<glyph> <session>` title resurrect restored -
+# every pane then classifies as "shell" and no session resumes. The failure is
+# silent, and the guard is a $TMUX-conditional assignment, so assert the derived
+# value rather than the text: only running it proves the condition's direction.
+test_claude_pane_title() {
+  section "Claude tmux pane title guard"
+
   local tmux_zsh="${ZDOTDIR:-$HOME/.config/zsh}/zshrc.d/tmux.zsh"
   if [ ! -f "$tmux_zsh" ]; then
     skip "zshrc.d/tmux.zsh not installed"
     return
   fi
 
-  # oh-my-zsh's termsupport rewrites the pane title on every precmd, erasing the
-  # `<glyph> <session>` title this parser reads. Without DISABLE_AUTO_TITLE the
-  # restore still runs and still classifies - as "shell", for every pane. Silent,
-  # so assert the guard is present.
-  if grep -qE '^ *DISABLE_AUTO_TITLE=true' "$tmux_zsh"; then
-    pass "oh-my-zsh auto-title disabled inside tmux"
+  # Source the guard in a non-interactive zsh and print what it derived. The
+  # auto-attach block in the same file needs `[[ -o interactive ]]`, false under
+  # `zsh -c`, so sourcing can't launch tmux.
+  #   $1 = value for $TMUX (empty to unset it)
+  derive_auto_title() {
+    local -a env_args=(-u TMUX)
+    [ -n "$1" ] && env_args=("TMUX=$1")
+    env "${env_args[@]}" zsh -c \
+      "source '$tmux_zsh'; print -r -- \${DISABLE_AUTO_TITLE:-unset}"
+  }
+
+  local result
+
+  # ---- inside tmux: auto-title off, so claude's pane title survives ----
+  result="$(derive_auto_title fake)"
+  if [ "$result" = "true" ]; then
+    pass "inside tmux: oh-my-zsh auto-title disabled"
   else
-    fail "missing DISABLE_AUTO_TITLE in zshrc.d/tmux.zsh (pane titles clobbered, silent resume break)"
+    fail "inside tmux: DISABLE_AUTO_TITLE is '$result' (pane titles clobbered, silent resume break)"
+  fi
+
+  # ---- outside tmux: left alone, so a bare Alacritty still gets a title ----
+  result="$(derive_auto_title "")"
+  if [ "$result" = "unset" ]; then
+    pass "outside tmux: auto-title left alone"
+  else
+    fail "outside tmux: DISABLE_AUTO_TITLE is '$result' (should be unset)"
   fi
 }
 
