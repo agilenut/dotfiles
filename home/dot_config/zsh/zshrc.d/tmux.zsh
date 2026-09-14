@@ -1,9 +1,28 @@
 # tmux.zsh
 # =============================================================================
-# Auto-attach to (or create) the `personal` tmux session for interactive
-# Alacritty shells. Allow-list semantics: only fires when $ALACRITTY_WINDOW_ID
-# is set. Other terminals (VS Code's integrated terminal, Warp, Terminal.app,
-# remote SSH sessions) get a plain zsh prompt without the auto-attach.
+# tmux-specific shell setup: keep oh-my-zsh off the pane title, and auto-attach
+# to (or create) the `personal` session for interactive Alacritty shells.
+
+#
+# Pane title
+# =============================================================================
+
+# oh-my-zsh's lib/termsupport.zsh sets the tmux pane title from every precmd
+# (OSC 2, added upstream Sept 2026). That overwrites the `<glyph> <session>`
+# title claude writes and tmux-resurrect restores, which claude-restore parses
+# to resume the right session - restored panes get left at a bare shell
+# instead. Window naming here comes from tmux.conf's automatic-rename-format,
+# so nothing is lost by turning the auto-title off inside tmux.
+if [[ -n "$TMUX" ]]; then
+  DISABLE_AUTO_TITLE=true
+fi
+
+#
+# Auto-attach
+# =============================================================================
+# Allow-list semantics: only fires when $ALACRITTY_WINDOW_ID is set. Other
+# terminals (VS Code's integrated terminal, Warp, Terminal.app, remote SSH
+# sessions) get a plain zsh prompt without the auto-attach.
 #
 # term-<profile> scripts launch tmux directly via `alacritty -e tmux …`,
 # bypassing this guard — those keep their named sessions.
