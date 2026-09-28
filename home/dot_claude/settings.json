@@ -440,7 +440,7 @@
       "Bash(rm *)",
       "Bash(source *)"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "auto"
   },
   "hooks": {
     "PreToolUse": [
@@ -479,5 +479,9 @@
     ]
   },
   "autoUpdatesChannel": "stable",
-  "theme": "dark-ansi"
+  "theme": "dark-ansi",
+  "teammateMode": "auto",
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
+  "skipWorkflowUsageWarning": true
 }
