@@ -142,7 +142,6 @@
       "Bash(env)",
       "Bash(file *)",
       "Bash(flake8 *)",
-      "Bash(find *)",
       "Bash(gh api --method GET *)",
       "Bash(gh api * --method GET *)",
       "Bash(gh api -X GET *)",
@@ -359,10 +358,6 @@
       "mcp__context7__query-docs"
     ],
     "deny": [
-      "Bash(find * -exec *)",
-      "Bash(find * -execdir *)",
-      "Bash(find * -ok *)",
-      "Bash(find * -okdir *)",
       "Bash(git -c *=*)",
       "Bash(git -C * -c *=*)",
       "Bash(git --config-env*)",

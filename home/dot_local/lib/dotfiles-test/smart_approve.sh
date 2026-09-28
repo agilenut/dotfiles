@@ -64,30 +64,27 @@ test_smart_approve() {
     fail "chained 'git status && git diff' should allow (got: $d)"
   fi
 
-  # find -exec hits the deny pattern — explicit deny.
-  d=$(decision_for '"find . -exec rm {} \\;"')
-  if [ "$d" = "deny" ]; then
-    pass "find -exec → deny"
-  else
-    fail "'find . -exec rm {} ;' should match deny pattern (got: $d)"
-  fi
-
-  # find -execdir hits the deny pattern.
-  d=$(decision_for '"find . -execdir rm {} \\;"')
-  if [ "$d" = "deny" ]; then
-    pass "find -execdir → deny"
-  else
-    fail "'find . -execdir' should match deny pattern (got: $d)"
-  fi
-
-  # find -delete is intentionally NOT in deny — should still match Bash(find *)
-  # allow per user policy ("ok with find remove in allowed folders").
-  d=$(decision_for '"find /tmp -name foo -delete"')
-  if [ "$d" = "allow" ]; then
-    pass "find -delete → allow (intentional, not in deny)"
-  else
-    fail "'find -delete' should still allow (got: $d)"
-  fi
+  # ---- find is owned by the auto mode classifier, not by rules ----
+  # `find * -exec *` used to be a deny and `find *` an allow. Every deny it
+  # produced in five months was a false positive (`-exec jq`, `-exec cat`,
+  # `-exec grep`), and a hook deny cannot be overridden, so each one cost a
+  # rewrite. Moving it to ask would have been worse: ask resolves before the
+  # classifier, so the benign forms would prompt forever and never be judged.
+  # With neither rule present, the classifier sees the whole command and can
+  # tell `-exec jq` from `-exec rm`.
+  local findcmd
+  for findcmd in \
+    "find . -exec rm {} \\\\;" \
+    "find . -execdir rm {} \\\\;" \
+    "find /tmp -name foo -delete" \
+    "find . -name '*.ts'"; do
+    d=$(decision_for "\"$findcmd\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "find → fallthrough, classifier decides: ${findcmd:0:40}"
+    else
+      fail "'$findcmd' should reach the classifier (got: $d)"
+    fi
+  done
 
   # Narrow uv allow wins: Bash(uv pip list *) is in allow, Bash(uv *) is in
   # ask. The hook only checks allow/deny, so the narrow allow wins for
@@ -141,11 +138,11 @@ test_smart_approve() {
   fi
 
   # Deny applies even when the rest of the chain is allowed.
-  d=$(decision_for '"git status && find . -exec rm {} \\;"')
+  d=$(decision_for "\"git status && git -c alias.x='!evil' log\"")
   if [ "$d" = "deny" ]; then
     pass "chain containing deny pattern → deny"
   else
-    fail "chain with find -exec should deny (got: $d)"
+    fail "chain with a denied segment should deny (got: $d)"
   fi
 
   # ---- git -C allow rules, sourced from smart-approve-allow.json ----
@@ -1029,12 +1026,12 @@ test_smart_approve() {
     fail "awk --frobnicate should fallthrough (got: $d)"
   fi
 
-  # Asymmetry lock: safe awk + denied find-exec → deny precedence.
-  d=$(decision_for "\"awk '{print}' && find . -exec rm {} \\\\;\"")
+  # Asymmetry lock: safe awk + a denied segment → deny precedence.
+  d=$(decision_for "\"awk '{print}' && git -c alias.x='!evil' log\"")
   if [ "$d" = "deny" ]; then
-    pass "awk safe && find -exec → deny (deny loop unaffected by awk widening)"
+    pass "awk safe && denied segment → deny (deny loop unaffected by awk widening)"
   else
-    fail "awk + find-exec chain should deny (got: $d)"
+    fail "awk + denied-segment chain should deny (got: $d)"
   fi
 
   # ---- Step 6: decisions audit log (always-on) ----
@@ -1065,7 +1062,7 @@ test_smart_approve() {
   # Deny decision → log also gets an entry.
   marker="step6_deny_$$_$(date +%s%N 2>/dev/null || date +%s)"
   before_lines=$after_lines
-  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec rm ${marker} {} \\\\;\"}}" \
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -c alias.${marker}='!evil' log\"}}" \
     | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH="$test_log" \
       python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
   after_lines=$(wc -l <"$test_log" 2>/dev/null | tr -d ' ' || printf 0)
