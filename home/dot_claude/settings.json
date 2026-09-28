@@ -413,9 +413,6 @@
       "Bash(brew install *)",
       "Bash(chezmoi execute-template *)",
       "Bash(chmod *)",
-      "Bash(curl *)",
-      "Bash(docker exec *)",
-      "Bash(docker run *)",
       "Bash(git -C * clone *)",
       "Bash(git -C * commit *)",
       "Bash(git -C * merge *)",
@@ -426,7 +423,6 @@
       "Bash(git push *)",
       "Bash(gh pr create *)",
       "Bash(gh pr merge *)",
-      "Bash(rm *)",
       "Bash(source *)"
     ],
     "defaultMode": "auto"
@@ -472,5 +468,30 @@
   "teammateMode": "auto",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
-  "skipWorkflowUsageWarning": true
+  "skipWorkflowUsageWarning": true,
+  "autoMode": {
+    "environment": [
+      "**Organization**: None configured",
+      "**Primary use of Claude Code**: software development on a personal macOS workstation, across several unrelated private client repositories plus public personal ones",
+      "**Cloud provider(s)**: Azure. `az` is the expected cloud CLI; `aws` and `gcloud` are not part of normal work, so reaching for them is unexpected",
+      "**Repository visibility**: mixed. Read visibility from the remote rather than assuming. Dotfiles and config repositories here are public and must never receive client names, hostnames, subscription IDs, or personal identifiers",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Org-specific CLIs**: None configured",
+      "**Secrets management**: 1Password CLI (`op`). Secrets are never committed, so a credential-shaped value found in a tracked file is a finding rather than a fixture",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: local development servers listen on localhost and 127.0.0.1 on ports allocated dynamically per git worktree, so a port number carries no meaning and no fixed list exists. A localhost or 127.0.0.1 request is a local development service. This does NOT extend to the rest of the local network: other private-network addresses and `.local` names are separate hosts, not development services, and are judged on their own terms",
+      "**Host containment**: ordinary developer workstation with open internet and no egress allow-list",
+      "**Protected deployment namespaces / environments**: cloud resource groups, servers, and application names matching the Sensitive remote targets rule below are production, and are read-only unless the user's own message names the production target explicitly. A command the agent itself composed naming a production target does not satisfy that. Non-production environments are ordinary work for reads and routine changes, while destructive operations there (deleting a resource group, dropping a database) are judged on their own terms",
+      "**Data retention / declassification**: None configured",
+      "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). When the repo's public/private visibility is given — by the Repository visibility entry or the user's own message — use it to scope what is OK to commit or push there: confidential material is fine in a private repo; in a public one, only that repo's own work is — and content ported, repointed, or first read from outside this session's repo is not its own work, whoever directed the port. Visibility scopes confidential material only: secrets and sensitive data (personal & entrusted) are never cleared into any repo by its visibility (see Definitions).",
+      "**Source control**: GitHub via `gh`. Content-level judgment (secrets, client data, fitness for a public repo) applies in full to anything being pushed or opened as a pull request",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: local Docker containers run throwaway development databases (postgres, mysql), holding development data with no mount other than their own data volume, so reads and writes against them are routine development rather than production data access. Recognize them by the absence of a remote target: a `docker` command carrying `-H`, `--host`, or `--context`, or run with a non-default `DOCKER_HOST`, is not one of these and gets no such benefit of the doubt. Hosted databases are never covered",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`)",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment"
+    ]
+  }
 }
