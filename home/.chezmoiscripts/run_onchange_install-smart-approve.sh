@@ -52,9 +52,9 @@ fi
 # on the bare prefix). Patterns with interior wildcards like
 # `Bash(git -C * status *)` are intentionally NOT loosened — the hook stays
 # strict, mirroring Claude's native matcher. To allow bare forms of
-# interior-wildcard patterns, add an explicit no-trailing-* entry to
-# settings.json (e.g. `Bash(git -C * status)`). See project CLAUDE.md
-# "Gotchas" for the full rule.
+# interior-wildcard patterns, add an explicit no-trailing-* entry
+# (e.g. `Bash(git -C * status)`) to ~/.claude/smart-approve-allow.json, which
+# Step 7 merges. See project CLAUDE.md "Gotchas" for the full rule.
 #
 # Done in Python (string replace) rather than `patch` so the change survives
 # upstream line-number drift; if the function body refactors significantly,
@@ -666,6 +666,90 @@ if call_old not in src:
 new_src = src.replace(call_old, call_new, 1)
 if new_src == src:
     sys.exit(f"smart-approve Step 6 call-site patch did not apply to {path}")
+src = new_src
+
+with open(path, "w") as f:
+    f.write(src)
+PY
+
+# Patch (Step 7): merge_extra_allow_rules + main() call site.
+# Reads allow rules from ~/.claude/smart-approve-allow.json, a file Claude Code
+# never parses, making this hook the only thing that approves them. See the
+# project CLAUDE.md "Gotchas" for why those rules can't live in settings.json.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+# --- Patch 1: insert merge_extra_allow_rules above the sentinel ---
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''EXTRA_ALLOW_PATH = "~/.claude/smart-approve-allow.json"
+
+
+def merge_extra_allow_rules(settings):
+    """Merge allow rules from ~/.claude/smart-approve-allow.json.
+
+    Claude Code 2.1.246+ prints a startup warning for every
+    permissions.allow rule carrying a wildcard before the subcommand, such
+    as Bash(git -C * status), because the wildcard also absorbs options
+    inserted at that position. Those rules live in this separate file,
+    which Claude Code never reads, so this hook is the only thing that
+    approves them. A PreToolUse "allow" overrides the auto mode classifier,
+    so they resolve without classifier review there too.
+
+    Deny and ask rules stay in settings.json. Claude Code evaluates those
+    regardless of what this hook returns, and moving them here would drop
+    that precedence.
+
+    SMART_APPROVE_EXTRA_ALLOW_PATH overrides the path for tests. Every shape
+    other than a dict carrying a permissions.allow list of strings merges
+    nothing, so a hand-edited file can never crash the hook into silence and
+    suppress its deny decisions.
+    """
+    path = os.environ.get("SMART_APPROVE_EXTRA_ALLOW_PATH", EXTRA_ALLOW_PATH)
+    try:
+        raw = load_settings(path)
+    except OSError:
+        # load_settings catches only FileNotFoundError and JSONDecodeError. A
+        # directory, a bad symlink, or an unreadable file at this path would
+        # otherwise raise out of the hook, and a hook that raises emits no
+        # decision at all, which silently drops its deny answers too.
+        return settings
+    perms_in = raw.get("permissions") if isinstance(raw, dict) else None
+    entries = perms_in.get("allow") if isinstance(perms_in, dict) else None
+    extra = [r for r in entries if isinstance(r, str)] if isinstance(entries, list) else []
+    if not extra:
+        return settings
+    perms = settings.setdefault("permissions", {})
+    existing = perms.get("allow", [])
+    perms["allow"] = list(dict.fromkeys(existing + extra))
+    return settings
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 7 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 7 fn patch did not apply to {path}")
+src = new_src
+
+# --- Patch 2: merge the extra rules right after settings load in main() ---
+call_old = "    settings = load_merged_settings(settings_path)"
+call_new = (
+    "    settings = load_merged_settings(settings_path)\n"
+    "    settings = merge_extra_allow_rules(settings)"
+)
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 7 call-site patch: settings load anchor not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 7 call-site patch did not apply to {path}")
 src = new_src
 
 with open(path, "w") as f:

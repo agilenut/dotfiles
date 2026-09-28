@@ -123,8 +123,9 @@ test_smart_approve() {
     fail "'rm ...' should fall through (got: $d)"
   fi
 
-  # Mixed chain (allow + ask) → silent fall-through (hook doesn't honor ask).
-  d=$(decision_for '"git status && git config core.editor vim"')
+  # Mixed chain (allow + ask) → silent fall-through (hook doesn't honor ask,
+  # so it stays quiet and lets the native ask rule raise the prompt).
+  d=$(decision_for '"git status && git push origin main"')
   if [ "$d" = "fallthrough" ]; then
     pass "mixed chain (allow + ask) → silent fall-through"
   else
@@ -147,41 +148,72 @@ test_smart_approve() {
     fail "chain with find -exec should deny (got: $d)"
   fi
 
-  # ---- bare commands matched via explicit no-trailing-* allow patterns ----
-  # Settings.json has BOTH Bash(git -C * <subcmd>) and Bash(git -C * <subcmd> *)
-  # for status/log/diff. This is required because Claude's native pattern matcher
-  # (and the hook, which mirrors it) is **strict** for patterns with interior
-  # wildcards: Bash(git -C * status *) does NOT match bare `git -C /path status`
-  # — the trailing * needs a real arg. So the bare form needs its own pattern.
+  # ---- git -C allow rules, sourced from smart-approve-allow.json ----
+  # The Bash(git -C * <subcmd>) rules live in ~/.claude/smart-approve-allow.json,
+  # not settings.json: Claude Code 2.1.246+ warns at startup about every allow
+  # rule with a wildcard before the subcommand. Only this hook reads that file,
+  # so these tests passing also proves the merge is wired up.
+  #
+  # Each subcommand needs BOTH Bash(git -C * <subcmd>) and
+  # Bash(git -C * <subcmd> *), because the matcher is **strict** for patterns
+  # with interior wildcards: Bash(git -C * status *) does NOT match bare
+  # `git -C /path status`, since the trailing * needs a real arg.
   # See project CLAUDE.md "Gotchas" for the full permissive-vs-strict rule.
 
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status"')
+  d=$(decision_for '"git -C /tmp/repo status"')
   if [ "$d" = "allow" ]; then
     pass "git -C <path> status → allow (bare cmd, interior * in pattern)"
   else
-    fail "'git -C <path> status' should match Bash(git -C * status *) (got: $d)"
+    fail "'git -C <path> status' should match Bash(git -C * status) (got: $d)"
   fi
 
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles log"')
+  d=$(decision_for '"git -C /tmp/repo log"')
   if [ "$d" = "allow" ]; then
     pass "git -C <path> log → allow (bare cmd, interior * in pattern)"
   else
-    fail "'git -C <path> log' should match Bash(git -C * log *) (got: $d)"
+    fail "'git -C <path> log' should match Bash(git -C * log) (got: $d)"
   fi
 
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles diff"')
+  d=$(decision_for '"git -C /tmp/repo diff"')
   if [ "$d" = "allow" ]; then
     pass "git -C <path> diff → allow (bare cmd, interior * in pattern)"
   else
-    fail "'git -C <path> diff' should match Bash(git -C * diff *) (got: $d)"
+    fail "'git -C <path> diff' should match Bash(git -C * diff) (got: $d)"
   fi
 
   # Regression check: with-args case must still match the inner pattern.
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status -s"')
+  d=$(decision_for '"git -C /tmp/repo status -s"')
   if [ "$d" = "allow" ]; then
     pass "git -C <path> status -s → allow (with args, full pattern)"
   else
     fail "'git -C <path> status -s' should match Bash(git -C * status *) (got: $d)"
+  fi
+
+  # These rules must NOT be in settings.json — that is what draws the startup
+  # warning this file exists to avoid. Separate the "can't check" cases from a
+  # real regression so a missing jq or unreadable settings file doesn't read as
+  # rules having come back.
+  if ! command -v jq &>/dev/null; then
+    skip "settings.json git -C check (jq not installed)"
+  elif ! jq -e . "${HOME}/.claude/settings.json" >/dev/null 2>&1; then
+    fail "cannot parse ${HOME}/.claude/settings.json — run 'chezmoi apply'"
+  elif jq -e '.permissions.allow | map(select(startswith("Bash(git -C "))) | length == 0' \
+    "${HOME}/.claude/settings.json" >/dev/null 2>&1; then
+    pass "settings.json allow list has no git -C rules (no startup warning)"
+  else
+    fail "settings.json allow list has git -C rules — Claude Code will warn at startup"
+  fi
+
+  # A missing extra-allow file must degrade to fallthrough, not crash.
+  local missing_out
+  missing_out=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git -C /tmp/repo status"}}' \
+    | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
+      SMART_APPROVE_EXTRA_ALLOW_PATH=/nonexistent/smart-approve-allow.json \
+      python3 "$SMART_APPROVE_HOOK" 2>&1)
+  if [ -z "$missing_out" ]; then
+    pass "missing smart-approve-allow.json → fallthrough, no crash"
+  else
+    fail "missing smart-approve-allow.json should fall through silently (got: $missing_out)"
   fi
 
   # ---- git RCE deny patterns (alias-set, core.fsmonitor/sshCommand, protocol.ext) ----
@@ -226,15 +258,106 @@ test_smart_approve() {
     fail "core.fsMonitor should deny (got: $d)"
   fi
 
-  # Documented residual gap: UPPERCASE git config keys (case-insensitive in git,
-  # case-sensitive in fnmatch) bypass the deny. Asserting fall-through here
-  # locks in the gap so a future fix (e.g. case-insensitive deny matching)
-  # can flip this assertion intentionally.
-  d=$(decision_for '"git -c CORE.fsmonitor=evil status"')
-  if [ "$d" = "fallthrough" ]; then
-    pass "git -c CORE.fsmonitor=evil → fall-through (documented case gap)"
+  # ---- one-shot config injection is denied by option, not by key ----
+  # The Bash(git -C * <subcmd>) allow rules carry an interior wildcard that
+  # absorbs anything sitting between `git -C <path>` and the subcommand, so an
+  # injected `-c KEY=VAL` rides along with an otherwise-allowed read. Denying
+  # the `-c` option itself (rather than enumerating dangerous keys) is what
+  # closes that: no key list to keep current, and no case-sensitivity gap,
+  # since fnmatch never sees a key name. None of the allowed subcommands needs
+  # `-c`, so nothing legitimate is lost.
+  local injected
+  for injected in \
+    "git -c core.pager='sh -c evil' log" \
+    "git -C /tmp/repo -c core.hooksPath=/tmp/evil pull origin" \
+    "git -C /tmp/repo -c credential.helper=!evil fetch origin" \
+    "git -C /tmp/repo -c core.editor=evil commit" \
+    "git -c uploadpack.packObjectsHook=evil fetch" \
+    "git -c core.PAGER=evil log" \
+    "git -C /tmp/repo -c \\\"core.pager=sh -c evil\\\" log"; do
+    d=$(decision_for "\"$injected\"")
+    if [ "$d" = "deny" ]; then
+      pass "deny -c injection: ${injected:0:52}"
+    else
+      fail "'-c' injection should deny: $injected (got: $d)"
+    fi
+  done
+
+  # Global options that redirect where git finds config, binaries, or the repo
+  # itself. Same absorption problem, same fix.
+  local redirect
+  for redirect in \
+    "git --exec-path=/tmp/evil status" \
+    "git -C /tmp/repo --exec-path=/tmp/evil status" \
+    "git --config-env=core.pager=X log" \
+    "git -C /tmp/repo --git-dir=/tmp/evil/.git status" \
+    "git -C /tmp/repo --upload-pack=/tmp/evil fetch origin"; do
+    d=$(decision_for "\"$redirect\"")
+    if [ "$d" = "deny" ]; then
+      pass "deny redirect option: ${redirect:0:52}"
+    else
+      fail "redirect option should deny: $redirect (got: $d)"
+    fi
+  done
+
+  # The deny needs the `KEY=VALUE` shape, because `-c` is also a subcommand flag
+  # that means something else entirely. `switch -c <branch>` creates a branch and
+  # must stay allowed; a bare `git -c KEY` with no value sets it true, which
+  # can't carry a command to run.
+  d=$(decision_for '"git -C /tmp/repo switch -c feat/new-thing"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> switch -c <branch> → allow (not config injection)"
   else
-    fail "CORE.fsmonitor case bypass status changed (got: $d)"
+    fail "'switch -c <branch>' must stay allowed (got: $d)"
+  fi
+
+  d=$(decision_for '"git -C /tmp/repo checkout -c feat/new-thing"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> checkout -c <branch> → allow (not config injection)"
+  else
+    fail "'checkout -c <branch>' must stay allowed (got: $d)"
+  fi
+
+  # Persistent writes of the same keys are denied by the `<key> <value>` shape,
+  # which leaves reads working. A bare `*<key>*` glob would deny reads too.
+  d=$(decision_for '"git config core.pager /tmp/evil"')
+  if [ "$d" = "deny" ]; then
+    pass "git config core.pager <value> → deny (persistent write)"
+  else
+    fail "'git config core.pager <value>' should deny (got: $d)"
+  fi
+
+  d=$(decision_for '"git config --global core.hooksPath /tmp/evil"')
+  if [ "$d" = "deny" ]; then
+    pass "git config --global core.hooksPath <value> → deny (flag interposed)"
+  else
+    fail "'git config --global core.hooksPath <value>' should deny (got: $d)"
+  fi
+
+  d=$(decision_for '"git config --get core.editor"')
+  if [ "$d" = "allow" ]; then
+    pass "git config --get core.editor → allow (read not caught by write deny)"
+  else
+    fail "reading core.editor should stay allowed (got: $d)"
+  fi
+
+  # Git config keys are case-insensitive; fnmatch is not. Denying the `-c`
+  # option rather than the key names is what makes casing irrelevant here.
+  # The residual gap is the `git config <KEY> <value>` write form, which still
+  # names keys: asserting fall-through locks that remainder in place so a
+  # future case-insensitive matcher can flip it intentionally.
+  d=$(decision_for '"git -c CORE.fsmonitor=evil status"')
+  if [ "$d" = "deny" ]; then
+    pass "git -c CORE.fsmonitor=evil → deny (option-level deny ignores casing)"
+  else
+    fail "uppercase key behind -c should deny (got: $d)"
+  fi
+
+  d=$(decision_for '"git config CORE.fsmonitor /tmp/evil"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "git config CORE.fsmonitor <value> → fall-through (documented case gap)"
+  else
+    fail "git config uppercase-key case gap status changed (got: $d)"
   fi
 
   # Reads via --get must still be allowed (deny pattern's trailing ' *' should
@@ -981,6 +1104,31 @@ test_smart_approve() {
   else
     fail "_log_decision missing — Step 6 install patch may have skipped"
   fi
+
+  # ---- Step 7: extra allow-rule file ----
+
+  if grep -q "merge_extra_allow_rules" "$SMART_APPROVE_HOOK"; then
+    pass "Step 7 patch marker present (merge_extra_allow_rules)"
+  else
+    fail "merge_extra_allow_rules missing — Step 7 install patch may have skipped"
+  fi
+
+  # A hand-edited file of the wrong shape must merge nothing rather than raise.
+  # An uncaught exception here would take the hook's deny decisions down with it.
+  local shape bad_out
+  for shape in '[]' '{"permissions": []}' '{"permissions": {"allow": "Bash(ls *)"}}' '{"permissions": {"allow": [null, 42]}}'; do
+    printf '%s' "$shape" >"${TMPDIR:-/tmp}/smart-approve-allow-shape.json"
+    bad_out=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git -C /tmp/repo status"}}' \
+      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
+        SMART_APPROVE_EXTRA_ALLOW_PATH="${TMPDIR:-/tmp}/smart-approve-allow-shape.json" \
+        python3 "$SMART_APPROVE_HOOK" 2>&1)
+    if [ -z "$bad_out" ]; then
+      pass "malformed extra-allow shape merges nothing: $shape"
+    else
+      fail "extra-allow shape $shape should merge nothing silently (got: $bad_out)"
+    fi
+  done
+  rm -f "${TMPDIR:-/tmp}/smart-approve-allow-shape.json"
 
   # Format validation: line is <ISO-timestamp>\t<DECISION>\t<cmd[:300]>.
   # Catches silent format breakage from future refactors.
