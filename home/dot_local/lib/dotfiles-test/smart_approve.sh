@@ -27,15 +27,32 @@ test_smart_approve() {
     fail "patch marker missing — install script may have skipped the patch"
   fi
 
-  # Helper: pipe a PreToolUse JSON envelope through the hook and extract
-  # the permissionDecision (defaults to "fallthrough" for empty/silent output).
-  # SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null prevents test invocations
-  # from polluting the user's audit log at ~/.claude/logs/smart_approve_decisions.log.
+  # Helper: pipe a PreToolUse JSON envelope through the hook and print the
+  # permissionDecision, or "fallthrough" when the hook deliberately stays
+  # silent, or "crash" when it did not run cleanly.
+  #
+  # Distinguishing crash from fallthrough is the point. A hook that raises
+  # prints nothing, which is indistinguishable from a deliberate silence, so a
+  # crashed hook would satisfy every `= "fallthrough"` assertion here — and
+  # there are dozens. Non-zero exit or any stderr means crash.
+  #
+  # SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null keeps test runs out of the
+  # user's audit log at ~/.claude/logs/smart_approve_decisions.log.
   decision_for() {
     local cmd="$1"
-    local out
+    local out rc errfile
+    errfile=$(mktemp)
+    # `|| rc=$?` is required: the runner sets -e, so a non-zero hook exit would
+    # abort the whole suite before this function could report it as a crash.
     out=$(printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":$cmd}}" \
-      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$SMART_APPROVE_HOOK" 2>/dev/null)
+      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$SMART_APPROVE_HOOK" 2>"$errfile") \
+      && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] || [ -s "$errfile" ]; then
+      rm -f "$errfile"
+      printf 'crash'
+      return
+    fi
+    rm -f "$errfile"
     if [ -z "$out" ]; then
       printf 'fallthrough'
     else
@@ -44,6 +61,17 @@ test_smart_approve() {
         2>/dev/null
     fi
   }
+
+  # The helper itself must be able to tell the two apart, or every
+  # fallthrough assertion below is vacuous.
+  local crash_probe
+  crash_probe=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status"}}' \
+    | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 -c 'raise SystemExit("boom")' 2>&1 >/dev/null || true)
+  if [ -n "$crash_probe" ]; then
+    pass "decision_for can distinguish a crashing hook from a silent one"
+  else
+    fail "crash detection is not working — fallthrough assertions would be vacuous"
+  fi
 
   # Bare command matches Bash(prefix *) — proves the parser patch works.
   # Without the patch, fnmatch("git status", "git status *") is False because
@@ -64,30 +92,27 @@ test_smart_approve() {
     fail "chained 'git status && git diff' should allow (got: $d)"
   fi
 
-  # find -exec hits the deny pattern — explicit deny.
-  d=$(decision_for '"find . -exec rm {} \\;"')
-  if [ "$d" = "deny" ]; then
-    pass "find -exec → deny"
-  else
-    fail "'find . -exec rm {} ;' should match deny pattern (got: $d)"
-  fi
-
-  # find -execdir hits the deny pattern.
-  d=$(decision_for '"find . -execdir rm {} \\;"')
-  if [ "$d" = "deny" ]; then
-    pass "find -execdir → deny"
-  else
-    fail "'find . -execdir' should match deny pattern (got: $d)"
-  fi
-
-  # find -delete is intentionally NOT in deny — should still match Bash(find *)
-  # allow per user policy ("ok with find remove in allowed folders").
-  d=$(decision_for '"find /tmp -name foo -delete"')
-  if [ "$d" = "allow" ]; then
-    pass "find -delete → allow (intentional, not in deny)"
-  else
-    fail "'find -delete' should still allow (got: $d)"
-  fi
+  # ---- find is owned by the auto mode classifier, not by rules ----
+  # `find * -exec *` used to be a deny and `find *` an allow. Every deny it
+  # produced in five months was a false positive (`-exec jq`, `-exec cat`,
+  # `-exec grep`), and a hook deny cannot be overridden, so each one cost a
+  # rewrite. Moving it to ask would have been worse: ask resolves before the
+  # classifier, so the benign forms would prompt forever and never be judged.
+  # With neither rule present, the classifier sees the whole command and can
+  # tell `-exec jq` from `-exec rm`.
+  local findcmd
+  for findcmd in \
+    "find . -exec rm {} \\\\;" \
+    "find . -execdir rm {} \\\\;" \
+    "find /tmp -name foo -delete" \
+    "find . -name '*.ts'"; do
+    d=$(decision_for "\"$findcmd\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "find → fallthrough, classifier decides: ${findcmd:0:40}"
+    else
+      fail "'$findcmd' should reach the classifier (got: $d)"
+    fi
+  done
 
   # Narrow uv allow wins: Bash(uv pip list *) is in allow, Bash(uv *) is in
   # ask. The hook only checks allow/deny, so the narrow allow wins for
@@ -123,8 +148,9 @@ test_smart_approve() {
     fail "'rm ...' should fall through (got: $d)"
   fi
 
-  # Mixed chain (allow + ask) → silent fall-through (hook doesn't honor ask).
-  d=$(decision_for '"git status && git config core.editor vim"')
+  # Mixed chain (allow + ask) → silent fall-through (hook doesn't honor ask,
+  # so it stays quiet and lets the native ask rule raise the prompt).
+  d=$(decision_for '"git status && git push origin main"')
   if [ "$d" = "fallthrough" ]; then
     pass "mixed chain (allow + ask) → silent fall-through"
   else
@@ -140,48 +166,26 @@ test_smart_approve() {
   fi
 
   # Deny applies even when the rest of the chain is allowed.
-  d=$(decision_for '"git status && find . -exec rm {} \\;"')
+  d=$(decision_for "\"git status && git -c alias.x='!evil' log\"")
   if [ "$d" = "deny" ]; then
     pass "chain containing deny pattern → deny"
   else
-    fail "chain with find -exec should deny (got: $d)"
+    fail "chain with a denied segment should deny (got: $d)"
   fi
 
-  # ---- bare commands matched via explicit no-trailing-* allow patterns ----
-  # Settings.json has BOTH Bash(git -C * <subcmd>) and Bash(git -C * <subcmd> *)
-  # for status/log/diff. This is required because Claude's native pattern matcher
-  # (and the hook, which mirrors it) is **strict** for patterns with interior
-  # wildcards: Bash(git -C * status *) does NOT match bare `git -C /path status`
-  # — the trailing * needs a real arg. So the bare form needs its own pattern.
-  # See project CLAUDE.md "Gotchas" for the full permissive-vs-strict rule.
-
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> status → allow (bare cmd, interior * in pattern)"
+  # No rule may carry a wildcard before its subcommand. Claude Code 2.1.246+
+  # warns at startup about every one of them, and the wildcard also absorbs
+  # whatever sits at that position. Step 9's option peeling is what makes them
+  # unnecessary, so this asserts they have not crept back.
+  if ! command -v jq &>/dev/null; then
+    skip "settings.json interior-wildcard check (jq not installed)"
+  elif ! jq -e . "${HOME}/.claude/settings.json" >/dev/null 2>&1; then
+    fail "cannot parse ${HOME}/.claude/settings.json — run 'chezmoi apply'"
+  elif jq -e '.permissions.allow | map(select(test("\\*[^ )]* +[^-*)]"))) | length == 0' \
+    "${HOME}/.claude/settings.json" >/dev/null 2>&1; then
+    pass "no allow rule has a wildcard before a non-option token"
   else
-    fail "'git -C <path> status' should match Bash(git -C * status *) (got: $d)"
-  fi
-
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles log"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> log → allow (bare cmd, interior * in pattern)"
-  else
-    fail "'git -C <path> log' should match Bash(git -C * log *) (got: $d)"
-  fi
-
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles diff"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> diff → allow (bare cmd, interior * in pattern)"
-  else
-    fail "'git -C <path> diff' should match Bash(git -C * diff *) (got: $d)"
-  fi
-
-  # Regression check: with-args case must still match the inner pattern.
-  d=$(decision_for '"git -C /Users/eric/repos/dotfiles status -s"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> status -s → allow (with args, full pattern)"
-  else
-    fail "'git -C <path> status -s' should match Bash(git -C * status *) (got: $d)"
+    fail "an allow rule has a wildcard before a non-option token — it absorbs whatever sits there"
   fi
 
   # ---- git RCE deny patterns (alias-set, core.fsmonitor/sshCommand, protocol.ext) ----
@@ -226,15 +230,135 @@ test_smart_approve() {
     fail "core.fsMonitor should deny (got: $d)"
   fi
 
-  # Documented residual gap: UPPERCASE git config keys (case-insensitive in git,
-  # case-sensitive in fnmatch) bypass the deny. Asserting fall-through here
-  # locks in the gap so a future fix (e.g. case-insensitive deny matching)
-  # can flip this assertion intentionally.
-  d=$(decision_for '"git -c CORE.fsmonitor=evil status"')
-  if [ "$d" = "fallthrough" ]; then
-    pass "git -c CORE.fsmonitor=evil → fall-through (documented case gap)"
+  # ---- one-shot config injection is denied by option, not by key ----
+  # The Bash(git -C * <subcmd>) allow rules carry an interior wildcard that
+  # absorbs anything sitting between `git -C <path>` and the subcommand, so an
+  # injected `-c KEY=VAL` rides along with an otherwise-allowed read. Denying
+  # the `-c` option itself (rather than enumerating dangerous keys) is what
+  # closes that: no key list to keep current, and no case-sensitivity gap,
+  # since fnmatch never sees a key name. None of the allowed subcommands needs
+  # `-c`, so nothing legitimate is lost.
+  local injected
+  for injected in \
+    "git -c core.pager='sh -c evil' log" \
+    "git -C /tmp/repo -c core.hooksPath=/tmp/evil pull origin" \
+    "git -C /tmp/repo -c credential.helper=!evil fetch origin" \
+    "git -C /tmp/repo -c core.editor=evil commit" \
+    "git -c uploadpack.packObjectsHook=evil fetch" \
+    "git -c core.PAGER=evil log" \
+    "git -C /tmp/repo -c \\\"core.pager=sh -c evil\\\" log"; do
+    d=$(decision_for "\"$injected\"")
+    if [ "$d" = "deny" ]; then
+      pass "deny -c injection: ${injected:0:52}"
+    else
+      fail "'-c' injection should deny: $injected (got: $d)"
+    fi
+  done
+
+  # Global options that relocate git's own binaries or its transport helper.
+  # Denied because nothing here ever needs them, so a false positive is
+  # impossible and there is no query form to collide with.
+  local redirect
+  for redirect in \
+    "git --exec-path=/tmp/evil status" \
+    "git -C /tmp/repo --exec-path=/tmp/evil status" \
+    "git --config-env=core.pager=X log" \
+    "git -C /tmp/repo --upload-pack=/tmp/evil fetch origin" \
+    "git fetch --upload-pack=/tmp/evil /tmp/repo"; do
+    d=$(decision_for "\"$redirect\"")
+    if [ "$d" = "deny" ]; then
+      pass "deny redirect option: ${redirect:0:52}"
+    else
+      fail "redirect option should deny: $redirect (got: $d)"
+    fi
+  done
+
+  # --git-dir and --work-tree are NOT denied. They are ordinary git options
+  # with a query form that collides: `git rev-parse --git-dir --show-toplevel`
+  # hard-denied under a space-form pattern, and five months of history contains
+  # no use of either as an option, only as that query. They reach the
+  # classifier, which can read the difference. Worktree commands never use them.
+  local gitdir
+  for gitdir in \
+    "git rev-parse --git-dir" \
+    "git rev-parse --git-dir --show-toplevel" \
+    "git worktree add /tmp/wt main" \
+    "git worktree list"; do
+    d=$(decision_for "\"$gitdir\"")
+    if [ "$d" = "allow" ]; then
+      pass "git-dir query / worktree still allowed: $gitdir"
+    else
+      fail "'$gitdir' must stay allowed (got: $d)"
+    fi
+  done
+
+  for gitdir in "git --git-dir=/tmp/evil/.git log" "git --work-tree=/ checkout -- ."; do
+    d=$(decision_for "\"$gitdir\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "git-dir as an option → classifier: ${gitdir:0:40}"
+    else
+      fail "'$gitdir' should reach the classifier, not be approved or denied (got: $d)"
+    fi
+  done
+
+  # The deny needs the `KEY=VALUE` shape, because `-c` is also a subcommand flag
+  # that means something else entirely. `switch -c <branch>` creates a branch and
+  # must stay allowed; a bare `git -c KEY` with no value sets it true, which
+  # can't carry a command to run.
+  d=$(decision_for '"git -C /tmp/repo switch -c feat/new-thing"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> switch -c <branch> → allow (not config injection)"
   else
-    fail "CORE.fsmonitor case bypass status changed (got: $d)"
+    fail "'switch -c <branch>' must stay allowed (got: $d)"
+  fi
+
+  d=$(decision_for '"git -C /tmp/repo checkout -c feat/new-thing"')
+  if [ "$d" = "allow" ]; then
+    pass "git -C <path> checkout -c <branch> → allow (not config injection)"
+  else
+    fail "'checkout -c <branch>' must stay allowed (got: $d)"
+  fi
+
+  # Persistent writes of the same keys are denied by the `<key> <value>` shape,
+  # which leaves reads working. A bare `*<key>*` glob would deny reads too.
+  d=$(decision_for '"git config core.pager /tmp/evil"')
+  if [ "$d" = "deny" ]; then
+    pass "git config core.pager <value> → deny (persistent write)"
+  else
+    fail "'git config core.pager <value>' should deny (got: $d)"
+  fi
+
+  d=$(decision_for '"git config --global core.hooksPath /tmp/evil"')
+  if [ "$d" = "deny" ]; then
+    pass "git config --global core.hooksPath <value> → deny (flag interposed)"
+  else
+    fail "'git config --global core.hooksPath <value>' should deny (got: $d)"
+  fi
+
+  d=$(decision_for '"git config --get core.editor"')
+  if [ "$d" = "allow" ]; then
+    pass "git config --get core.editor → allow (read not caught by write deny)"
+  else
+    fail "reading core.editor should stay allowed (got: $d)"
+  fi
+
+  # Git config keys are case-insensitive; fnmatch is not. Denying the `-c`
+  # option rather than the key names is what makes casing irrelevant here.
+  # The residual gap is the `git config <KEY> <value>` write form, which still
+  # names keys: asserting fall-through locks that remainder in place so a
+  # future case-insensitive matcher can flip it intentionally.
+  d=$(decision_for '"git -c CORE.fsmonitor=evil status"')
+  if [ "$d" = "deny" ]; then
+    pass "git -c CORE.fsmonitor=evil → deny (option-level deny ignores casing)"
+  else
+    fail "uppercase key behind -c should deny (got: $d)"
+  fi
+
+  d=$(decision_for '"git config CORE.fsmonitor /tmp/evil"')
+  if [ "$d" = "fallthrough" ]; then
+    pass "git config CORE.fsmonitor <value> → fall-through (documented case gap)"
+  else
+    fail "git config uppercase-key case gap status changed (got: $d)"
   fi
 
   # Reads via --get must still be allowed (deny pattern's trailing ' *' should
@@ -906,12 +1030,12 @@ test_smart_approve() {
     fail "awk --frobnicate should fallthrough (got: $d)"
   fi
 
-  # Asymmetry lock: safe awk + denied find-exec → deny precedence.
-  d=$(decision_for "\"awk '{print}' && find . -exec rm {} \\\\;\"")
+  # Asymmetry lock: safe awk + a denied segment → deny precedence.
+  d=$(decision_for "\"awk '{print}' && git -c alias.x='!evil' log\"")
   if [ "$d" = "deny" ]; then
-    pass "awk safe && find -exec → deny (deny loop unaffected by awk widening)"
+    pass "awk safe && denied segment → deny (deny loop unaffected by awk widening)"
   else
-    fail "awk + find-exec chain should deny (got: $d)"
+    fail "awk + denied-segment chain should deny (got: $d)"
   fi
 
   # ---- Step 6: decisions audit log (always-on) ----
@@ -942,7 +1066,7 @@ test_smart_approve() {
   # Deny decision → log also gets an entry.
   marker="step6_deny_$$_$(date +%s%N 2>/dev/null || date +%s)"
   before_lines=$after_lines
-  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"find . -exec rm ${marker} {} \\\\;\"}}" \
+  printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -c alias.${marker}='!evil' log\"}}" \
     | env -u SMART_APPROVE_VERBOSE SMART_APPROVE_DECISIONS_LOG_PATH="$test_log" \
       python3 "$SMART_APPROVE_HOOK" >/dev/null 2>&1
   after_lines=$(wc -l <"$test_log" 2>/dev/null | tr -d ' ' || printf 0)
@@ -980,6 +1104,167 @@ test_smart_approve() {
     pass "Step 6 patch marker present (_log_decision)"
   else
     fail "_log_decision missing — Step 6 install patch may have skipped"
+  fi
+
+  # ---- Steps 8-11: patch markers ----
+
+  local marker_fn
+  for marker_fn in is_unsafe_env_name peel_git_global_opts redirects_into_permission_file; do
+    if grep -q "$marker_fn" "$SMART_APPROVE_HOOK"; then
+      pass "patch marker present ($marker_fn)"
+    else
+      fail "$marker_fn missing — an install patch may have skipped"
+    fi
+  done
+
+  # ---- Step 8: env assignments that redirect execution ----
+  # strip_env_vars removes leading NAME=VALUE so `S=/tmp foo` matches
+  # Bash(foo *). That also hid GIT_CONFIG_KEY_0=... from every deny rule, since
+  # the command normalized to a bare `git log`. Names that change what runs are
+  # left in place so nothing matches and the classifier gets the call.
+  local unsafe
+  for unsafe in \
+    "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.pager GIT_CONFIG_VALUE_0=evil git log" \
+    "GIT_SSH_COMMAND=evil git fetch origin" \
+    "GIT_EXTERNAL_DIFF=evil git diff" \
+    "LD_PRELOAD=/tmp/x.so git status" \
+    "DYLD_INSERT_LIBRARIES=/tmp/x.dylib git status" \
+    "PATH=/tmp/evil git status"; do
+    d=$(decision_for "\"$unsafe\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "unsafe env prefix not stripped: ${unsafe:0:46}"
+    else
+      fail "'$unsafe' must not reach an allow rule (got: $d)"
+    fi
+  done
+
+  # Ordinary shell variables must still be stripped, or real work breaks.
+  # 244 allowed commands in three weeks of history carry one of these.
+  local benign
+  for benign in "S=/tmp/x echo hello" "APP_BASE_URL=http://localhost:3000 echo hi" "VITE_MOCK_SPEECH=1 echo hi"; do
+    d=$(decision_for "\"$benign\"")
+    if [ "$d" = "allow" ]; then
+      pass "benign env prefix still stripped: ${benign:0:40}"
+    else
+      fail "'$benign' should still match its allow rule (got: $d)"
+    fi
+  done
+
+  # ---- Step 9: git global options peeled to expose the subcommand ----
+  # This is why no Bash(git -C * ...) rule exists: `git -C <path> log` matches
+  # the plain Bash(git log *). It also closes the absorption vector, where the
+  # interior wildcard in such a rule spanned an entirely different subcommand.
+  local gitc
+  for gitc in \
+    "git -C /tmp/repo log --oneline" \
+    "git -C /tmp/repo status" \
+    "git -C/tmp/repo log" \
+    "git -C \\\"\$K\\\" add -A" \
+    "git -C '/tmp/my repo' log" \
+    "git -C /tmp/repo worktree list"; do
+    d=$(decision_for "\"$gitc\"")
+    if [ "$d" = "allow" ]; then
+      pass "git -C peeled onto a plain rule: ${gitc:0:44}"
+    else
+      fail "'$gitc' should match a plain git rule after peeling (got: $d)"
+    fi
+  done
+
+  # A subcommand smuggled past the wildcard must no longer be approved. The
+  # real case was a commit whose message contained the word "add", which
+  # matched Bash(git -C * add *) and auto-approved an ask-listed commit.
+  local smuggled
+  for smuggled in \
+    "git -C /tmp/repo rebase -x evil add HEAD~2" \
+    "git -C /tmp/repo remote add origin https://example.invalid/x" \
+    "git -C /tmp/repo submodule add https://example.invalid/x"; do
+    d=$(decision_for "\"$smuggled\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "smuggled subcommand not approved: ${smuggled:0:44}"
+    else
+      fail "'$smuggled' must not be approved (got: $d)"
+    fi
+  done
+
+  # Options that redirect execution are deliberately NOT peeled, so the deny
+  # rules still see them.
+  d=$(decision_for '"git -C /tmp/repo -c core.pager=evil log"')
+  if [ "$d" = "deny" ]; then
+    pass "git -C ... -c KEY=VAL → deny (not peeled past)"
+  else
+    fail "'-c' behind -C must stay visible to deny (got: $d)"
+  fi
+
+  # git grep is deliberately NOT allowed: `-O<pager>` and
+  # --open-files-in-pager run the named program, so a plain Bash(git grep *)
+  # would be unprompted code execution. The classifier judges it instead.
+  local grepcmd
+  for grepcmd in "git grep foo" "git -C /tmp/repo grep foo" "git grep -Osh foo"; do
+    d=$(decision_for "\"$grepcmd\"")
+    if [ "$d" != "allow" ]; then
+      pass "git grep not auto-approved: $grepcmd"
+    else
+      fail "'$grepcmd' must not be approved (-O runs a pager) (got: $d)"
+    fi
+  done
+
+  # Deny must win over a redirect. The redirect check runs after the deny scan;
+  # ordering it before let a redirect suppress a deny.
+  d=$(decision_for '"git -c core.pager=evil log > $HOME/.claude/settings.json"')
+  if [ "$d" = "deny" ]; then
+    pass "redirect does not suppress a deny"
+  else
+    fail "a denied command redirecting to a permission file must still deny (got: $d)"
+  fi
+
+  # Relocating a tool's config directory is equivalent to editing its config.
+  local relocate
+  for relocate in "HOME=/tmp/evil git log" "XDG_CONFIG_HOME=/tmp/evil git log" "GH_PAGER=evil gh pr list"; do
+    d=$(decision_for "\"$relocate\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "config-relocating env not stripped: ${relocate:0:40}"
+    else
+      fail "'$relocate' must not reach an allow rule (got: $d)"
+    fi
+  done
+
+  # ---- Step 10: only a trailing ':*' is the prefix separator ----
+  # Upstream split on the first colon anywhere, so Bash(pnpm test:run *) parsed
+  # as prefix "pnpm test" and never matched.
+  local colon
+  for colon in "pnpm test:run foo" "pnpm run lint:fix" "npm run format:check"; do
+    d=$(decision_for "\"$colon\"")
+    if [ "$d" = "allow" ]; then
+      pass "colon in a script name matches: $colon"
+    else
+      fail "'$colon' should match its colon rule (got: $d)"
+    fi
+  done
+
+  # ---- Step 11: redirects into the files that grant permission ----
+  # Fallthrough rather than deny. The scan is a substring match on a command
+  # the hook never tokenizes, so it also fires on one that merely quotes such a
+  # path, and a hook deny cannot be overridden. Declining to approve is enough:
+  # it stops the automatic yes and lets the classifier read the difference.
+  local selfwrite
+  for selfwrite in \
+    "printf hello > \$HOME/.claude/settings.json" \
+    "echo x >> ~/.claude/settings.local.json" \
+    "cat evil > ~/.claude/hooks/smart_approve.py"; do
+    d=$(decision_for "\"$selfwrite\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "redirect into a permission file not approved: ${selfwrite:0:38}"
+    else
+      fail "'$selfwrite' must not be approved (got: $d)"
+    fi
+  done
+
+  # Ordinary redirects are unaffected.
+  d=$(decision_for '"git status > /tmp/out.txt"')
+  if [ "$d" = "allow" ]; then
+    pass "ordinary redirect still allowed"
+  else
+    fail "'git status > /tmp/out.txt' should still allow (got: $d)"
   fi
 
   # Format validation: line is <ISO-timestamp>\t<DECISION>\t<cmd[:300]>.
