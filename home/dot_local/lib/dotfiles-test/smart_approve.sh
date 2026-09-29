@@ -1109,7 +1109,7 @@ test_smart_approve() {
   # ---- Steps 8-11: patch markers ----
 
   local marker_fn
-  for marker_fn in is_unsafe_env_name peel_git_global_opts redirects_into_permission_file; do
+  for marker_fn in is_unsafe_env_name peel_git_global_opts redirects_into_permission_file gh_api_method_count; do
     if grep -q "$marker_fn" "$SMART_APPROVE_HOOK"; then
       pass "patch marker present ($marker_fn)"
     else
@@ -1266,6 +1266,43 @@ test_smart_approve() {
   else
     fail "'git status > /tmp/out.txt' should still allow (got: $d)"
   fi
+
+  # ---- Step 12: a second gh api method flag is never approved ----
+  # `gh` takes the last -X / --method wins, and every gh api allow rule ends in
+  # a trailing wildcard, so `gh api -X GET <path> -X DELETE` matched the GET
+  # rule and ran as a DELETE. Counted rather than pattern-matched: a deny glob
+  # for the shape hard-blocks a real nested `$(gh api -X GET ...)` building a
+  # path, which puts two GETs in one segment.
+  local ghattack
+  for ghattack in \
+    "gh api -X GET repos/o/r/issues/1 -X DELETE" \
+    "gh api -X GET rate_limit --method POST" \
+    "gh api --method GET repos/o/r -X DELETE" \
+    "gh api -X GET repos/o/r --method=PATCH -f name=x"; do
+    d=$(decision_for "\"$ghattack\"")
+    if [ "$d" = "deny" ]; then
+      pass "two gh api method flags → deny: ${ghattack:0:44}"
+    else
+      fail "'$ghattack' runs as the LAST method and must deny (got: $d)"
+    fi
+  done
+
+  # Every single-method shape in nine months of history stays allowed, including
+  # the path-first spelling and a nested GET that supplies a path value.
+  local ghok
+  for ghok in \
+    "gh api -X GET rate_limit" \
+    "gh api --method GET repos/o/r/pulls/1" \
+    "gh api \\\"search/issues?q=author:@me\\\" -X GET --jq .total_count" \
+    "gh api repos/o/r/code-scanning/alerts -X GET -F state=open" \
+    "gh api -X GET repos/o/r/commits/\$(gh api -X GET repos/o/r/git/ref/tags/x --jq .object.sha) --jq .commit.message"; do
+    d=$(decision_for "\"$ghok\"")
+    if [ "$d" = "allow" ]; then
+      pass "single-method gh api still allowed: ${ghok:0:44}"
+    else
+      fail "'$ghok' should stay allowed (got: $d)"
+    fi
+  done
 
   # Format validation: line is <ISO-timestamp>\t<DECISION>\t<cmd[:300]>.
   # Catches silent format breakage from future refactors.
