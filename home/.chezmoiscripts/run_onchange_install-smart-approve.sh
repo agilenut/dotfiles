@@ -49,12 +49,11 @@ fi
 # `git status` inside a chain wouldn't match `Bash(git status *)`.
 #
 # IMPORTANT: this only fires for non-wildcard prefixes (uses string equality
-# on the bare prefix). Patterns with interior wildcards like
-# `Bash(git -C * status *)` are intentionally NOT loosened — the hook stays
-# strict, mirroring Claude's native matcher. To allow bare forms of
-# interior-wildcard patterns, add an explicit no-trailing-* entry
-# (e.g. `Bash(git -C * status)`) to ~/.claude/smart-approve-allow.json, which
-# Step 7 merges. See project CLAUDE.md "Gotchas" for the full rule.
+# on the bare prefix). Patterns with interior wildcards are intentionally NOT
+# loosened — the hook stays strict, mirroring Claude Code's own matcher.
+# Interior wildcards are the shape to avoid entirely: Step 9 peels git's global
+# options so `git -C <path> <subcmd>` matches the plain `Bash(git <subcmd> *)`
+# rule, which is why no `-C` variant of any rule needs to exist.
 #
 # Done in Python (string replace) rather than `patch` so the change survives
 # upstream line-number drift; if the function body refactors significantly,
@@ -672,10 +671,14 @@ with open(path, "w") as f:
     f.write(src)
 PY
 
-# Patch (Step 7): merge_extra_allow_rules + main() call site.
-# Reads allow rules from ~/.claude/smart-approve-allow.json, a file Claude Code
-# never parses, making this hook the only thing that approves them. See the
-# project CLAUDE.md "Gotchas" for why those rules can't live in settings.json.
+# Patch (Step 8): refuse to strip execution-influencing env assignments.
+# strip_env_vars removes any leading NAME=VALUE before matching, which is what
+# lets `S=/tmp foo` match Bash(foo *). It also made every deny rule blind to
+# `GIT_CONFIG_KEY_0=core.pager GIT_CONFIG_VALUE_0='sh -c evil' git log`, which
+# normalized to a bare `git log`. Assignments that change what a program
+# executes are left in place instead, so nothing matches and the command falls
+# through to the classifier. Measured against 21 days of history: 244 allowed
+# commands carry an env prefix and none of them names a variable on this list.
 python3 - "$TMP" <<'PY'
 import sys
 
@@ -683,78 +686,254 @@ path = sys.argv[1]
 with open(path) as f:
     src = f.read()
 
-# --- Patch 1: insert merge_extra_allow_rules above the sentinel ---
 fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
-fn_new = '''EXTRA_ALLOW_PATH = "~/.claude/smart-approve-allow.json"
+fn_new = '''# Environment variables that change which program runs, or what it runs on the
+# way. Prefix entries match any variable starting with them.
+UNSAFE_ENV_EXACT = frozenset({
+    "BASH_ENV", "ENV", "SHELLOPTS", "PS4", "IFS", "PATH", "SHELL", "CDPATH",
+    "PYTHONPATH", "PYTHONSTARTUP", "PYTHONHOME", "NODE_OPTIONS",
+    "PERL5OPT", "PERL5LIB", "RUBYOPT", "RUBYLIB",
+    "EDITOR", "VISUAL", "PAGER", "LESSOPEN", "MAKEFLAGS",
+    # Relocating a tool's config directory is as good as editing its config:
+    # a planted .gitconfig supplies core.pager, a planted gh config a pager.
+    "HOME", "XDG_CONFIG_HOME", "GH_CONFIG_DIR", "GH_PAGER",
+    "DOTNET_STARTUP_HOOKS", "DOCKER_HOST",
+})
+UNSAFE_ENV_PREFIXES = ("GIT_", "LD_", "DYLD_", "NPM_CONFIG_", "npm_config_")
 
 
-def merge_extra_allow_rules(settings):
-    """Merge allow rules from ~/.claude/smart-approve-allow.json.
-
-    Claude Code 2.1.246+ prints a startup warning for every
-    permissions.allow rule carrying a wildcard before the subcommand, such
-    as Bash(git -C * status), because the wildcard also absorbs options
-    inserted at that position. Those rules live in this separate file,
-    which Claude Code never reads, so this hook is the only thing that
-    approves them. A PreToolUse "allow" overrides the auto mode classifier,
-    so they resolve without classifier review there too.
-
-    Deny and ask rules stay in settings.json. Claude Code evaluates those
-    regardless of what this hook returns, and moving them here would drop
-    that precedence.
-
-    SMART_APPROVE_EXTRA_ALLOW_PATH overrides the path for tests. Every shape
-    other than a dict carrying a permissions.allow list of strings merges
-    nothing, so a hand-edited file can never crash the hook into silence and
-    suppress its deny decisions.
-    """
-    path = os.environ.get("SMART_APPROVE_EXTRA_ALLOW_PATH", EXTRA_ALLOW_PATH)
-    try:
-        raw = load_settings(path)
-    except OSError:
-        # load_settings catches only FileNotFoundError and JSONDecodeError. A
-        # directory, a bad symlink, or an unreadable file at this path would
-        # otherwise raise out of the hook, and a hook that raises emits no
-        # decision at all, which silently drops its deny answers too.
-        return settings
-    perms_in = raw.get("permissions") if isinstance(raw, dict) else None
-    entries = perms_in.get("allow") if isinstance(perms_in, dict) else None
-    extra = [r for r in entries if isinstance(r, str)] if isinstance(entries, list) else []
-    if not extra:
-        return settings
-    perms = settings.setdefault("permissions", {})
-    existing = perms.get("allow", [])
-    perms["allow"] = list(dict.fromkeys(existing + extra))
-    return settings
+def is_unsafe_env_name(name):
+    """True when an assignment to this name can redirect execution."""
+    return name in UNSAFE_ENV_EXACT or name.startswith(UNSAFE_ENV_PREFIXES)
 
 
 # SMART_APPROVE_DOTFILES_PATCH_BLOCK
 '''
 
 if fn_old not in src:
-    sys.exit(f"smart-approve Step 7 fn patch: sentinel anchor not found in {path}")
+    sys.exit(f"smart-approve Step 8 fn patch: sentinel anchor not found in {path}")
 new_src = src.replace(fn_old, fn_new, 1)
 if new_src == src:
-    sys.exit(f"smart-approve Step 7 fn patch did not apply to {path}")
+    sys.exit(f"smart-approve Step 8 fn patch did not apply to {path}")
 src = new_src
 
-# --- Patch 2: merge the extra rules right after settings load in main() ---
-call_old = "    settings = load_merged_settings(settings_path)"
-call_new = (
-    "    settings = load_merged_settings(settings_path)\n"
-    "    settings = merge_extra_allow_rules(settings)"
-)
+strip_old = """    while True:
+        m = re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', cmd)
+        if not m:
+            break"""
+strip_new = """    while True:
+        m = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)=', cmd)
+        if not m:
+            break
+        # PATCHED (dotfiles fork): stop at an assignment that can redirect
+        # execution, leaving it in the command so no allow pattern matches it.
+        if is_unsafe_env_name(m.group(1)):
+            break"""
 
-if call_old not in src:
-    sys.exit(f"smart-approve Step 7 call-site patch: settings load anchor not found in {path}")
-new_src = src.replace(call_old, call_new, 1)
+if strip_old not in src:
+    sys.exit(f"smart-approve Step 8 strip patch: strip_env_vars body not found in {path}")
+new_src = src.replace(strip_old, strip_new, 1)
 if new_src == src:
-    sys.exit(f"smart-approve Step 7 call-site patch did not apply to {path}")
-src = new_src
+    sys.exit(f"smart-approve Step 8 strip patch did not apply to {path}")
 
 with open(path, "w") as f:
-    f.write(src)
+    f.write(new_src)
 PY
+
+# Patch (Step 9): peel git global options so the subcommand sits next to `git`.
+# Claude Code's own matcher extracts the subcommand after global options
+# (2.1.0). The hook never did, which is the only reason a `-C` copy of every
+# git rule had to exist. Those copies were also the absorption vector: the
+# interior wildcard in `Bash(git -C * add *)` spans a whole different
+# subcommand, so `git -C /r rebase -x <cmd> add HEAD~2` matched it.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''# Leading `git` options that conceal the subcommand while conferring nothing.
+# -c, --config-env, --exec-path, --git-dir, --work-tree, --upload-pack and
+# --receive-pack are deliberately absent: each can redirect what git executes,
+# and peeling one would hide it from the deny rules that exist to catch it.
+_GIT_PEELABLE_OPT = re.compile(
+    r'^git\\s+(?:'
+    r'-C\\s*(?:"[^"]*"|\\'[^\\']*\\'|\\S+)'
+    r'|--no-pager'
+    r'|--literal-pathspecs'
+    r'|-P'
+    r')\\s+'
+)
+
+
+def peel_git_global_opts(cmd):
+    """Rewrite `git -C <path> <subcmd> ...` as `git <subcmd> ...` for matching.
+
+    Bounded at 8 peels. On exhaustion the ORIGINAL command is returned, as
+    peel_command_wrappers and peel_xargs do, so pathologically nested input is
+    never handed to the matcher in a half-peeled form.
+    """
+    original = cmd
+    for _ in range(8):
+        if not cmd.startswith("git "):
+            return cmd
+        m = _GIT_PEELABLE_OPT.match(cmd)
+        if not m:
+            return cmd
+        cmd = "git " + cmd[m.end():]
+    return original
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 9 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 9 fn patch did not apply to {path}")
+src = new_src
+
+call_old = """    cmd = peel_xargs(cmd)
+    cmd = strip_env_vars(cmd)"""
+call_new = """    cmd = peel_xargs(cmd)
+    cmd = strip_env_vars(cmd)
+    cmd = peel_git_global_opts(cmd)"""
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 9 call-site patch: normalize_command flow not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 9 call-site patch did not apply to {path}")
+
+with open(path, "w") as f:
+    f.write(new_src)
+PY
+
+# Patch (Step 10): treat only a trailing ":*" as the legacy prefix separator.
+# Upstream splits on the first colon anywhere, so Bash(pnpm test:run *) parsed
+# as prefix "pnpm test" with glob "pnpm test run *" and could never match
+# `pnpm test:run`. Claude Code splits only on a trailing ":*", so this also
+# stops the two matchers disagreeing about script names that contain a colon.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+old = "        colon_idx = inner.find(':')"
+new = (
+    "        # PATCHED (dotfiles fork): only a trailing ':*' is the legacy\n"
+    "        # prefix separator. A colon anywhere else is a literal character\n"
+    "        # in a script name, as in Bash(pnpm test:run *).\n"
+    "        colon_idx = len(inner) - 2 if inner.endswith(':*') else -1"
+)
+
+if old not in src:
+    sys.exit(f"smart-approve Step 10 patch: colon split not found in {path}")
+new_src = src.replace(old, new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 10 patch did not apply to {path}")
+
+with open(path, "w") as f:
+    f.write(new_src)
+PY
+
+# Patch (Step 11): refuse redirects into the files that grant permission.
+# strip_redirections deletes `> target` before matching, so `printf x >
+# ~/.claude/settings.json` matched Bash(printf *) and no deny rule could see
+# the target. Anything that can rewrite settings.json or the hook itself can
+# grant itself everything, so the target is checked before it is discarded.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''# A redirect whose target is one of these rewrites the permission system
+# itself. Matched against the raw command, before redirections are stripped.
+# `>|` is included because bash accepts it as a clobbering redirect; the
+# chezmoi source spelling is included because writing `home/dot_claude/` and
+# running `chezmoi apply` reaches the same files by a second step.
+_PERMISSION_FILE_REDIRECT = re.compile(
+    r\'(?:>\\||>>?)\\s*[\\\'"]?[^\\s\\\'";&|]*(?:[./]claude/|dot_claude/)\'
+    r\'(?:settings\\.json|settings\\.local\\.json|hooks/|CLAUDE\\.md)\'
+)
+
+
+_HEREDOC_BODY = re.compile(
+    r"<<-?\\s*[\\\'\\"]?(\\w+)[\\\'\\"]?\\n.*?\\n\\1", re.DOTALL
+)
+
+
+def redirects_into_permission_file(cmd):
+    """True when the command writes to a file that decides what is allowed.
+
+    Heredoc bodies are removed first. Without that, any command carrying this
+    path as text — documentation about the rule, a patch to the hook, a commit
+    message — denies itself, and a hook deny cannot be overridden.
+    """
+    return bool(_PERMISSION_FILE_REDIRECT.search(_HEREDOC_BODY.sub("", cmd)))
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 11 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 11 fn patch did not apply to {path}")
+src = new_src
+
+call_old = """    # Check if ALL match allow"""
+call_new = """    # Runs after the deny scan, never before it: an early return here would let
+    # a redirect suppress a deny, as in `git -c core.pager=evil log > <a
+    # permission file>`. Declines rather than denies, because the scan is a
+    # substring match on a command the hook never tokenizes, so it also fires
+    # on one that merely quotes such a path, and a hook deny cannot be
+    # overridden. Declining stops the automatic yes and lets the classifier
+    # read the difference.
+    if redirects_into_permission_file(command):
+        log("declining to approve: writes to a file that grants permissions")
+        return None, None
+
+    # Check if ALL match allow"""
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 11 call-site patch: decide() body not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 11 call-site patch did not apply to {path}")
+
+with open(path, "w") as f:
+    f.write(new_src)
+PY
+
+# Smoke test before installing. Every patch above adds module-level code
+# (re.compile, frozenset), so a bad edit can raise at import. A hook that
+# raises prints nothing, and a hook that prints nothing reads as "no opinion"
+# — every deny it should have returned is silently lost. Require a known deny
+# to come back before the patched file replaces the working one.
+SMOKE='{"tool_name":"Bash","tool_input":{"command":"git -c core.pager=evil log"}}'
+if ! SMOKE_OUT=$(printf '%s' "$SMOKE" | SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$TMP" 2>&1); then
+  echo "smart-approve smoke test: hook exited non-zero" >&2
+  printf '%s\n' "$SMOKE_OUT" >&2
+  exit 1
+fi
+case "$SMOKE_OUT" in
+  *'"permissionDecision": "deny"'* | *'"permissionDecision":"deny"'*) ;;
+  *)
+    echo "smart-approve smoke test: expected a deny for an injected git -c, got:" >&2
+    printf '%s\n' "${SMOKE_OUT:-<no output>}" >&2
+    exit 1
+    ;;
+esac
 
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"

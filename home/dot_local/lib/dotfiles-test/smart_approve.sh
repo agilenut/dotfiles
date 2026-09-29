@@ -27,15 +27,32 @@ test_smart_approve() {
     fail "patch marker missing — install script may have skipped the patch"
   fi
 
-  # Helper: pipe a PreToolUse JSON envelope through the hook and extract
-  # the permissionDecision (defaults to "fallthrough" for empty/silent output).
-  # SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null prevents test invocations
-  # from polluting the user's audit log at ~/.claude/logs/smart_approve_decisions.log.
+  # Helper: pipe a PreToolUse JSON envelope through the hook and print the
+  # permissionDecision, or "fallthrough" when the hook deliberately stays
+  # silent, or "crash" when it did not run cleanly.
+  #
+  # Distinguishing crash from fallthrough is the point. A hook that raises
+  # prints nothing, which is indistinguishable from a deliberate silence, so a
+  # crashed hook would satisfy every `= "fallthrough"` assertion here — and
+  # there are dozens. Non-zero exit or any stderr means crash.
+  #
+  # SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null keeps test runs out of the
+  # user's audit log at ~/.claude/logs/smart_approve_decisions.log.
   decision_for() {
     local cmd="$1"
-    local out
+    local out rc errfile
+    errfile=$(mktemp)
+    # `|| rc=$?` is required: the runner sets -e, so a non-zero hook exit would
+    # abort the whole suite before this function could report it as a crash.
     out=$(printf '%s' "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":$cmd}}" \
-      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$SMART_APPROVE_HOOK" 2>/dev/null)
+      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$SMART_APPROVE_HOOK" 2>"$errfile") \
+      && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] || [ -s "$errfile" ]; then
+      rm -f "$errfile"
+      printf 'crash'
+      return
+    fi
+    rm -f "$errfile"
     if [ -z "$out" ]; then
       printf 'fallthrough'
     else
@@ -44,6 +61,17 @@ test_smart_approve() {
         2>/dev/null
     fi
   }
+
+  # The helper itself must be able to tell the two apart, or every
+  # fallthrough assertion below is vacuous.
+  local crash_probe
+  crash_probe=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git status"}}' \
+    | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 -c 'raise SystemExit("boom")' 2>&1 >/dev/null || true)
+  if [ -n "$crash_probe" ]; then
+    pass "decision_for can distinguish a crashing hook from a silent one"
+  else
+    fail "crash detection is not working — fallthrough assertions would be vacuous"
+  fi
 
   # Bare command matches Bash(prefix *) — proves the parser patch works.
   # Without the patch, fnmatch("git status", "git status *") is False because
@@ -145,72 +173,19 @@ test_smart_approve() {
     fail "chain with a denied segment should deny (got: $d)"
   fi
 
-  # ---- git -C allow rules, sourced from smart-approve-allow.json ----
-  # The Bash(git -C * <subcmd>) rules live in ~/.claude/smart-approve-allow.json,
-  # not settings.json: Claude Code 2.1.246+ warns at startup about every allow
-  # rule with a wildcard before the subcommand. Only this hook reads that file,
-  # so these tests passing also proves the merge is wired up.
-  #
-  # Each subcommand needs BOTH Bash(git -C * <subcmd>) and
-  # Bash(git -C * <subcmd> *), because the matcher is **strict** for patterns
-  # with interior wildcards: Bash(git -C * status *) does NOT match bare
-  # `git -C /path status`, since the trailing * needs a real arg.
-  # See project CLAUDE.md "Gotchas" for the full permissive-vs-strict rule.
-
-  d=$(decision_for '"git -C /tmp/repo status"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> status → allow (bare cmd, interior * in pattern)"
-  else
-    fail "'git -C <path> status' should match Bash(git -C * status) (got: $d)"
-  fi
-
-  d=$(decision_for '"git -C /tmp/repo log"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> log → allow (bare cmd, interior * in pattern)"
-  else
-    fail "'git -C <path> log' should match Bash(git -C * log) (got: $d)"
-  fi
-
-  d=$(decision_for '"git -C /tmp/repo diff"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> diff → allow (bare cmd, interior * in pattern)"
-  else
-    fail "'git -C <path> diff' should match Bash(git -C * diff) (got: $d)"
-  fi
-
-  # Regression check: with-args case must still match the inner pattern.
-  d=$(decision_for '"git -C /tmp/repo status -s"')
-  if [ "$d" = "allow" ]; then
-    pass "git -C <path> status -s → allow (with args, full pattern)"
-  else
-    fail "'git -C <path> status -s' should match Bash(git -C * status *) (got: $d)"
-  fi
-
-  # These rules must NOT be in settings.json — that is what draws the startup
-  # warning this file exists to avoid. Separate the "can't check" cases from a
-  # real regression so a missing jq or unreadable settings file doesn't read as
-  # rules having come back.
+  # No rule may carry a wildcard before its subcommand. Claude Code 2.1.246+
+  # warns at startup about every one of them, and the wildcard also absorbs
+  # whatever sits at that position. Step 9's option peeling is what makes them
+  # unnecessary, so this asserts they have not crept back.
   if ! command -v jq &>/dev/null; then
-    skip "settings.json git -C check (jq not installed)"
+    skip "settings.json interior-wildcard check (jq not installed)"
   elif ! jq -e . "${HOME}/.claude/settings.json" >/dev/null 2>&1; then
     fail "cannot parse ${HOME}/.claude/settings.json — run 'chezmoi apply'"
-  elif jq -e '.permissions.allow | map(select(startswith("Bash(git -C "))) | length == 0' \
+  elif jq -e '.permissions.allow | map(select(test("\\*[^ )]* +[^-*)]"))) | length == 0' \
     "${HOME}/.claude/settings.json" >/dev/null 2>&1; then
-    pass "settings.json allow list has no git -C rules (no startup warning)"
+    pass "no allow rule has a wildcard before a non-option token"
   else
-    fail "settings.json allow list has git -C rules — Claude Code will warn at startup"
-  fi
-
-  # A missing extra-allow file must degrade to fallthrough, not crash.
-  local missing_out
-  missing_out=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git -C /tmp/repo status"}}' \
-    | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
-      SMART_APPROVE_EXTRA_ALLOW_PATH=/nonexistent/smart-approve-allow.json \
-      python3 "$SMART_APPROVE_HOOK" 2>&1)
-  if [ -z "$missing_out" ]; then
-    pass "missing smart-approve-allow.json → fallthrough, no crash"
-  else
-    fail "missing smart-approve-allow.json should fall through silently (got: $missing_out)"
+    fail "an allow rule has a wildcard before a non-option token — it absorbs whatever sits there"
   fi
 
   # ---- git RCE deny patterns (alias-set, core.fsmonitor/sshCommand, protocol.ext) ----
@@ -280,20 +255,49 @@ test_smart_approve() {
     fi
   done
 
-  # Global options that redirect where git finds config, binaries, or the repo
-  # itself. Same absorption problem, same fix.
+  # Global options that relocate git's own binaries or its transport helper.
+  # Denied because nothing here ever needs them, so a false positive is
+  # impossible and there is no query form to collide with.
   local redirect
   for redirect in \
     "git --exec-path=/tmp/evil status" \
     "git -C /tmp/repo --exec-path=/tmp/evil status" \
     "git --config-env=core.pager=X log" \
-    "git -C /tmp/repo --git-dir=/tmp/evil/.git status" \
-    "git -C /tmp/repo --upload-pack=/tmp/evil fetch origin"; do
+    "git -C /tmp/repo --upload-pack=/tmp/evil fetch origin" \
+    "git fetch --upload-pack=/tmp/evil /tmp/repo"; do
     d=$(decision_for "\"$redirect\"")
     if [ "$d" = "deny" ]; then
       pass "deny redirect option: ${redirect:0:52}"
     else
       fail "redirect option should deny: $redirect (got: $d)"
+    fi
+  done
+
+  # --git-dir and --work-tree are NOT denied. They are ordinary git options
+  # with a query form that collides: `git rev-parse --git-dir --show-toplevel`
+  # hard-denied under a space-form pattern, and five months of history contains
+  # no use of either as an option, only as that query. They reach the
+  # classifier, which can read the difference. Worktree commands never use them.
+  local gitdir
+  for gitdir in \
+    "git rev-parse --git-dir" \
+    "git rev-parse --git-dir --show-toplevel" \
+    "git worktree add /tmp/wt main" \
+    "git worktree list"; do
+    d=$(decision_for "\"$gitdir\"")
+    if [ "$d" = "allow" ]; then
+      pass "git-dir query / worktree still allowed: $gitdir"
+    else
+      fail "'$gitdir' must stay allowed (got: $d)"
+    fi
+  done
+
+  for gitdir in "git --git-dir=/tmp/evil/.git log" "git --work-tree=/ checkout -- ."; do
+    d=$(decision_for "\"$gitdir\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "git-dir as an option → classifier: ${gitdir:0:40}"
+    else
+      fail "'$gitdir' should reach the classifier, not be approved or denied (got: $d)"
     fi
   done
 
@@ -1102,30 +1106,166 @@ test_smart_approve() {
     fail "_log_decision missing — Step 6 install patch may have skipped"
   fi
 
-  # ---- Step 7: extra allow-rule file ----
+  # ---- Steps 8-11: patch markers ----
 
-  if grep -q "merge_extra_allow_rules" "$SMART_APPROVE_HOOK"; then
-    pass "Step 7 patch marker present (merge_extra_allow_rules)"
-  else
-    fail "merge_extra_allow_rules missing — Step 7 install patch may have skipped"
-  fi
-
-  # A hand-edited file of the wrong shape must merge nothing rather than raise.
-  # An uncaught exception here would take the hook's deny decisions down with it.
-  local shape bad_out
-  for shape in '[]' '{"permissions": []}' '{"permissions": {"allow": "Bash(ls *)"}}' '{"permissions": {"allow": [null, 42]}}'; do
-    printf '%s' "$shape" >"${TMPDIR:-/tmp}/smart-approve-allow-shape.json"
-    bad_out=$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git -C /tmp/repo status"}}' \
-      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
-        SMART_APPROVE_EXTRA_ALLOW_PATH="${TMPDIR:-/tmp}/smart-approve-allow-shape.json" \
-        python3 "$SMART_APPROVE_HOOK" 2>&1)
-    if [ -z "$bad_out" ]; then
-      pass "malformed extra-allow shape merges nothing: $shape"
+  local marker_fn
+  for marker_fn in is_unsafe_env_name peel_git_global_opts redirects_into_permission_file; do
+    if grep -q "$marker_fn" "$SMART_APPROVE_HOOK"; then
+      pass "patch marker present ($marker_fn)"
     else
-      fail "extra-allow shape $shape should merge nothing silently (got: $bad_out)"
+      fail "$marker_fn missing — an install patch may have skipped"
     fi
   done
-  rm -f "${TMPDIR:-/tmp}/smart-approve-allow-shape.json"
+
+  # ---- Step 8: env assignments that redirect execution ----
+  # strip_env_vars removes leading NAME=VALUE so `S=/tmp foo` matches
+  # Bash(foo *). That also hid GIT_CONFIG_KEY_0=... from every deny rule, since
+  # the command normalized to a bare `git log`. Names that change what runs are
+  # left in place so nothing matches and the classifier gets the call.
+  local unsafe
+  for unsafe in \
+    "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.pager GIT_CONFIG_VALUE_0=evil git log" \
+    "GIT_SSH_COMMAND=evil git fetch origin" \
+    "GIT_EXTERNAL_DIFF=evil git diff" \
+    "LD_PRELOAD=/tmp/x.so git status" \
+    "DYLD_INSERT_LIBRARIES=/tmp/x.dylib git status" \
+    "PATH=/tmp/evil git status"; do
+    d=$(decision_for "\"$unsafe\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "unsafe env prefix not stripped: ${unsafe:0:46}"
+    else
+      fail "'$unsafe' must not reach an allow rule (got: $d)"
+    fi
+  done
+
+  # Ordinary shell variables must still be stripped, or real work breaks.
+  # 244 allowed commands in three weeks of history carry one of these.
+  local benign
+  for benign in "S=/tmp/x echo hello" "APP_BASE_URL=http://localhost:3000 echo hi" "VITE_MOCK_SPEECH=1 echo hi"; do
+    d=$(decision_for "\"$benign\"")
+    if [ "$d" = "allow" ]; then
+      pass "benign env prefix still stripped: ${benign:0:40}"
+    else
+      fail "'$benign' should still match its allow rule (got: $d)"
+    fi
+  done
+
+  # ---- Step 9: git global options peeled to expose the subcommand ----
+  # This is why no Bash(git -C * ...) rule exists: `git -C <path> log` matches
+  # the plain Bash(git log *). It also closes the absorption vector, where the
+  # interior wildcard in such a rule spanned an entirely different subcommand.
+  local gitc
+  for gitc in \
+    "git -C /tmp/repo log --oneline" \
+    "git -C /tmp/repo status" \
+    "git -C/tmp/repo log" \
+    "git -C \\\"\$K\\\" add -A" \
+    "git -C '/tmp/my repo' log" \
+    "git -C /tmp/repo worktree list"; do
+    d=$(decision_for "\"$gitc\"")
+    if [ "$d" = "allow" ]; then
+      pass "git -C peeled onto a plain rule: ${gitc:0:44}"
+    else
+      fail "'$gitc' should match a plain git rule after peeling (got: $d)"
+    fi
+  done
+
+  # A subcommand smuggled past the wildcard must no longer be approved. The
+  # real case was a commit whose message contained the word "add", which
+  # matched Bash(git -C * add *) and auto-approved an ask-listed commit.
+  local smuggled
+  for smuggled in \
+    "git -C /tmp/repo rebase -x evil add HEAD~2" \
+    "git -C /tmp/repo remote add origin https://example.invalid/x" \
+    "git -C /tmp/repo submodule add https://example.invalid/x"; do
+    d=$(decision_for "\"$smuggled\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "smuggled subcommand not approved: ${smuggled:0:44}"
+    else
+      fail "'$smuggled' must not be approved (got: $d)"
+    fi
+  done
+
+  # Options that redirect execution are deliberately NOT peeled, so the deny
+  # rules still see them.
+  d=$(decision_for '"git -C /tmp/repo -c core.pager=evil log"')
+  if [ "$d" = "deny" ]; then
+    pass "git -C ... -c KEY=VAL → deny (not peeled past)"
+  else
+    fail "'-c' behind -C must stay visible to deny (got: $d)"
+  fi
+
+  # git grep is deliberately NOT allowed: `-O<pager>` and
+  # --open-files-in-pager run the named program, so a plain Bash(git grep *)
+  # would be unprompted code execution. The classifier judges it instead.
+  local grepcmd
+  for grepcmd in "git grep foo" "git -C /tmp/repo grep foo" "git grep -Osh foo"; do
+    d=$(decision_for "\"$grepcmd\"")
+    if [ "$d" != "allow" ]; then
+      pass "git grep not auto-approved: $grepcmd"
+    else
+      fail "'$grepcmd' must not be approved (-O runs a pager) (got: $d)"
+    fi
+  done
+
+  # Deny must win over a redirect. The redirect check runs after the deny scan;
+  # ordering it before let a redirect suppress a deny.
+  d=$(decision_for '"git -c core.pager=evil log > $HOME/.claude/settings.json"')
+  if [ "$d" = "deny" ]; then
+    pass "redirect does not suppress a deny"
+  else
+    fail "a denied command redirecting to a permission file must still deny (got: $d)"
+  fi
+
+  # Relocating a tool's config directory is equivalent to editing its config.
+  local relocate
+  for relocate in "HOME=/tmp/evil git log" "XDG_CONFIG_HOME=/tmp/evil git log" "GH_PAGER=evil gh pr list"; do
+    d=$(decision_for "\"$relocate\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "config-relocating env not stripped: ${relocate:0:40}"
+    else
+      fail "'$relocate' must not reach an allow rule (got: $d)"
+    fi
+  done
+
+  # ---- Step 10: only a trailing ':*' is the prefix separator ----
+  # Upstream split on the first colon anywhere, so Bash(pnpm test:run *) parsed
+  # as prefix "pnpm test" and never matched.
+  local colon
+  for colon in "pnpm test:run foo" "pnpm run lint:fix" "npm run format:check"; do
+    d=$(decision_for "\"$colon\"")
+    if [ "$d" = "allow" ]; then
+      pass "colon in a script name matches: $colon"
+    else
+      fail "'$colon' should match its colon rule (got: $d)"
+    fi
+  done
+
+  # ---- Step 11: redirects into the files that grant permission ----
+  # Fallthrough rather than deny. The scan is a substring match on a command
+  # the hook never tokenizes, so it also fires on one that merely quotes such a
+  # path, and a hook deny cannot be overridden. Declining to approve is enough:
+  # it stops the automatic yes and lets the classifier read the difference.
+  local selfwrite
+  for selfwrite in \
+    "printf hello > \$HOME/.claude/settings.json" \
+    "echo x >> ~/.claude/settings.local.json" \
+    "cat evil > ~/.claude/hooks/smart_approve.py"; do
+    d=$(decision_for "\"$selfwrite\"")
+    if [ "$d" = "fallthrough" ]; then
+      pass "redirect into a permission file not approved: ${selfwrite:0:38}"
+    else
+      fail "'$selfwrite' must not be approved (got: $d)"
+    fi
+  done
+
+  # Ordinary redirects are unaffected.
+  d=$(decision_for '"git status > /tmp/out.txt"')
+  if [ "$d" = "allow" ]; then
+    pass "ordinary redirect still allowed"
+  else
+    fail "'git status > /tmp/out.txt' should still allow (got: $d)"
+  fi
 
   # Format validation: line is <ISO-timestamp>\t<DECISION>\t<cmd[:300]>.
   # Catches silent format breakage from future refactors.
