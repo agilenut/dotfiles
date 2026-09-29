@@ -955,6 +955,74 @@ for smoke_case in "zzzsmoke-bad x:deny" "zzzsmoke-ok x:allow"; do
   esac
 done
 
+# Patch (Step 12): never approve a `gh api` call carrying two method flags.
+# `gh` takes the last -X / --method wins, and every gh api allow rule ends in a
+# trailing wildcard, so `gh api -X GET <path> -X DELETE` matched the GET rule
+# and ran as a DELETE. A deny *glob* for the shape hard-blocks a real command,
+# because a nested `$(gh api -X GET ...)` supplying a path value puts two GETs
+# in one segment; counting flags outside substitutions has no such false
+# positive, which is why this counts rather than matches.
+#
+# It denies rather than declining to approve. Measured end to end: with a
+# decline, the classifier went on to approve `gh api -X GET <path> -X DELETE`,
+# and the DELETE was the request actually sent. Zero of 2,033 gh api commands
+# across nine months carry a second method flag, so nothing real is lost.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''_GH_METHOD_FLAG = re.compile(r\'(?:^|\\s)(?:-X|--method)(?:[=\\s]|$)\')
+_CMD_SUBSTITUTION = re.compile(r\'\\$\\([^()]*\\)\')
+
+
+def gh_api_method_count(cmd):
+    """Count top-level -X / --method flags in a `gh api` command.
+
+    Command substitutions are removed first: a nested `$(gh api -X GET ...)`
+    supplying a path value is one call, not a second method on this one.
+    """
+    if not cmd.startswith("gh api"):
+        return 0
+    stripped = cmd
+    for _ in range(8):
+        reduced = _CMD_SUBSTITUTION.sub(" ", stripped)
+        if reduced == stripped:
+            break
+        stripped = reduced
+    return len(_GH_METHOD_FLAG.findall(stripped))
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 12 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 12 fn patch did not apply to {path}")
+src = new_src
+
+call_old = """    # Check if ALL match allow"""
+call_new = """    for cmd in sub_commands:
+        if gh_api_method_count(cmd) > 1:
+            return "deny", f"'{cmd}' carries two HTTP method flags; gh uses the last"
+
+    # Check if ALL match allow"""
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 12 call-site patch: decide() allow scan not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 12 call-site patch did not apply to {path}")
+
+with open(path, "w") as f:
+    f.write(new_src)
+PY
+
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 
