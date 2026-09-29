@@ -920,20 +920,40 @@ PY
 # raises prints nothing, and a hook that prints nothing reads as "no opinion"
 # — every deny it should have returned is silently lost. Require a known deny
 # to come back before the patched file replaces the working one.
-SMOKE='{"tool_name":"Bash","tool_input":{"command":"git -c core.pager=evil log"}}'
-if ! SMOKE_OUT=$(printf '%s' "$SMOKE" | SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$TMP" 2>&1); then
-  echo "smart-approve smoke test: hook exited non-zero" >&2
-  printf '%s\n' "$SMOKE_OUT" >&2
-  exit 1
-fi
-case "$SMOKE_OUT" in
-  *'"permissionDecision": "deny"'* | *'"permissionDecision":"deny"'*) ;;
-  *)
-    echo "smart-approve smoke test: expected a deny for an injected git -c, got:" >&2
-    printf '%s\n' "${SMOKE_OUT:-<no output>}" >&2
+# Self-contained: the hook is pointed at a settings file written here, not at
+# ~/.claude/settings.json, which may not exist yet on a first apply. The test
+# asserts the decision path works, not that any particular policy is installed.
+SMOKE_SETTINGS="$(mktemp "$HOOK_DIR/.smoke_settings.XXXXXX")"
+trap 'rm -f "$TMP" "$SMOKE_SETTINGS"' EXIT
+cat >"$SMOKE_SETTINGS" <<'SMOKEJSON'
+{"permissions":{"allow":["Bash(zzzsmoke-ok *)"],"deny":["Bash(zzzsmoke-bad *)"]}}
+SMOKEJSON
+
+smoke_decision() {
+  printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1" \
+    | SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null \
+      CLAUDE_SETTINGS_PATH="$SMOKE_SETTINGS" \
+      SMART_APPROVE_EXTRA_ALLOW_PATH=/nonexistent \
+      python3 "$TMP" 2>&1
+}
+
+for smoke_case in "zzzsmoke-bad x:deny" "zzzsmoke-ok x:allow"; do
+  smoke_cmd=${smoke_case%:*}
+  smoke_want=${smoke_case##*:}
+  if ! smoke_out=$(smoke_decision "$smoke_cmd"); then
+    echo "smart-approve smoke test: hook exited non-zero on '$smoke_cmd'" >&2
+    printf '%s\n' "$smoke_out" >&2
     exit 1
-    ;;
-esac
+  fi
+  case "$smoke_out" in
+    *"\"permissionDecision\": \"$smoke_want\""* | *"\"permissionDecision\":\"$smoke_want\""*) ;;
+    *)
+      echo "smart-approve smoke test: expected $smoke_want for '$smoke_cmd', got:" >&2
+      printf '%s\n' "${smoke_out:-<no output>}" >&2
+      exit 1
+      ;;
+  esac
+done
 
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
