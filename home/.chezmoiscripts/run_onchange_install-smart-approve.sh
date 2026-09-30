@@ -1023,6 +1023,129 @@ with open(path, "w") as f:
     f.write(new_src)
 PY
 
+# Patch (Step 13): only approve a redirect that lands in the work area.
+# strip_redirections deletes `> target` before matching, so every allow-listed
+# text tool is also an arbitrary-file-write rule: `echo '[core]' >
+# ~/.gitconfig` matches Bash(echo *), and that config sets core.pager, which is
+# the execution vector the git deny rules exist to block. Bash(echo *) alone
+# decided 22,383 invocations.
+#
+# Enumerating dangerous targets cannot work; the interesting ones are
+# unbounded. This inverts it: a redirect is approved only when the target is
+# under the working directory, the scratchpad, a temp root, or /dev. Measured
+# over seven months of history, that covers the overwhelming majority of real
+# redirects, and what it does not cover is the set worth a second look.
+#
+# A target the hook cannot resolve (a variable, a substitution) counts as out
+# of scope, because `D=~/.gitconfig; echo x > $D` is otherwise a bypass.
+python3 - "$TMP" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path) as f:
+    src = f.read()
+
+fn_old = "# SMART_APPROVE_DOTFILES_PATCH_BLOCK\n"
+fn_new = '''# Set from the PreToolUse payload in main(); empty until then, which makes
+# every redirect out of scope rather than in.
+_WRITE_SCOPE_ROOTS = []
+
+# A redirect operator (>, >>, >|) and its target. `2>&1` and `<` are not
+# writes to a path and do not match: the target must start like a path.
+_REDIRECT_TARGET = re.compile(
+    r\'(?:^|\\s)\\d?>>?\\|?\\s*["\\\']?([A-Za-z0-9_./~$][^\\s"\\\';&|)<>]*)\'
+)
+
+# Sinks that are always safe to write to.
+_WRITE_SINKS = ("/dev/null", "/dev/stdout", "/dev/stderr", "/dev/tty")
+
+
+def set_write_scope(cwd, scratchpad_dir):
+    """Record the directories a redirect may land in."""
+    roots = []
+    for d in (cwd, scratchpad_dir, os.environ.get("TMPDIR"),
+              "/tmp", "/private/tmp", "/var/folders"):
+        if not d:
+            continue
+        try:
+            roots.append(os.path.realpath(os.path.expanduser(d)))
+        except OSError:
+            continue
+    _WRITE_SCOPE_ROOTS[:] = roots
+
+
+def _target_in_scope(target, cwd):
+    """True when a redirect target resolves inside the work area."""
+    if target.startswith(_WRITE_SINKS):
+        return True
+    # A value the hook cannot resolve is not a value it can vouch for.
+    if "$" in target or "`" in target:
+        return False
+    expanded = os.path.expanduser(target)
+    if not os.path.isabs(expanded):
+        if not cwd:
+            return False
+        expanded = os.path.join(cwd, expanded)
+    # realpath on both sides, so /tmp matching /private/tmp on macOS is not a
+    # miss, and a symlink pointing out of the work area is not a way in.
+    try:
+        resolved = os.path.realpath(expanded)
+    except OSError:
+        return False
+    for root in _WRITE_SCOPE_ROOTS:
+        if resolved == root or resolved.startswith(root + os.sep):
+            return True
+    return False
+
+
+def redirects_outside_write_scope(cmd, cwd=None):
+    """True when the command writes somewhere outside the work area."""
+    cwd = cwd or (_WRITE_SCOPE_ROOTS[0] if _WRITE_SCOPE_ROOTS else None)
+    for target in _REDIRECT_TARGET.findall(cmd):
+        if not _target_in_scope(target, cwd):
+            return True
+    return False
+
+
+# SMART_APPROVE_DOTFILES_PATCH_BLOCK
+'''
+
+if fn_old not in src:
+    sys.exit(f"smart-approve Step 13 fn patch: sentinel anchor not found in {path}")
+new_src = src.replace(fn_old, fn_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 13 fn patch did not apply to {path}")
+src = new_src
+
+call_old = """    # Check if ALL match allow"""
+call_new = """    if redirects_outside_write_scope(command):
+        log("declining to approve: redirect lands outside the work area")
+        return None, None
+
+    # Check if ALL match allow"""
+
+if call_old not in src:
+    sys.exit(f"smart-approve Step 13 call-site patch: decide() allow scan not found in {path}")
+new_src = src.replace(call_old, call_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 13 call-site patch did not apply to {path}")
+src = new_src
+
+main_old = """    settings_path = os.environ.get("CLAUDE_SETTINGS_PATH")"""
+main_new = """    set_write_scope(input_data.get("cwd"), input_data.get("scratchpad_dir"))
+
+    settings_path = os.environ.get("CLAUDE_SETTINGS_PATH")"""
+
+if main_old not in src:
+    sys.exit(f"smart-approve Step 13 main patch: settings load anchor not found in {path}")
+new_src = src.replace(main_old, main_new, 1)
+if new_src == src:
+    sys.exit(f"smart-approve Step 13 main patch did not apply to {path}")
+
+with open(path, "w") as f:
+    f.write(new_src)
+PY
+
 chmod +x "$TMP"
 mv "$TMP" "$HOOK"
 

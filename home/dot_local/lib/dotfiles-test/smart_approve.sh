@@ -1267,6 +1267,99 @@ test_smart_approve() {
     fail "'git status > /tmp/out.txt' should still allow (got: $d)"
   fi
 
+  # ---- Step 13: a redirect must land in the work area ----
+  # strip_redirections deletes `> target` before matching, so every allow-listed
+  # text tool is also an arbitrary-file-write rule. Rather than enumerate
+  # dangerous targets, a redirect is approved only when the target resolves
+  # under the working directory, the scratchpad, a temp root, or /dev.
+  #
+  # These need cwd and scratchpad_dir in the payload, which decision_for does
+  # not send, so they build their own envelope.
+  scope_decision() {
+    local cmd="$1" out rc errfile
+    errfile=$(mktemp)
+    out=$(jq -n --arg c "$cmd" --arg cwd "$SCOPE_CWD" --arg sp "$SCOPE_SP" \
+      '{tool_name:"Bash",cwd:$cwd,scratchpad_dir:$sp,tool_input:{command:$c}}' \
+      | env SMART_APPROVE_DECISIONS_LOG_PATH=/dev/null python3 "$SMART_APPROVE_HOOK" 2>"$errfile") \
+      && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] || [ -s "$errfile" ]; then
+      rm -f "$errfile"
+      printf 'crash'
+      return
+    fi
+    rm -f "$errfile"
+    if [ -z "$out" ]; then
+      printf 'fallthrough'
+    else
+      printf '%s' "$out" | python3 -c \
+        "import json,sys; print(json.load(sys.stdin).get('hookSpecificOutput',{}).get('permissionDecision','fallthrough'))" \
+        2>/dev/null
+    fi
+  }
+
+  local SCOPE_CWD SCOPE_SP
+  SCOPE_CWD=$(mktemp -d)
+  SCOPE_SP=$(mktemp -d)
+  mkdir -p "$SCOPE_CWD/sub"
+
+  # Writes outside the work area are not approved. The last case is the reason
+  # an unresolvable target counts as out of scope.
+  local outside
+  for outside in \
+    "echo evil >> ${HOME}/.zshenv" \
+    "cat /tmp/x > ${HOME}/.gitconfig" \
+    "echo x > ${HOME}/.claude/commands/review.md" \
+    "printf x > ${HOME}/Library/LaunchAgents/com.evil.plist" \
+    "echo x >| ${HOME}/.zshrc" \
+    "D=${HOME}/.gitconfig; echo x > \$D"; do
+    d=$(scope_decision "$outside")
+    if [ "$d" = "fallthrough" ]; then
+      pass "write outside the work area not approved: ${outside:0:44}"
+    else
+      fail "'$outside' must not be approved (got: $d)"
+    fi
+  done
+
+  # Writes inside it are untouched. /tmp is a symlink to /private/tmp on macOS,
+  # so both spellings must resolve the same.
+  local inside
+  for inside in \
+    "echo hi > notes.txt" \
+    "echo hi > ./sub/out.txt" \
+    "echo hi > $SCOPE_CWD/direct.txt" \
+    "echo hi > $SCOPE_SP/scratch.txt" \
+    "echo hi > /tmp/ok.txt" \
+    "echo hi > /private/tmp/ok.txt" \
+    "git status > /dev/null" \
+    "git status 2>&1 | head" \
+    "echo hi"; do
+    d=$(scope_decision "$inside")
+    if [ "$d" = "allow" ]; then
+      pass "write inside the work area still allowed: ${inside:0:44}"
+    else
+      fail "'$inside' should stay allowed (got: $d)"
+    fi
+  done
+
+  # A symlink out of the work area is not a way back in.
+  ln -sf "${HOME}/.zshenv" "$SCOPE_CWD/escape.txt"
+  d=$(scope_decision "echo evil > $SCOPE_CWD/escape.txt")
+  if [ "$d" = "fallthrough" ]; then
+    pass "symlink pointing outside the work area not approved"
+  else
+    fail "a symlinked escape must not be approved (got: $d)"
+  fi
+
+  # A deny still wins over the scope check, which runs after it.
+  d=$(scope_decision "git -c core.pager=evil log > ${HOME}/.zshenv")
+  if [ "$d" = "deny" ]; then
+    pass "deny still wins over the write-scope check"
+  else
+    fail "a denied command must deny regardless of its redirect (got: $d)"
+  fi
+
+  rm -rf "$SCOPE_CWD" "$SCOPE_SP"
+
   # ---- Step 12: a second gh api method flag is never approved ----
   # `gh` takes the last -X / --method wins, and every gh api allow rule ends in
   # a trailing wildcard, so `gh api -X GET <path> -X DELETE` matched the GET

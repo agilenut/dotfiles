@@ -42,12 +42,14 @@ jobs:
       - name: Install chezmoi
         run: sh -c "$(curl -fsLS get.chezmoi.io)"
 
-      # The runner image bundles Homebrew metadata from its weekly build, so a
-      # cask whose vendor has since republished its artifact fails the checksum
-      # check and aborts the whole apply (set -euo pipefail). Refresh first.
-      # Seconds in API mode, not the git-tap update it used to be.
+      # Best effort. The runner image bundles Homebrew metadata from its weekly
+      # build, and refreshing it avoids installing against stale formulae. It
+      # also reaches every tap the image ships, including ones these dotfiles
+      # never use, so a single unreachable tap must not fail the job: a run has
+      # already been lost to a 75s connect timeout on aws/homebrew-tap. On
+      # failure the bundled metadata is used instead.
       - name: Refresh Homebrew metadata
-        run: brew update
+        run: brew update || echo "brew update failed; continuing with bundled metadata"
 
       - name: Apply dotfiles
         run: |
