@@ -98,6 +98,45 @@ Not an email archive: distill the few knowledge-bearing emails; leave the rest
 in your mail app. Same for the web - clip what's important and link-rot-prone,
 link the rest, store nothing for the ephemeral.
 
+## Write for the question, not the answer
+
+_Notes are reached by search, not loaded. Lead with the question and both
+halves of the search find you._
+
+Retrieval is hybrid - semantic plus full-text - so wording pays twice. Lexical
+overlap is scored directly, and the semantic half embeds the whole note, so
+everything else in it dilutes the part that answers. A note written in the
+vocabulary of its answer loses to a neighbour that happens to carry the words
+in the question.
+
+**Put the question in the TL;DR line**, in the words someone would actually
+use, then answer it. That slot is already under every heading; this only says
+what belongs in it. Where a search would plausibly land on a neighbouring note
+first, link across so the landing is a hop rather than a dead end.
+
+**Exempt the types reached by literal terms.** A `record` is found by invoice
+number, vendor or year; a `troubleshooting` note by the error string someone
+pastes. Keep those verbatim - paraphrasing an error string into a question
+makes it unfindable.
+
+**Aggregate questions are structural, not lexical.** "Which clients do we have"
+can't be won by rewording any one client profile: the question is about the set
+and the note is about a member. That wants a `type` or `tags` query, or a hub
+note that lists them. Reword only when a single note genuinely is the answer.
+
+Verify with `basic-memory reindex -p <project>`, then search two or three
+phrasings a reader would try. Top three is the bar - chasing rank one is how
+padding starts. One extra phrasing per note is the ceiling; past that you
+crowd the note's own embedding and it matches everything weakly.
+
+Observed: a proctoring note ranked first for `proctoring` and fell out of the
+top three for "can we stop students cheating during an assessment"; a billing
+runbook lost "how do I bill a client" to `AGENTS.md`.
+
+Apply to new writing. Don't retrofit - fix an old note when a search actually
+fails you. When reading, try a second phrasing before concluding a note doesn't
+exist.
+
 ## Project and client
 
 _Covered by the repo, not per-note tags._
