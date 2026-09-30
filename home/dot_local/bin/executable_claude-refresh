@@ -23,9 +23,15 @@
 #                    kill itself mid-refresh
 #
 # Session names come from the pane title (`<glyph> <name>`), parsed by
-# claude_restore_classify sourced from claude-restore — the same contract
+# claude_restore_classify sourced from claude-restore, the same contract
 # tmux-resurrect restores rely on. Titles are captured BEFORE exiting claude,
 # because the shell may rewrite the title once claude is gone.
+#
+# After the restart, sweep TCC (privacy) rows orphaned by the version the panes
+# just left. claude-tcc-prune spares any version a running process still holds,
+# so those rows only become collectable once the old-version panes have exited.
+# Panes left on the old version (skipped or failed) keep their row. brewup calls
+# the prune as well, before any pane has restarted.
 
 set -euo pipefail
 
@@ -72,7 +78,7 @@ claude_refresh_plan() {
     fi
     # A deleted cwd (removed worktree) keeps the running claude alive but makes
     # it unresumable: the shell can't start anything from a directory that no
-    # longer exists. Exiting claude here would strand the pane — leave it.
+    # longer exists. Exiting claude here would strand the pane, so leave it.
     if [ ! -d "$cwd" ]; then
       printf 'skip-cwd\t%s\t%s\n' "$pane" "$cwd"
       continue
@@ -140,7 +146,7 @@ claude_refresh_main() {
         echo "skip      $pane  (this pane is running the refresh)"
         ;;
       skip-cwd)
-        echo "skip      $pane  cwd no longer exists ($detail) — restarting would strand the pane"
+        echo "skip      $pane  cwd no longer exists ($detail) - restarting would strand the pane"
         skipped=$((skipped + 1))
         ;;
       skip-unnamed)
@@ -155,12 +161,12 @@ claude_refresh_main() {
     return 0
   fi
 
-  # Exit all panes first, then poll each — slow exits overlap instead of
+  # Exit all panes first, then poll each, so slow exits overlap instead of
   # serializing.
   local i
   for i in "${!panes[@]}"; do
     # || true: a pane that closed since the plan snapshot must not abort the
-    # blast (set -e) — phase 2 reports it as vanished.
+    # blast (set -e) - phase 2 reports it as vanished.
     tmux send-keys -t "${panes[$i]}" C-c C-c 2>/dev/null || true
   done
 
@@ -183,7 +189,7 @@ claude_refresh_main() {
         fi
         ;;
       timeout)
-        echo "FAILED    $pane  ${names[$i]} (claude didn't exit within ${exit_timeout}s — left as is)"
+        echo "FAILED    $pane  ${names[$i]} (claude didn't exit within ${exit_timeout}s, left as is)"
         failed=$((failed + 1))
         ;;
       vanished)
@@ -193,13 +199,29 @@ claude_refresh_main() {
     esac
   done
 
-  # Last line is the summary — Raycast compact mode shows only this.
+  # Last line is the summary - Raycast compact mode shows only this.
   echo "Restarted $restarted, skipped $skipped, failed $failed."
   [ "$failed" -eq 0 ]
 }
 
-# Run only when executed directly — sourcing (e.g. from tests) just defines the
+# Run only when executed directly - sourcing (e.g. from tests) just defines the
 # functions above.
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
-  claude_refresh_main "$@"
+  # `|| refresh_status=$?` puts the whole of claude_refresh_main in a tested
+  # context, which suspends errexit inside it. That is acceptable here because
+  # every command in the function that can fail is already guarded
+  # individually, and it keeps the tmux-unavailable path exiting 1 without
+  # pruning. Don't replace it with an EXIT trap without re-checking both.
+  refresh_status=0
+  claude_refresh_main "$@" || refresh_status=$?
+  # Prune now that the old-version processes are gone. A prune failure (no Full
+  # Disk Access is the usual one) must not mask the refresh's own exit status.
+  #
+  # Output goes to stderr so the refresh summary stays the last line on stdout,
+  # which is all Raycast compact mode shows. `--quiet` still prints when it
+  # actually removes rows, by design, and that is the case this call exists for.
+  if command -v claude-tcc-prune >/dev/null 2>&1; then
+    claude-tcc-prune --quiet >&2 || true
+  fi
+  exit "$refresh_status"
 fi

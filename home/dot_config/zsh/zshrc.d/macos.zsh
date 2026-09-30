@@ -3,7 +3,9 @@
 # Setup MacOs specific aliases and functions.
 
 # `brew cleanup` deletes old Caskroom versions, orphaning their TCC (privacy)
-# entries; claude-tcc-prune sweeps the dead claude-code rows afterward.
+# entries; claude-tcc-prune sweeps the dead claude-code rows afterward. It skips
+# any version a process is still running, so a row can survive this sweep and
+# get collected by a later one.
 alias brewup='\
   brew update \
   && brew upgrade \
