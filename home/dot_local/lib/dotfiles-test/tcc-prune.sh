@@ -165,6 +165,28 @@ test_claude_tcc_prune() {
     fail "prune integration wrong; remaining: '$result'"
   fi
 
+  # An unreadable database must say so, even under --quiet. Both call sites pass
+  # --quiet, so a silent skip here is indistinguishable from a clean sweep, and
+  # was: no pane in a tmux server has Full Disk Access, so the prune reported
+  # nothing for months while doing nothing. Pointed at a path that is not a
+  # database, which is what a denied read looks like to sqlite3.
+  local unreadable probe_out probe_rc
+  unreadable="$fixdir/not-a-database"
+  printf 'this is not sqlite\n' >"$unreadable"
+  probe_rc=0
+  probe_out=$(CLAUDE_TCC_DB="$unreadable" bash "$CLAUDE_TCC_PRUNE" --quiet 2>&1) || probe_rc=$?
+  if printf '%s' "$probe_out" | grep -q "can't read TCC.db"; then
+    pass "unreadable database is reported even with --quiet"
+  else
+    fail "--quiet swallowed the unreadable-database report (got: '$probe_out')"
+  fi
+  # Still a clean skip, not a failure: the caller's own status must survive.
+  if [ "$probe_rc" -eq 0 ]; then
+    pass "unreadable database still exits 0"
+  else
+    fail "unreadable database should exit 0 (got: $probe_rc)"
+  fi
+
   # --list must render the system FDA orphan with its pane label.
   sqlite3 "$sysdb" "CREATE TABLE access (service TEXT, client TEXT, client_type INTEGER, auth_value INTEGER);"
   sqlite3 "$sysdb" "INSERT INTO access VALUES ('kTCCServiceSystemPolicyAllFiles', '$orphan', 1, 2);"
