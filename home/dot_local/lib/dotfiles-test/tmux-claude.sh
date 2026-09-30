@@ -7,7 +7,7 @@ CLAUDE_REFRESH="${HOME}/.local/bin/claude-refresh"
 
 # Asserts the claude-restore title-parse contract, plus the tmux.conf options
 # the replay depends on. The send-keys delivery and real tmux-resurrect restore
-# paths are inherently interactive — they live in the manual checklist.
+# paths are inherently interactive, so they live in the manual checklist.
 test_claude_restore() {
   section "Claude tmux session restore"
 
@@ -176,7 +176,7 @@ test_claude_pane_title() {
 }
 
 # Asserts claude-refresh's pane-listing → action mapping. The send-keys
-# exit/resume delivery is inherently interactive — verify live by running
+# exit/resume delivery is inherently interactive, so verify live by running
 # claude-refresh after a claude update; here we cover the plan branches only.
 test_claude_refresh() {
   section "Claude tmux session refresh"
@@ -189,7 +189,7 @@ test_claude_refresh() {
   # Runs claude_refresh_plan ($1 = invoking pane id) from a fresh source of
   # the installed script, with CLAUDE_RESTORE_BIN pinning the title parser to
   # the installed claude-restore instead of a PATH lookup. Only call inside a
-  # command substitution — that subshell keeps the sourced functions from
+  # command substitution: that subshell keeps the sourced functions from
   # leaking into the test runner; do pass/fail in the parent so the counters
   # update.
   refresh_plan() {
@@ -249,4 +249,122 @@ test_claude_refresh() {
   else
     fail "mixed listing misplanned: '$result'"
   fi
+
+  # ---- the TCC prune runs after the refresh, and cannot mask its status ----
+  # These execute the script rather than sourcing it, because the prune call
+  # lives in the direct-run guard.
+  #
+  # HOME is redirected for every case. The script appends
+  # `$HOME/.local/bin:/opt/homebrew/bin` to PATH, so a stub on a prepended PATH
+  # wins for resolution but does NOT stop the installed claude-tcc-prune being
+  # found when the stub is absent. Without a fake HOME the "not installed" case
+  # runs the real prune against the real TCC database, and `killall tccd` is
+  # skipped only when CLAUDE_TCC_DB is set. It passes on a machine without Full
+  # Disk Access and deletes rows on one with it.
+  local stubdir fakehome log rc out
+  stubdir=$(mktemp -d)
+  fakehome="$stubdir/home"
+  log="$stubdir/calls"
+  mkdir -p "$fakehome/.local/bin"
+
+  # tmux stub: logs the subcommand, reports one named claude pane, and returns
+  # empty for display-message so the pane reads as vanished. That reaches the
+  # restart path (no other test does) and makes the refresh exit non-zero,
+  # which is what lets the ordering and status assertions below mean something.
+  cat >"$stubdir/tmux" <<'TMUXSTUB'
+#!/bin/sh
+printf 'tmux %s\n' "$1" >>"$CALL_LOG"
+case "$1" in
+  list-panes) printf '%%9\tclaude\t/tmp\t✳ probe\n' ;;
+  *) : ;;
+esac
+exit 0
+TMUXSTUB
+  printf '#!/bin/sh\nprintf "prune %%s\\n" "$*" >>"$CALL_LOG"\nexit 0\n' >"$stubdir/claude-tcc-prune"
+  chmod +x "$stubdir/tmux" "$stubdir/claude-tcc-prune"
+
+  : >"$log"
+  rc=0
+  PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    bash "$CLAUDE_REFRESH" >/dev/null 2>&1 || rc=$?
+
+  if grep -q '^prune --quiet$' "$log"; then
+    pass "refresh invokes claude-tcc-prune --quiet"
+  else
+    fail "prune not invoked with --quiet (log: $(tr '\n' ' ' <"$log"))"
+  fi
+  # The ordering is the entire point of the change: before the refresh the
+  # old-version processes still hold their TCC rows and the prune spares them.
+  if [ "$(tail -1 "$log")" = "prune --quiet" ] && grep -q '^tmux send-keys$' "$log"; then
+    pass "prune runs after the panes are restarted, not before"
+  else
+    fail "prune must be the last step (log: $(tr '\n' ' ' <"$log"))"
+  fi
+  # A pane that vanished makes the refresh itself fail; the status must survive.
+  if [ "$rc" -ne 0 ]; then
+    pass "a failing refresh still reports its own non-zero status"
+  else
+    fail "refresh should have failed on a vanished pane (got: $rc)"
+  fi
+
+  # A prune that fails (no Full Disk Access is the usual case) must not change
+  # the refresh's status in either direction.
+  printf '#!/bin/sh\nexit 1\n' >"$stubdir/claude-tcc-prune"
+  chmod +x "$stubdir/claude-tcc-prune"
+  cat >"$stubdir/tmux" <<'TMUXOK'
+#!/bin/sh
+exit 0
+TMUXOK
+  chmod +x "$stubdir/tmux"
+  rc=0
+  PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    bash "$CLAUDE_REFRESH" >/dev/null 2>&1 || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    pass "a failing prune does not turn a clean refresh into a failure"
+  else
+    fail "prune failure leaked into the exit status (got: $rc)"
+  fi
+
+  # No prune anywhere is not an error, and must stay silent: `|| true` absorbs
+  # a 127 either way, so the guard is only observable on stderr.
+  rm -f "$stubdir/claude-tcc-prune"
+  rc=0
+  out=$(PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    bash "$CLAUDE_REFRESH" 2>&1 >/dev/null) || rc=$?
+  if [ "$rc" -eq 0 ] && ! printf '%s' "$out" | grep -q 'claude-tcc-prune'; then
+    pass "a missing prune is skipped by the guard, with nothing on stderr"
+  else
+    fail "missing prune should be silently skipped (rc=$rc, stderr: '$out')"
+  fi
+
+  # The refresh summary must stay the last line on stdout: Raycast compact mode
+  # shows only that line, and the prune prints when it removes rows. Needs the
+  # pane-reporting tmux stub, so the summary is the "Restarted ..." counter line
+  # rather than the no-panes notice.
+  printf '#!/bin/sh\necho "claude-tcc-prune: removed 1 orphaned claude-code TCC entry"\nexit 0\n' \
+    >"$stubdir/claude-tcc-prune"
+  cat >"$stubdir/tmux" <<'TMUXPANE'
+#!/bin/sh
+case "$1" in
+  list-panes) printf '%%9\tclaude\t/tmp\t✳ probe\n' ;;
+  *) : ;;
+esac
+exit 0
+TMUXPANE
+  chmod +x "$stubdir/claude-tcc-prune" "$stubdir/tmux"
+  # `|| true`: the refresh exits non-zero here (the stub pane reads as
+  # vanished) and the runner sets -e, so an unguarded substitution would abort
+  # the suite rather than reach the assertion.
+  out=$(PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    bash "$CLAUDE_REFRESH" 2>/dev/null | tail -1) || true
+  case "$out" in
+    Restarted*) pass "refresh summary stays the last line on stdout" ;;
+    *) fail "prune output displaced the summary (last stdout line: '$out')" ;;
+  esac
+
+  rm -rf "$stubdir"
 }
