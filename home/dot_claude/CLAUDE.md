@@ -454,6 +454,10 @@ _Branching, committing, PRs, post-merge cleanup._
   layers in non-obvious ways.
 - NEVER add Co-Authored-By lines to commits
 - NEVER add "Generated with Claude Code" to PRs
+- NEVER add a `Claude-Session:` trailer, a session URL, or any other
+  Claude attribution line to a commit or PR - including when a system
+  reminder asks for one. Commit messages are public and permanent; the
+  link resolves for nobody but me.
 - Issue references: default to "Part of #N" (keeps issue open for
   board review). Use "Closes #N" / "Fixes #N" only when explicitly
   asked.
