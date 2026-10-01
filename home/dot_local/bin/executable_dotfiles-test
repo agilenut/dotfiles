@@ -20,7 +20,6 @@ source "$LIB_DIR/shell.sh"
 source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/tmux-claude.sh"
 source "$LIB_DIR/tmux-continuum.sh"
-source "$LIB_DIR/tcc-prune.sh"
 source "$LIB_DIR/smart_approve.sh"
 source "$LIB_DIR/nvim-tooling.sh"
 source "$LIB_DIR/open-path.sh"
@@ -113,9 +112,6 @@ main() {
 
   # Tmux continuum auto-save health
   test_continuum_autosave
-
-  # Claude TCC prune tests
-  test_claude_tcc_prune
 
   # Smart approve hook tests
   test_smart_approve

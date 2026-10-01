@@ -221,41 +221,42 @@ versions), which Homebrew cannot provide for a versioned cask artifact.
 
 _Diagnosed 2026-08-15._
 
-## Nothing in a tmux pane can read the TCC database
+## macOS 27 put the user TCC database out of reach, for good
 
-**Symptom:** `claude-tcc-prune` reports it can't read `TCC.db` from any pane,
-however much access the terminal has been granted. `ls` on
-`~/Library/Application Support/com.apple.TCC/` says the directory does not
-exist, and `find` over `~/Library` returns nothing for it — so it reads as
-missing rather than forbidden, which sends you looking for the wrong path.
+**Symptom:** anything reading `~/Library/Application Support/com.apple.TCC/TCC.db`
+reports it missing, and `ls` on that directory returns ENOENT - which reads like
+a masked permission problem rather than a file that is genuinely gone.
 
-**Root cause:** TCC gates on the **responsible process**, not the process that
-makes the call. A tmux server daemonizes, so it is parented by `launchd`
-(`tmux ← 1`) and the terminal that started it is not in the chain at all. Every
-pane inherits the tmux server's grants. Measured in the system database
-(`auth_value`: 2 allowed, 0 denied):
+**Root cause:** it is gone. macOS 27 moved the per-user database into a
+ProtectedSystem container behind an entitlement no third-party process can hold:
 
 ```text
-kTCCServiceSystemPolicyAllFiles | 2 | org.alacritty
-kTCCServiceSystemPolicyAllFiles | 2 | com.raycast.macos
-kTCCServiceSystemPolicyAllFiles | 0 | /opt/homebrew/Cellar/zsh/5.9/bin/zsh
-                           (no AllFiles row) | .../Cellar/tmux/3.7c/bin/tmux
+/private/var/containers/Data/ProtectedSystem/<UUID>/Data/Library/Application Support/com.apple.TCC/TCC.db
 ```
 
-Alacritty holds Full Disk Access and it buys a pane nothing.
+Full Disk Access does not reach it; Apple decoupled FDA from TCC management in
+the same release. Measured here: one process listed `~/Library/Safari`, which
+needs FDA, while being refused on the database.
 
-**Why we don't fix it:** granting the tmux binary access would work, but it is
-keyed to `/opt/homebrew/Cellar/tmux/<version>/bin/tmux` — a version-stamped
-path, so it dies at the next `brew upgrade tmux`, the same treadmill as the
-entry above. It would also hand every pane and every command run in one full
-disk access. Do NOT grant Alacritty (or any terminal) more access to fix this;
-it cannot reach a pane.
+**What NOT to try:** granting Full Disk Access to anything - a terminal, tmux,
+the login shell, the claude binary - or hunting for the "responsible process".
+The gate is an entitlement, not a permission. Do not rebuild a sweeper for this.
 
-**Living with it:** the sweep runs from Raycast, which holds the grant in its
-own right — `claude-tcc-prune` and `claude-refresh` are both Raycast script
-commands. `brewup` deliberately does not call the prune: running in a pane, it
-could never see the database. `--list` reads the system database only
-(world-readable), which is why it still prints something useful from a pane
-while the user database shows `(unreadable)`.
+**Consequence:** `claude-tcc-prune` was deleted; its whole job was deleting rows
+from this database. Orphans (one per claude-code upgrade) now come out by hand in
+System Settings > Privacy & Security, where a deleted executable carries a
+different icon. For the paths behind those entries, the system database is still
+world-readable:
 
-_Diagnosed 2026-09-30._
+```bash
+sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" \
+  "SELECT service, auth_value, client FROM access WHERE client LIKE '%claude%';"
+```
+
+**This entry previously** blamed the tmux server for being the responsible
+process in every pane, and concluded the sweep would work from Raycast. Both
+wrong: the database had moved, so every call site failed identically, and that
+uniformity should have ruled out a permissions cause. PR #109 was built on that
+reasoning and changed nothing.
+
+_Diagnosed 2026-09-30, corrected and closed 2026-10-01._
