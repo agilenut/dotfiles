@@ -2,6 +2,12 @@
 # -*-mode:sh-*- vim:ft=shell-script
 # shellcheck shell=bash
 
+# @raycast.schemaVersion 1
+# @raycast.title Prune Claude TCC Entries
+# @raycast.mode compact
+# @raycast.icon 🧹
+# @raycast.packageName Claude
+
 # claude-tcc-prune
 # =============================================================================
 # Removes orphaned `claude-code` entries from the user TCC (privacy) database
@@ -67,6 +73,26 @@ claude_tcc_select_orphans() {
   done
 }
 
+# Reads in-use binary paths on stdin and echoes each one, plus its pre-rename
+# spelling when a cask upgrade has renamed the live directory to
+# `<version>.upgrading`. A session running during an upgrade keeps holding
+# `.../2.1.273.upgrading/claude` while its TCC row still says
+# `.../2.1.273/claude`, and the guard below compares exact strings - so without
+# both spellings the row is pruned under a live session and immediately
+# re-prompted. Pure; sourceable for tests.
+claude_tcc_expand_inuse() {
+  local path
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    printf '%s\n' "$path"
+    case "$path" in
+      */Caskroom/claude-code/*.upgrading/claude)
+        printf '%s\n' "${path%.upgrading/claude}/claude"
+        ;;
+    esac
+  done
+}
+
 # Executable paths of every running `claude` process. A still-running session
 # whose binary was unlinked (not renamed) keeps that exact deleted path open, so
 # it shows here even though it fails the on-disk check. Side-effecting (lsof).
@@ -74,7 +100,7 @@ claude_tcc_inuse_paths() {
   local pid
   for pid in $(pgrep -x claude 2>/dev/null); do
     lsof -p "$pid" -a -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | grep -E '/claude$'
-  done | sort -u
+  done | claude_tcc_expand_inuse | sort -u
 }
 
 # Reads candidate paths on stdin, drops any that exactly match a path in the

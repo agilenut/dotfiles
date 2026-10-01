@@ -90,6 +90,45 @@ test_claude_tcc_prune() {
     fail "empty in-use guard wrong: '$result'"
   fi
 
+  # ---- mid-upgrade rename: a held binary and its TCC row disagree ----
+  # A cask upgrade renames the live directory to <version>.upgrading, so a
+  # session running through one holds a path that was never in the database.
+  # The guard compares exact strings, so the pre-rename spelling has to be
+  # emitted too or the row is pruned under a live session.
+  local upgrading plain
+  upgrading='/opt/homebrew/Caskroom/claude-code/2.1.273.upgrading/claude'
+  plain='/opt/homebrew/Caskroom/claude-code/2.1.273/claude'
+  # shellcheck source=/dev/null
+  result="$(source "$CLAUDE_TCC_PRUNE" \
+    && printf '%s\n' "$upgrading" | claude_tcc_expand_inuse | tr '\n' ' ')"
+  if [ "$result" = "$upgrading $plain " ]; then
+    pass "mid-upgrade path expands to both spellings"
+  else
+    fail "upgrading expansion wrong: '$result'"
+  fi
+
+  # An ordinary path must not grow a second spelling.
+  # shellcheck source=/dev/null
+  result="$(source "$CLAUDE_TCC_PRUNE" \
+    && printf '%s\n' "$plain" | claude_tcc_expand_inuse | tr '\n' ' ')"
+  if [ "$result" = "$plain " ]; then
+    pass "ordinary in-use path expands to itself only"
+  else
+    fail "plain expansion wrong: '$result'"
+  fi
+
+  # End to end: the row the database actually holds survives the guard.
+  # shellcheck source=/dev/null
+  result="$(source "$CLAUDE_TCC_PRUNE" \
+    && printf '%s\n%s\n' "$plain" "$a" \
+    | claude_tcc_drop_inuse "$(printf '%s\n' "$upgrading" | claude_tcc_expand_inuse)" \
+      | tr '\n' ' ')"
+  if [ "$result" = "$a " ]; then
+    pass "mid-upgrade session spares its pre-rename TCC row"
+  else
+    fail "upgrading guard wrong: '$result'"
+  fi
+
   # ---- service -> pane labels (drives the --list report) ----
   # shellcheck source=/dev/null
   result="$(source "$CLAUDE_TCC_PRUNE" && claude_tcc_service_label kTCCServiceSystemPolicyAllFiles)"
