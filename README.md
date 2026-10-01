@@ -216,6 +216,12 @@ pre-commit run --all-files
 
 Hooks: shfmt (shell formatting), shellcheck (linting), taplo (TOML), prettier, markdownlint.
 
+`pre-commit install` wires the pre-commit, pre-push, and commit-msg hooks
+together - the config sets `default_install_hook_types`, so no extra flags are
+needed. The commit-msg hook rejects attribution trailers (`Co-Authored-By:`
+naming a model, `Claude-Session:`, "Generated with Claude Code"); CI re-checks
+every commit on a PR, since a hook only runs for whoever installed it.
+
 ### Local Development
 
 To develop against a local clone instead of the remote repo:
