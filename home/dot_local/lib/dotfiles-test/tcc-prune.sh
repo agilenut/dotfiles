@@ -90,6 +90,45 @@ test_claude_tcc_prune() {
     fail "empty in-use guard wrong: '$result'"
   fi
 
+  # ---- mid-upgrade rename: a held binary and its TCC row disagree ----
+  # A cask upgrade renames the live directory to <version>.upgrading, so a
+  # session running through one holds a path that was never in the database.
+  # The guard compares exact strings, so the pre-rename spelling has to be
+  # emitted too or the row is pruned under a live session.
+  local upgrading plain
+  upgrading='/opt/homebrew/Caskroom/claude-code/2.1.273.upgrading/claude'
+  plain='/opt/homebrew/Caskroom/claude-code/2.1.273/claude'
+  # shellcheck source=/dev/null
+  result="$(source "$CLAUDE_TCC_PRUNE" \
+    && printf '%s\n' "$upgrading" | claude_tcc_expand_inuse | tr '\n' ' ')"
+  if [ "$result" = "$upgrading $plain " ]; then
+    pass "mid-upgrade path expands to both spellings"
+  else
+    fail "upgrading expansion wrong: '$result'"
+  fi
+
+  # An ordinary path must not grow a second spelling.
+  # shellcheck source=/dev/null
+  result="$(source "$CLAUDE_TCC_PRUNE" \
+    && printf '%s\n' "$plain" | claude_tcc_expand_inuse | tr '\n' ' ')"
+  if [ "$result" = "$plain " ]; then
+    pass "ordinary in-use path expands to itself only"
+  else
+    fail "plain expansion wrong: '$result'"
+  fi
+
+  # End to end: the row the database actually holds survives the guard.
+  # shellcheck source=/dev/null
+  result="$(source "$CLAUDE_TCC_PRUNE" \
+    && printf '%s\n%s\n' "$plain" "$a" \
+    | claude_tcc_drop_inuse "$(printf '%s\n' "$upgrading" | claude_tcc_expand_inuse)" \
+      | tr '\n' ' ')"
+  if [ "$result" = "$a " ]; then
+    pass "mid-upgrade session spares its pre-rename TCC row"
+  else
+    fail "upgrading guard wrong: '$result'"
+  fi
+
   # ---- service -> pane labels (drives the --list report) ----
   # shellcheck source=/dev/null
   result="$(source "$CLAUDE_TCC_PRUNE" && claude_tcc_service_label kTCCServiceSystemPolicyAllFiles)"
@@ -163,6 +202,28 @@ test_claude_tcc_prune() {
     pass "prune deletes orphans (incl. quoted path), keeps live and unrelated"
   else
     fail "prune integration wrong; remaining: '$result'"
+  fi
+
+  # An unreadable database must say so, even under --quiet. Both call sites pass
+  # --quiet, so a silent skip here is indistinguishable from a clean sweep, and
+  # was: no pane in a tmux server has Full Disk Access, so the prune reported
+  # nothing for months while doing nothing. Pointed at a path that is not a
+  # database, which is what a denied read looks like to sqlite3.
+  local unreadable probe_out probe_rc
+  unreadable="$fixdir/not-a-database"
+  printf 'this is not sqlite\n' >"$unreadable"
+  probe_rc=0
+  probe_out=$(CLAUDE_TCC_DB="$unreadable" bash "$CLAUDE_TCC_PRUNE" --quiet 2>&1) || probe_rc=$?
+  if printf '%s' "$probe_out" | grep -q "can't read TCC.db"; then
+    pass "unreadable database is reported even with --quiet"
+  else
+    fail "--quiet swallowed the unreadable-database report (got: '$probe_out')"
+  fi
+  # Still a clean skip, not a failure: the caller's own status must survive.
+  if [ "$probe_rc" -eq 0 ]; then
+    pass "unreadable database still exits 0"
+  else
+    fail "unreadable database should exit 0 (got: $probe_rc)"
   fi
 
   # --list must render the system FDA orphan with its pane label.

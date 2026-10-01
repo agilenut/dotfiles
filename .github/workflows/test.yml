@@ -29,6 +29,37 @@ jobs:
       - name: Run pre-commit on all files
         run: pre-commit run --all-files --show-diff-on-failure
 
+  # Pull requests only. A squash merge copies trailers out of the branch commits
+  # onto main, and a commit message cannot be edited once it is there - so this
+  # has to fail while a rebase is still the fix. Failing on push to main would
+  # report something nobody can act on without rewriting history.
+  commit-messages:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Same rule as the `no-attribution-trailers` pre-commit hook, which only
+      # runs for whoever installed it.
+      - name: no attribution trailers
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # From the merge base, not the base tip: if the base branch moves
+          # backwards the range would otherwise pick up commits already on main,
+          # which no rebase can fix. Collected before grepping, so a range git
+          # cannot resolve fails the job rather than passing it on an empty pipe.
+          base=$(git merge-base "${BASE_SHA}" "${HEAD_SHA}")
+          messages=$(git log --format='%B' "${base}..${HEAD_SHA}")
+          if grep -inE '^[[:space:]]*(co-authored-by:.*(claude|anthropic)|claude-session:)|^[^[:alnum:]]*generated with \[?claude|claude\.ai/code/session' <<<"${messages}"; then
+            echo "::error::A commit message carries an attribution trailer. Rebase to remove it - once it reaches main only a history rewrite can."
+            exit 1
+          fi
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:

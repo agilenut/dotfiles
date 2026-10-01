@@ -220,3 +220,42 @@ a stable path (the csreq would still match, so grants would carry across
 versions), which Homebrew cannot provide for a versioned cask artifact.
 
 _Diagnosed 2026-08-15._
+
+## Nothing in a tmux pane can read the TCC database
+
+**Symptom:** `claude-tcc-prune` reports it can't read `TCC.db` from any pane,
+however much access the terminal has been granted. `ls` on
+`~/Library/Application Support/com.apple.TCC/` says the directory does not
+exist, and `find` over `~/Library` returns nothing for it — so it reads as
+missing rather than forbidden, which sends you looking for the wrong path.
+
+**Root cause:** TCC gates on the **responsible process**, not the process that
+makes the call. A tmux server daemonizes, so it is parented by `launchd`
+(`tmux ← 1`) and the terminal that started it is not in the chain at all. Every
+pane inherits the tmux server's grants. Measured in the system database
+(`auth_value`: 2 allowed, 0 denied):
+
+```text
+kTCCServiceSystemPolicyAllFiles | 2 | org.alacritty
+kTCCServiceSystemPolicyAllFiles | 2 | com.raycast.macos
+kTCCServiceSystemPolicyAllFiles | 0 | /opt/homebrew/Cellar/zsh/5.9/bin/zsh
+                           (no AllFiles row) | .../Cellar/tmux/3.7c/bin/tmux
+```
+
+Alacritty holds Full Disk Access and it buys a pane nothing.
+
+**Why we don't fix it:** granting the tmux binary access would work, but it is
+keyed to `/opt/homebrew/Cellar/tmux/<version>/bin/tmux` — a version-stamped
+path, so it dies at the next `brew upgrade tmux`, the same treadmill as the
+entry above. It would also hand every pane and every command run in one full
+disk access. Do NOT grant Alacritty (or any terminal) more access to fix this;
+it cannot reach a pane.
+
+**Living with it:** the sweep runs from Raycast, which holds the grant in its
+own right — `claude-tcc-prune` and `claude-refresh` are both Raycast script
+commands. `brewup` deliberately does not call the prune: running in a pane, it
+could never see the database. `--list` reads the system database only
+(world-readable), which is why it still prints something useful from a pane
+while the user database shows `(unreadable)`.
+
+_Diagnosed 2026-09-30._

@@ -366,5 +366,79 @@ TMUXPANE
     *) fail "prune output displaced the summary (last stdout line: '$out')" ;;
   esac
 
+  # ---- stuck pane: the log has to say what it was stuck on ----
+  # Raycast compact mode shows only the summary line, so before the log existed
+  # a timeout reported that a pane didn't exit and nothing about why. The usual
+  # why is a permission prompt, which eats the exit keys. The stub never lets
+  # display-message report anything but `claude`, which is the only way to reach
+  # the timeout branch; CLAUDE_REFRESH_EXIT_TIMEOUT keeps that from taking 30s.
+  local reflog
+  reflog="$stubdir/refresh.log"
+  rm -f "$stubdir/claude-tcc-prune"
+  cat >"$stubdir/tmux" <<'TMUXSTUCK'
+#!/bin/sh
+case "$1" in
+  list-panes) printf '%%9\tclaude\t/tmp\t✳ probe\n' ;;
+  display-message) printf 'claude\n' ;;
+  capture-pane) printf '\n> 1. Yes\n\nDo you want to commit these changes?\n' ;;
+  *) : ;;
+esac
+exit 0
+TMUXSTUCK
+  chmod +x "$stubdir/tmux"
+  out=$(PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    CLAUDE_REFRESH_LOG="$reflog" CLAUDE_REFRESH_EXIT_TIMEOUT=1 \
+    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    bash "$CLAUDE_REFRESH" 2>/dev/null | tail -1) || true
+
+  if grep -qF 'Do you want to commit these changes?' "$reflog"; then
+    pass "a stuck pane's screen is captured into the log"
+  else
+    fail "timeout capture missing from the log (log: $(tr '\n' ' ' <"$reflog"))"
+  fi
+  # Exactly the two non-blank lines the stub pane shows. Asserting the count
+  # rather than the absence of blanks keeps this from passing vacuously if the
+  # capture stops being written at all - a real pane is mostly blank, and those
+  # blanks would otherwise push the content out of the tail window.
+  if [ "$(grep -c '^  | ' "$reflog")" -eq 2 ]; then
+    pass "capture keeps the pane's content and drops its blank lines"
+  else
+    fail "capture should hold 2 content lines (log: $(tr '\n' ' ' <"$reflog"))"
+  fi
+  # The summary is all Raycast shows, so on a failure it must name the log.
+  case "$out" in
+    "Restarted 0, skipped 0, failed 1. Detail: $reflog")
+      pass "a failing summary points at the log"
+      ;;
+    *) fail "summary should name the log on failure (got: '$out')" ;;
+  esac
+
+  # A clean run must not advertise a log nobody needs to read.
+  cat >"$stubdir/tmux" <<'TMUXCLEAN'
+#!/bin/sh
+case "$1" in
+  list-panes) printf '%%9\tclaude\t/tmp\t✳ probe\n' ;;
+  display-message) printf 'zsh\n' ;;
+  *) : ;;
+esac
+exit 0
+TMUXCLEAN
+  chmod +x "$stubdir/tmux"
+  out=$(PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    CLAUDE_REFRESH_LOG="$reflog" CLAUDE_REFRESH_EXIT_TIMEOUT=1 \
+    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    bash "$CLAUDE_REFRESH" 2>/dev/null | tail -1) || true
+  if [ "$out" = "Restarted 1, skipped 0, failed 0." ]; then
+    pass "a clean summary stays bare"
+  else
+    fail "clean summary should not name the log (got: '$out')"
+  fi
+  # Truncated per run: stale detail from an earlier failure reads as current.
+  if ! grep -qF 'Do you want to commit these changes?' "$reflog"; then
+    pass "the log is truncated at the start of each run"
+  else
+    fail "previous run's capture survived into a new run"
+  fi
+
   rm -rf "$stubdir"
 }

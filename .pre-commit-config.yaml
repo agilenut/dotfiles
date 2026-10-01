@@ -1,6 +1,15 @@
 # Pre-commit hooks for linting and formatting
-# Install: brew install pre-commit && pre-commit install && pre-commit install --hook-type pre-push
+# Install: brew install pre-commit && pre-commit install
 # Run manually: pre-commit run --all-files
+
+# `pre-commit install` with no flags only wires the pre-commit hook, so the
+# pre-push and commit-msg hooks were a separate command nobody remembers to run.
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
+
+# A hook that names no stage runs in EVERY installed stage, so wiring commit-msg
+# above would otherwise hand prettier the commit message file and fail the commit
+# on "No matching files". Hooks that want another stage still declare it.
+default_stages: [pre-commit, pre-push]
 
 # NOTE: Format and style rules should:
 # - Be defined in a single source of truth config file and checked into this repo (use .editorconfig where possible).
@@ -158,6 +167,20 @@ repos:
     rev: v8.21.2
     hooks:
       - id: gitleaks
+
+  # Commit message rules (commit-msg)
+  - repo: local
+    hooks:
+      - id: no-attribution-trailers
+        name: no attribution trailers
+        # Keyed on the stable parts. A model's display name changes; the vendor
+        # address and the session host do not, and a co-author line naming
+        # either is the trailer whatever it calls itself. The leading anchors
+        # keep a message that merely quotes the rule in prose out of it - the
+        # real lines always own theirs, emoji and all.
+        entry: bash -c 'if grep -qiE "^[[:space:]]*(co-authored-by:.*(claude|anthropic)|claude-session:)|^[^[:alnum:]]*generated with \[?claude|claude\.ai/code/session" "$1"; then echo "Attribution trailer in commit message. Remove it - once it reaches main only a history rewrite can."; exit 1; fi' --
+        language: system
+        stages: [commit-msg]
 
   # Branch protection (pre-push)
   - repo: local

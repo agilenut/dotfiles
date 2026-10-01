@@ -3,14 +3,14 @@
 # Setup MacOs specific aliases and functions.
 
 # `brew cleanup` deletes old Caskroom versions, orphaning their TCC (privacy)
-# entries; claude-tcc-prune sweeps the dead claude-code rows afterward. It skips
-# any version a process is still running, so a row can survive this sweep and
-# get collected by a later one.
+# entries. Sweeping them is a separate Raycast command, not a step here: the
+# write needs Full Disk Access, which macOS grants to the responsible process,
+# and in a tmux pane that is the tmux server (parented by launchd) rather than
+# the terminal. A sweep run from here can never see the database.
 alias brewup='\
   brew update \
   && brew upgrade \
-  && brew cleanup \
-  && claude-tcc-prune --quiet'
+  && brew cleanup'
 
 alias update='\
   sudo softwareupdate -i -a \

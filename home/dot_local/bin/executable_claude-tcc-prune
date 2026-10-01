@@ -2,6 +2,12 @@
 # -*-mode:sh-*- vim:ft=shell-script
 # shellcheck shell=bash
 
+# @raycast.schemaVersion 1
+# @raycast.title Prune Claude TCC Entries
+# @raycast.mode compact
+# @raycast.icon 🧹
+# @raycast.packageName Claude
+
 # claude-tcc-prune
 # =============================================================================
 # Removes orphaned `claude-code` entries from the user TCC (privacy) database
@@ -67,6 +73,26 @@ claude_tcc_select_orphans() {
   done
 }
 
+# Reads in-use binary paths on stdin and echoes each one, plus its pre-rename
+# spelling when a cask upgrade has renamed the live directory to
+# `<version>.upgrading`. A session running during an upgrade keeps holding
+# `.../2.1.273.upgrading/claude` while its TCC row still says
+# `.../2.1.273/claude`, and the guard below compares exact strings - so without
+# both spellings the row is pruned under a live session and immediately
+# re-prompted. Pure; sourceable for tests.
+claude_tcc_expand_inuse() {
+  local path
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    printf '%s\n' "$path"
+    case "$path" in
+      */Caskroom/claude-code/*.upgrading/claude)
+        printf '%s\n' "${path%.upgrading/claude}/claude"
+        ;;
+    esac
+  done
+}
+
 # Executable paths of every running `claude` process. A still-running session
 # whose binary was unlinked (not renamed) keeps that exact deleted path open, so
 # it shows here even though it fails the on-disk check. Side-effecting (lsof).
@@ -74,7 +100,7 @@ claude_tcc_inuse_paths() {
   local pid
   for pid in $(pgrep -x claude 2>/dev/null); do
     lsof -p "$pid" -a -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | grep -E '/claude$'
-  done | sort -u
+  done | claude_tcc_expand_inuse | sort -u
 }
 
 # Reads candidate paths on stdin, drops any that exactly match a path in the
@@ -180,7 +206,8 @@ claude_tcc_prune_main() {
         echo ""
         echo "  -l, --list     Show all claude rows in both TCC databases, then exit"
         echo "  -n, --dry-run  Show what would be removed without deleting"
-        echo "  -q, --quiet    Suppress output unless rows are pruned"
+        echo "  -q, --quiet    Suppress output unless rows are pruned, or the"
+        echo "                 database can't be read"
         echo "  -h, --help     Show this help message"
         return 0
         ;;
@@ -203,10 +230,23 @@ claude_tcc_prune_main() {
     return 0
   fi
 
-  # A trivial read doubles as the Full Disk Access probe: if the terminal lacks
+  # A trivial read doubles as the Full Disk Access probe: if the caller lacks
   # it (or the DB is missing on a fresh machine), this fails and we bail clean.
+  #
+  # Reported even under --quiet. --quiet suppresses "nothing to prune", and not
+  # being able to open the database is a different thing: it means the sweep did
+  # not happen. Both call sites pass --quiet, so silencing this made months of
+  # runs indistinguishable from runs that found nothing to do.
+  #
+  # TCC attributes access to the responsible process, which is not the terminal
+  # app when a tmux server is in the chain: the server is parented by launchd,
+  # so a pane's grant is the server's, not the window's. Raycast and Alacritty
+  # holding Full Disk Access does not carry into a tmux pane.
   if ! sqlite3 "$TCC_DB" 'SELECT 1 FROM access LIMIT 1;' >/dev/null 2>&1; then
-    [ "$quiet" = true ] || echo "claude-tcc-prune: can't read TCC.db (grant this terminal Full Disk Access); skipping"
+    echo "claude-tcc-prune: can't read TCC.db, so nothing was swept." >&2
+    echo "  Full Disk Access belongs to the responsible process. In a tmux pane" >&2
+    echo "  that is the tmux server, not the terminal window. Run this outside" >&2
+    echo "  tmux, or grant the tmux binary access." >&2
     return 0
   fi
 
