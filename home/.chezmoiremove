@@ -1,0 +1,11 @@
+# Targets to delete from the destination on `chezmoi apply`.
+#
+# claude-tcc-prune swept orphaned TCC (privacy) rows for deleted claude-code
+# versions. macOS 27 moved the user TCC database behind an entitlement no
+# third-party process can hold, so the sweep cannot work and the script was
+# removed. Without these lines a machine that already has it keeps a copy
+# forever - deleting the source only stops chezmoi managing it.
+#
+# Safe to drop once every machine has applied this. Added 2026-10-01.
+.local/bin/claude-tcc-prune
+.local/lib/dotfiles-test/tcc-prune.sh

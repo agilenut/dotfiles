@@ -2,11 +2,9 @@
 # =============================================================================
 # Setup MacOs specific aliases and functions.
 
-# `brew cleanup` deletes old Caskroom versions, orphaning their TCC (privacy)
-# entries. Sweeping them is a separate Raycast command, not a step here: the
-# write needs Full Disk Access, which macOS grants to the responsible process,
-# and in a tmux pane that is the tmux server (parented by launchd) rather than
-# the terminal. A sweep run from here can never see the database.
+# `brew cleanup` deletes old Caskroom versions, orphaning the TCC (privacy)
+# entries that pointed at them. Those have to be removed by hand now; see
+# docs/known-issues.md for why no script can do it on macOS 27.
 alias brewup='\
   brew update \
   && brew upgrade \

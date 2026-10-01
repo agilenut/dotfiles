@@ -27,13 +27,6 @@
 # tmux-resurrect restores rely on. Titles are captured BEFORE exiting claude,
 # because the shell may rewrite the title once claude is gone.
 #
-# After the restart, sweep TCC (privacy) rows orphaned by the version the panes
-# just left. claude-tcc-prune spares any version a running process still holds,
-# so those rows only become collectable once the old-version panes have exited.
-# Panes left on the old version (skipped or failed) keep their row. This is the
-# only call site that can do the sweep: it needs Full Disk Access, which belongs
-# to the responsible process, and under Raycast that is Raycast.
-#
 # Per-pane detail goes to a log file as well as stdout, because Raycast compact
 # mode shows only the final summary line - which is where a failure's cause used
 # to disappear.
@@ -266,14 +259,5 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
   # pruning. Don't replace it with an EXIT trap without re-checking both.
   refresh_status=0
   claude_refresh_main "$@" || refresh_status=$?
-  # Prune now that the old-version processes are gone. A prune failure (no Full
-  # Disk Access is the usual one) must not mask the refresh's own exit status.
-  #
-  # Output goes to stderr so the refresh summary stays the last line on stdout,
-  # which is all Raycast compact mode shows. `--quiet` still prints when it
-  # actually removes rows, by design, and that is the case this call exists for.
-  if command -v claude-tcc-prune >/dev/null 2>&1; then
-    claude-tcc-prune --quiet >&2 || true
-  fi
   exit "$refresh_status"
 fi
