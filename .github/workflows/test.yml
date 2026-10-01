@@ -82,10 +82,19 @@ jobs:
       - name: Refresh Homebrew metadata
         run: brew update || echo "brew update failed; continuing with bundled metadata"
 
+      # The cask list is emptied rather than skipped in the install script: the
+      # template already guards on it being non-empty, so this needs no branch
+      # in the install logic, and chezmoi deep-merges the override so the rest
+      # of the profile (git identity, dev tools) survives.
+      #
+      # A GUI app cannot be exercised on a headless runner, and a publisher
+      # changing a download out from under homebrew-cask's recorded checksum
+      # fails `Apply dotfiles` - which skips `Run tests` entirely and reports a
+      # red "test" check for a suite that never executed. warp did exactly that.
       - name: Apply dotfiles
         run: |
           ./bin/chezmoi init --apply --source=${{ github.workspace }} \
-            --override-data '{"profile":"personal"}'
+            --override-data '{"profile":"personal","profiles":{"personal":{"apps":{"casks":[]}}}}'
 
       - name: Run tests
         shell: zsh -i {0}
