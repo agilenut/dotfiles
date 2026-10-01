@@ -30,8 +30,13 @@
 # After the restart, sweep TCC (privacy) rows orphaned by the version the panes
 # just left. claude-tcc-prune spares any version a running process still holds,
 # so those rows only become collectable once the old-version panes have exited.
-# Panes left on the old version (skipped or failed) keep their row. brewup calls
-# the prune as well, before any pane has restarted.
+# Panes left on the old version (skipped or failed) keep their row. This is the
+# only call site that can do the sweep: it needs Full Disk Access, which belongs
+# to the responsible process, and under Raycast that is Raycast.
+#
+# Per-pane detail goes to a log file as well as stdout, because Raycast compact
+# mode shows only the final summary line - which is where a failure's cause used
+# to disappear.
 
 set -euo pipefail
 
@@ -43,9 +48,46 @@ PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin"
 # How long to wait for a pane's claude to exit before giving up on it, and how
 # often to poll. Exit keys are re-sent every reprompt_polls polls in case the
 # first C-c pair landed outside claude's confirm-exit window.
-readonly exit_timeout=10
+#
+# 30s, not 10s: a pane mid tool call doesn't exit on the first C-c (that only
+# interrupts), and a pane sitting on a permission prompt spends a pair of keys
+# dismissing it before the exit pair can land. A healthy pane exits in well
+# under a second, so the larger budget is only ever spent on stuck panes.
+# Overridable to keep the timeout branch testable without a 30s wait.
+readonly exit_timeout="${CLAUDE_REFRESH_EXIT_TIMEOUT:-30}"
 readonly poll_interval=0.2
 readonly reprompt_polls=5
+
+# Full detail for the LAST run only - truncated on each start, because the
+# question it answers is always about the run that just happened.
+readonly refresh_log="${CLAUDE_REFRESH_LOG:-${XDG_STATE_HOME:-$HOME/.local/state}/claude-refresh.log}"
+
+# Append one line to the log. Never fails the run: the log is a convenience, and
+# an unwritable state dir must not take the refresh down with it.
+claude_refresh_record() {
+  printf '%s\n' "$1" >>"$refresh_log" 2>/dev/null || true
+}
+
+# Report a line on stdout and in the log.
+claude_refresh_say() {
+  printf '%s\n' "$1"
+  claude_refresh_record "$1"
+}
+
+# Record what a stuck pane is showing, log only - it's many lines, and Raycast
+# would not show them anyway. This is the whole reason the log exists: a pane
+# that won't exit is nearly always sitting on a prompt, and its screen is the
+# only thing that says which one.
+claude_refresh_capture() {
+  local pane="$1" capture line
+  capture="$(tmux capture-pane -p -t "$pane" -S -40 2>/dev/null \
+    | grep -vE '^[[:space:]]*$' | tail -12)" || true
+  [ -n "$capture" ] || return 0
+  claude_refresh_record "  --- $pane showing ---"
+  while IFS= read -r line; do
+    claude_refresh_record "  | $line"
+  done <<<"$capture"
+}
 
 # The title parser lives in claude-restore (sourceable by design). Overridable
 # so tests can point at a checkout instead of PATH.
@@ -125,6 +167,10 @@ claude_refresh_await_shell() {
 }
 
 claude_refresh_main() {
+  mkdir -p "$(dirname "$refresh_log")" 2>/dev/null || true
+  : >"$refresh_log" 2>/dev/null || true
+  claude_refresh_record "claude-refresh $(date '+%Y-%m-%d %H:%M:%S')"
+
   local listing
   if ! listing="$(tmux list-panes -a -F $'#{pane_id}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_title}' 2>/dev/null)"; then
     echo "claude-refresh: tmux not available or no server running" >&2
@@ -143,21 +189,21 @@ claude_refresh_main() {
         names+=("$detail")
         ;;
       skip-self)
-        echo "skip      $pane  (this pane is running the refresh)"
+        claude_refresh_say "skip      $pane  (this pane is running the refresh)"
         ;;
       skip-cwd)
-        echo "skip      $pane  cwd no longer exists ($detail) - restarting would strand the pane"
+        claude_refresh_say "skip      $pane  cwd no longer exists ($detail) - restarting would strand the pane"
         skipped=$((skipped + 1))
         ;;
       skip-unnamed)
-        echo "skip      $pane  unnamed session (title: ${detail:-<empty>})"
+        claude_refresh_say "skip      $pane  unnamed session (title: ${detail:-<empty>})"
         skipped=$((skipped + 1))
         ;;
     esac
   done <<<"$plan"
 
   if [ "${#panes[@]}" -eq 0 ]; then
-    echo "No claude panes to restart."
+    claude_refresh_say "No claude panes to restart."
     return 0
   fi
 
@@ -181,26 +227,32 @@ claude_refresh_main() {
         printf -v resume_cmd 'claude -r %q' "${names[$i]}"
         if tmux send-keys -t "$pane" -l "$resume_cmd" 2>/dev/null \
           && tmux send-keys -t "$pane" Enter 2>/dev/null; then
-          echo "restarted $pane  ${names[$i]}"
+          claude_refresh_say "restarted $pane  ${names[$i]}"
           restarted=$((restarted + 1))
         else
-          echo "FAILED    $pane  ${names[$i]} (pane disappeared mid-refresh)"
+          claude_refresh_say "FAILED    $pane  ${names[$i]} (pane disappeared mid-refresh)"
           failed=$((failed + 1))
         fi
         ;;
       timeout)
-        echo "FAILED    $pane  ${names[$i]} (claude didn't exit within ${exit_timeout}s, left as is)"
+        claude_refresh_say "FAILED    $pane  ${names[$i]} (claude didn't exit within ${exit_timeout}s, left as is)"
+        claude_refresh_capture "$pane"
         failed=$((failed + 1))
         ;;
       vanished)
-        echo "FAILED    $pane  ${names[$i]} (pane disappeared mid-refresh)"
+        claude_refresh_say "FAILED    $pane  ${names[$i]} (pane disappeared mid-refresh)"
         failed=$((failed + 1))
         ;;
     esac
   done
 
-  # Last line is the summary - Raycast compact mode shows only this.
-  echo "Restarted $restarted, skipped $skipped, failed $failed."
+  # Last line is the summary - Raycast compact mode shows only this, so when
+  # anything went wrong it has to carry the pointer to where the detail is.
+  local summary="Restarted $restarted, skipped $skipped, failed $failed."
+  if [ "$failed" -gt 0 ] || [ "$skipped" -gt 0 ]; then
+    summary="$summary Detail: $refresh_log"
+  fi
+  claude_refresh_say "$summary"
   [ "$failed" -eq 0 ]
 }
 
