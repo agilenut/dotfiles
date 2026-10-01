@@ -300,7 +300,9 @@ Don't pad. Short Notes / Follow-ups sections are fine. Tone is reflective and fo
 
 ## Step 5: Output
 
-For each date in the range, write a Markdown file at `<output_dir>/<YYYY-MM-DD>.md`. Overwrite if the file exists. Also echo the content to stdout.
+For each date in the range, write a Markdown file at `<output_dir>/<YYYY-MM-DD>.md` **using the Write tool**. Overwrite if the file exists. Also echo the content to stdout.
+
+Use Write, not a shell redirect or heredoc. Recap bodies contain backticks, `$`, and quotes from commit messages and branch names, which a redirect re-interprets and silently corrupts.
 
 Create `<output_dir>` if it doesn't exist.
 
