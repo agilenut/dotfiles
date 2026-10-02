@@ -176,10 +176,6 @@
   name = "visual-studio-code"
   app  = "Visual Studio Code"
 
-[[profiles.personal.apps.casks]]
-  name = "warp"
-  app  = "Warp"
-
   # Example work profile (for reference)
   # [profiles.work.github]
   #   name = "..."

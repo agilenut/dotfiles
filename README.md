@@ -66,7 +66,7 @@ Packages and configuration are organized into profiles defined in `.chezmoidata.
 | -------------- | ------------------ | -------------------------------- |
 | **Core tools** | Global (all users) | fzf, bat, git, neovim, tmux, zsh |
 | **Dev tools**  | Profile-specific   | go, dotnet-sdk, shellcheck       |
-| **GUI apps**   | Profile-specific   | 1Password, VS Code, Warp         |
+| **GUI apps**   | Profile-specific   | 1Password, VS Code, Alfred       |
 | **Git config** | Profile-specific   | name, email, signing key         |
 
 To create a work profile, add to `.chezmoidata.toml`:

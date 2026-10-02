@@ -102,7 +102,6 @@ test_casks_installed() {
   }
 
   check_app "Visual Studio Code"
-  check_app "Warp"
   check_app "Alfred 5"
   check_app "Firefox"
   check_app "Google Chrome"
