@@ -2,7 +2,12 @@
 
 _Cross-cutting rules for collaboration, decisions, and meta-process._
 
-- When I ask a question, just answer it. Do not take action unless I ask.
+- When I ask a question (a what-if, which way is better, what's ideal),
+  answer it and discuss. Don't treat it as a request to change code. Do what
+  you need to answer it, including reading code, running checks, and
+  troubleshooting. Make code changes only when I ask.
+- When I report a bug, state the likely cause in one line, then run the
+  check that confirms or rules it out.
 - Verify claims before stating them. Don't write a guess as a
   claim. If you're unsure about intent, code behavior, file contents,
   library API, best practice, or any fact you'd need to verify,
