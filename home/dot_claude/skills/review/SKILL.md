@@ -198,7 +198,7 @@ For each reviewer, in order:
 
 Structure-presence is the discriminator, not byte count. Salvage log
 entries are monitoring data — if salvages recur across runs, the reviewer
-agent prompt needs tightening.
+agent prompt needs updating.
 
 ## Step 5: Build Atomic Findings
 
