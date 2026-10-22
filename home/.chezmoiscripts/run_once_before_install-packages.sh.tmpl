@@ -75,8 +75,19 @@ brew_cask_install() {
     return 0
   fi
 
-  echo "  → Installing $cask..."
-  brew install --cask "$cask"
+  # Retry up to 3 times. Large cask downloads over HTTP/2 occasionally hit
+  # `curl: (92) INTERNAL_ERROR` mid-stream, especially on GitHub Actions
+  # macOS runners pulling GCS-hosted artifacts (claude-code, docker, etc.).
+  local attempt
+  for attempt in 1 2 3; do
+    echo "  → Installing $cask (attempt $attempt/3)..."
+    if brew install --cask "$cask"; then
+      return 0
+    fi
+    [[ $attempt -lt 3 ]] && sleep 5
+  done
+  echo "  ✗ $cask failed after 3 attempts" >&2
+  return 1
 }
 
 section "Core Tools"
