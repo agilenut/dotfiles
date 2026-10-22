@@ -1,6 +1,6 @@
 ---
 name: voice
-description: "Use when user asks to write or rewrite content in their voice - PR comments, emails, GH issues, casual replies. Also when explicitly invoked as /voice. Applies the user's generic voice rules from the styleguide; destination-specific skills (e.g. pr-comment) layer on top."
+description: "Use when user asks to write or rewrite content in their voice - generic drafting, rewrites, casual replies, or content with no specific destination skill. Also when explicitly invoked as /voice. Destination-specific skills (pr-comment, future email-draft/gh-issue/imessage) compose this one and layer channel-specific patterns on top."
 user-invocable: true
 argument-hint: "<content to rewrite | file path | describe what to write>"
 ---
@@ -20,11 +20,15 @@ voice rules from the styleguide.
   `pr-comment` calls voice for the body, layers on PR-specific
   patterns)
 
+If the user names a destination (PR comment, email, GH issue, casual
+message) and a dedicated skill exists for it, use that skill instead -
+it loads voice's rules plus its own channel-specific file.
+
 ## Prerequisite: load the styleguide
 
-Load `~/repos/voice-samples/styleguide.md`. If it doesn't exist, the
-user hasn't cloned the private `voice-samples` repo on this machine.
-Tell them to run:
+Load `~/repos/voice-samples/styleguide/generic.md`. If the file doesn't
+exist, the user hasn't cloned the private `voice-samples` repo on this
+machine. Tell them to run:
 
 ```bash
 gh repo clone agilenut/voice-samples ~/repos/voice-samples
@@ -32,15 +36,12 @@ gh repo clone agilenut/voice-samples ~/repos/voice-samples
 
 Do not proceed without the styleguide.
 
-The styleguide is structured as:
+The styleguide is split across files in `~/repos/voice-samples/styleguide/`:
 
-- **Generic voice** - Hard rules, Context drivers, Patterns, Word
-  choice. This skill applies this section.
-- **By destination** - PR comments, emails, etc. This skill does NOT
-  apply destination-specific sections unless explicitly asked or
-  composed by a destination-specific skill.
-- **Personas** - which signature/sign-off applies if a signature is
-  being constructed.
+- `generic.md` - Hard rules, Context drivers, Patterns, Word choice,
+  Personas. This skill applies this file only.
+- `<destination>.md` (pr-comment.md, email.md, gh-issue.md, imessage.md)
+  - destination-specific patterns loaded by destination skills.
 
 ## Step 1: Identify input and destination
 
@@ -52,7 +53,7 @@ Parse the argument:
 
 Identify the destination if known (PR comment, email, GH issue,
 casual message). If unclear and it matters for the output, ask. If
-not stated and not crucial, default to a neutral peer register and
+not stated and not crucial, default to a neutral peer tone and
 ask after producing the draft.
 
 ## Step 2: Evaluate context drivers
@@ -68,19 +69,23 @@ From the styleguide's Context Drivers section, work out:
 
 These choices drive which patterns to use in Step 3.
 
-## Step 3: Apply generic voice
+## Step 3: Apply voice rules
 
-Load and apply the styleguide's Generic Voice section:
+Load and apply rules in layers:
 
-- **Hard rules** (always): no em-dashes, no banned phrases, first-person
-  verbs, don't enumerate non-issues, don't accuse author of intent
-  they didn't show, concrete scope nouns, etc.
-- **Patterns** (pick by context): hedging verbs, conversational
-  connectors, acknowledgment lead vs factual lead, action-first vs
-  observation-first, "Needs:" + bullets, comparison scope, reason-at-end,
-  short casual responses
-- **Word choice**: drop banned phrases, apply translations, watch
-  context-dependent terms
+- **Universal output rules** - `~/.claude/CLAUDE.md` Language section
+  (em-dashes, banned phrases from "Phrases I never use", concision,
+  clarity, no "Suggesting..." gerund-as-subject). Always in context.
+- **Generic voice hard rules** - `generic.md` Hard rules section
+  (currently: don't construct signatures).
+- **Generic voice patterns** - `generic.md` Patterns section. Pick
+  patterns based on the context drivers from Step 2 (hedging verbs,
+  acknowledgment lead vs factual lead, action-first vs observation-
+  first, "Needs:" + bullets, state-evidence-let-inference-land,
+  apologize-for-mistakes-not-inconvenience, short casual responses,
+  argument/persuasion style, etc.).
+- **Word choice** - `generic.md` Word choice section. Apply user-
+  specific translations and watch context-dependent terms.
 
 ## Step 4: Draft
 
@@ -100,21 +105,19 @@ Review the draft. For each sentence:
 
 **Don't strip out concrete specifics** (file names, line numbers,
 exact phrasings, fix syntax, quantified impact) - those earn their
-place. The cut-pass removes filler, not signal. See the "Scope and
-depth" rule in the styleguide.
+place. The cut-pass removes filler, not signal.
 
 ## Step 6: Validate
 
-Check the draft against hard rules:
+Scan the draft against the rules loaded in Step 3:
 
-- No em-dashes (—)
-- No " - " overuse as em-dash substitute
-- No banned phrases ("fails open", "sharp catch", "north star",
-  etc.)
-- No "Suggesting..." gerund-as-subject
+- No em-dashes (—); use " - " sparingly as a separator
+- No phrases from CLAUDE.md's "Phrases I never use" table
 - No bare role nouns for app sections ("the admin" → "the admin app")
 - First-person verbs for suggestions ("I'd suggest" not "Suggesting")
-- Specific scope nouns, not vague verbs
+- Context-dependent terms used only in appropriate contexts (per
+  `generic.md` Word choice)
+- Signatures not constructed (unless destination can't auto-add)
 
 If any violation, fix and re-validate.
 
@@ -148,4 +151,4 @@ teaches by suggesting an edit to the styleguide.
   headers, email signatures, etc.). Those live in destination-specific
   skills (`pr-comment`, etc.) that compose this one.
 - This skill does NOT do extraction or analysis of voice samples.
-  That's a separate one-time pipeline in `~/voice-samples/scripts/`.
+  That's a separate one-time pipeline in `~/repos/voice-samples/scripts/`.
