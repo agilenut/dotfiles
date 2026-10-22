@@ -21,6 +21,7 @@ source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/tmux-claude.sh"
 source "$LIB_DIR/tmux-continuum.sh"
 source "$LIB_DIR/smart_approve.sh"
+source "$LIB_DIR/reply-check.sh"
 source "$LIB_DIR/nvim-tooling.sh"
 source "$LIB_DIR/open-path.sh"
 source "$LIB_DIR/theme-palette.sh"
@@ -115,6 +116,9 @@ main() {
 
   # Smart approve hook tests
   test_smart_approve
+
+  # Reply-check Stop hook tests
+  test_reply_check
 
   # nvim project-aware tooling tests
   test_nvim_tooling

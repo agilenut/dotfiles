@@ -426,6 +426,17 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/reply-check.sh",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "WorktreeCreate": [
       {
         "hooks": [
