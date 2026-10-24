@@ -1,28 +1,28 @@
 ---
-name: voice
-description: "Use when user asks to write or rewrite content in their voice - generic drafting, rewrites, casual replies, or content with no specific destination skill. Also when explicitly invoked as /voice. Destination-specific skills (pr-comment, future email-draft/gh-issue/imessage) compose this one and layer channel-specific patterns on top."
+name: my-voice
+description: "Use when user asks to write or rewrite content in their voice - generic drafting, rewrites, casual replies, or content with no specific destination skill. Also when explicitly invoked as /my-voice. Destination-specific skills (pr-comment, future email-draft/gh-issue/imessage) compose this one and layer channel-specific patterns on top."
 user-invocable: true
 argument-hint: "<content to rewrite | file path | describe what to write>"
 ---
 
-# Voice Skill
+# My Voice Skill
 
 Rewrite or draft content in the user's voice, applying the generic
 voice rules from the styleguide.
 
 ## When to invoke
 
-- User says `/voice` with content to rewrite, a file path, or a
+- User says `/my-voice` with content to rewrite, a file path, or a
   description of what to write
 - User asks "rewrite this in my voice" / "draft this as me" / "make
   this sound like me"
 - Other skills compose this for destination-specific writing (e.g.
-  `pr-comment` calls voice for the body, layers on PR-specific
+  `pr-comment` calls `my-voice` for the body, layers on PR-specific
   patterns)
 
 If the user names a destination (PR comment, email, GH issue, casual
 message) and a dedicated skill exists for it, use that skill instead -
-it loads voice's rules plus its own channel-specific file.
+it loads `my-voice`'s rules plus its own channel-specific file.
 
 ## Prerequisite: load the styleguide
 
