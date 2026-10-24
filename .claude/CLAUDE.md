@@ -134,6 +134,21 @@ Before committing changes to this repo:
 
 Then make small, focused commits. When adding new functionality, suggest corresponding tests.
 
+## Before a PR
+
+`/pr` runs this block before creating a PR and when verifying a CI fix.
+The test script runs from the source, so the test code is the branch's.
+Some checks read applied files under `~/.config` or find the repo through
+`chezmoi source-path` (the main checkout), so apply the branch's changed
+files first when those checks matter (see Applying Changes, "From a
+worktree"). The Committing steps above run similar checks per commit,
+using the installed `dotfiles-test`.
+
+```bash
+./home/dot_local/bin/executable_dotfiles-test --auto-only
+pre-commit run --all-files
+```
+
 ## Common Tasks
 
 ```bash
