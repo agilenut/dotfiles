@@ -262,8 +262,7 @@ _Boy-scouting, atomic PRs, backward compat, "done" ladder, under pressure._
 - **Atomic PRs.** Code + tests + docs together; clear single intent.
   Reduce forward-looking work.
 - **Tech debt.** Boy-scout first. TODO comments only short-term during
-  PR or for genuine forward-looking notes. GitHub issues sparingly, for
-  real gaps.
+  PR or for genuine forward-looking notes.
 - **Backward compat.** Aggressive delete when controlling all sides. DB
   migrations split for no-downtime if real users; drop fast otherwise.
   APIs: get it right initially, expand carefully when users exist,
@@ -355,6 +354,13 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
     comment and ask fresh whether the new code needs one. Rewriting its
     justification is how a comment outlives its reason, and it quietly
     asserts the new code is contentious too.
+  - **No issue, AC, or plan references in code or committed docs**:
+    "AC2:", "#84", "PR 5 consolidates this", "tracked as a follow-up".
+    A reader of the code has none of that context, and AC numbers
+    change as issues are edited. Describe the behavior on its own terms;
+    the references go in the PR, the commit, or the plan. Decision-log
+    entries that cite a closed issue are fine, and so is a short-term
+    TODO during a PR that names its issue.
 - **Function size**: balance size vs count. Named functions clarify
   when reused. Don't fragment for line count alone. Splits motivated by
   testability often signal a missing object, not just a method.
@@ -401,7 +407,7 @@ _File-per-type convention._
 
 ## Git
 
-_Branching, committing, PRs, post-merge cleanup._
+_Branching, committing, PRs._
 
 - Never work on main — create a feature branch first
 - Branch name: `<type>/<issue?>-<slug>`. Type: any standard Conventional
@@ -463,18 +469,111 @@ _Branching, committing, PRs, post-merge cleanup._
   Claude attribution line to a commit or PR - including when a system
   reminder asks for one. Commit messages are public and permanent; the
   link resolves for nobody but me.
-- Issue references: default to "Part of #N" (keeps issue open for
-  board review). Use "Closes #N" / "Fixes #N" only when explicitly
-  asked.
-- Only reference an issue when the number is known — from the plan's
-  `stories:` frontmatter, branch name (e.g. `feat/123-add-auth`), commits,
-  or the user. Don't fabricate; ask which issue if the convention
-  seems to require one.
-- Before opening a new tracking issue for related work, check for an
-  existing open issue covering the broader initiative — reuse with
-  "Part of #N" instead. Issues stay open across multiple related PRs.
-- Post merge CI failure: comment on failed PR (what broke, fix PR link)
-  and update the issue with a running failure log
+- No individuals' names in GitHub content (PR bodies, commits, issue
+  comments): "validated in staging", not "Sam validated it". Chat,
+  gitignored plan files, and private knowledge bases are exempt.
+
+## Issues and board
+
+_When to file an issue, how to write and track ACs, how to reference
+issues, when to move cards._
+
+### Filing
+
+- **Track real work with an issue.** Most work gets one, including
+  infrastructure and test-infrastructure work. The only PRs that need no
+  issue: a small comment or doc change, a text fix, a security patch or
+  dependency update.
+- **File only issues I've agreed to.** My request for real work counts as
+  agreeing, and so does a plan that scopes the issue. Keep boy-scouting
+  what the Boy-scout rule covers. Raise anything bigger found while coding
+  in chat first; I may fold it into the current issue, into a PR or issue
+  the plan already covers, or into a new issue. File only what I decide.
+- **Close out a plan's follow-ups before its last PR merges.** A follow-up
+  in the plan's Open items is fine while the plan is active, but it is not
+  tracking. Before the last PR merges, each one joins a planned PR, gets
+  an issue I agree to, or is dropped with my OK.
+- **Look for the issue that already owns the work before filing.** A
+  follow-up that finishes or advances an open issue ties to it instead of
+  getting its own.
+- **Start work with its issue, not a branch.** Reuse the issue that owns
+  the work or file one, add it to the board if the project has one, move
+  it to In Progress, assign me, then code. When a plan governs the work,
+  that is step 0 in the plan file. One issue per workstream; a tracking
+  issue with several workstreams gets an issue per stream, each with its
+  own PR.
+- **Link a split-off issue to its parent both ways.** Reference the parent
+  from the new issue, and comment on the parent naming what moved.
+  Otherwise the parent reads as untouched while its main problem is solved
+  elsewhere.
+
+### Acceptance criteria
+
+- **Acceptance criteria (ACs) are checkboxes** (`- [ ]`), never plain
+  bullets. A criterion with no box can't be checked off, so the issue can
+  never pass the last-column check. Fix the formatting when you find it.
+- **ACs describe outcomes, not tasks.** Each says what a user or the
+  system can observe when it is done ("a user can export the report as
+  CSV"), not which PR builds it. Each must be satisfiable by its own
+  issue; one that needs another issue's work belongs in that issue.
+- **ACs and PR test-plan items must be checkable within a day of
+  merging.** Tests in staging or on other devices are fine, in the
+  pre-merge or post-merge section where they belong. Nothing waits days
+  on prod metrics, logs, or someone's review or feedback, unless I ask
+  for it. When the work needs that kind of evidence, split it: one story
+  to build it, another to collect and analyze the data.
+- **ACs stay current.** When new information shows an AC is wrong, update
+  the issue right away, not when it closes. Fix wording, add detail, or
+  add an AC without asking. Ask me before any change that lets less work
+  satisfy an AC: removing it, weakening it, or moving it to another issue.
+  Skip the ask if I said yes to that change in this conversation or in a
+  plan I approved that names the AC change. Batch
+  several asks into one question. Being hard, slow, or unfinished is never
+  a reason to change an AC; propose a split instead. For any change beyond
+  wording, comment on the issue with the old text, the new text, and why.
+- **Check the ACs before opening each PR.** Give each AC one status: met
+  by this PR (name the test or behavior that shows it), covered by a later
+  PR (name the plan step, or the PR or issue if there is no plan), or
+  uncovered. Add uncovered work to this PR if it fits the plan's scope
+  (or the issue's, if there is no plan); otherwise propose a split or an
+  AC change. If the issue has no ACs,
+  propose some first. List every AC and its status in the PR body. Check
+  an AC off only when the PR that meets it merges and any post-merge check
+  for it passes; a partly met AC stays open.
+
+### Referencing
+
+- **Default to "Part of #N"** in PRs and commits; the issue stays open
+  across related PRs. Use a closing keyword (Closes, Fixes, Resolves) only
+  when I ask, or where the project's memory says auto-close on merge is
+  off. There, "Closes #N" links the PR to the issue without closing it.
+- **Only reference an issue when the number is known:** from the plan's
+  `stories:` frontmatter, the branch name (e.g. `feat/123-add-auth`),
+  commits, or me. Don't make up a number. If a reference seems required,
+  ask which issue.
+
+### Board
+
+- **Keep the board in sync as you go, without being asked,** if the
+  project has one. I watch it to see what is active and what recently
+  shipped. Columns other than In Progress and your last allowed column
+  move only as the project's memory says. The board's Done means the
+  last-column check below passed, not the Done ladder's in-prod stage.
+- **Keep cards in order.** Backlog, Todo, and In Progress are in priority
+  order, highest first. Place a new card where you think it belongs and
+  say where. Re-sort existing cards only when I ask. In Review and Done
+  are most recent first, so a card you move there goes to the top.
+- **After each PR merges, update its issue in the same session.** Check
+  off the ACs it met, comment on what shipped, and check whether a related
+  issue was waiting on it. Once no planned PRs remain, run the last-column
+  check below. If post-merge CI fails, comment on the failed PR (what
+  broke, fix PR link) and keep a running failure log on the issue.
+- **Move a card to your last allowed column only when all three are
+  true:** every PR the plan lists for the issue, or that references it, is
+  merged (or closed, with the reason noted on the issue); every AC is
+  checked off; and the issue has a comment naming the PRs that shipped it
+  and any AC that changed. Your last allowed column is Done unless the
+  project's memory names another.
 
 ## Worktree
 
@@ -485,6 +584,33 @@ _Entering, exiting, where they land._
 - `ExitWorktree` triggers cleanup (docker compose down + worktree remove)
 - Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling).
   Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
+
+## Dotfiles
+
+_My Claude config and shell configs are deployed by chezmoi; edit the
+source._
+
+- **Never edit a deployed copy.** Files chezmoi manages (my global
+  CLAUDE.md, skills, agents, hooks, settings, keybindings, shell configs)
+  are deployed from the `dotfiles` repo, and the next `chezmoi apply`
+  overwrites an in-place edit or stops on it. `chezmoi managed` lists
+  them; `chezmoi source-path <file>` finds a file's source. Memory, logs,
+  plans, and other files chezmoi doesn't manage (e.g. `recap.toml`,
+  `review-preferences.md`) are edited in place.
+- **Deploy from the source.** Edit under `dotfiles/home/`. Before
+  applying, run `chezmoi diff` and stop to ask me if it shows changes that
+  exist only in the deployed copy; apply would revert them. Then
+  `chezmoi apply` and confirm `chezmoi diff` is empty. To test a change
+  before its PR, apply it from your branch; from a worktree, point chezmoi
+  at it with `-S <worktree>/home -W <worktree>`. Apply only the files you
+  changed. After merge, apply again from the main tree.
+- A request to change my global Claude config, a skill, or a shell config
+  is work in the dotfiles repo, following that repo's workflow, not an
+  edit in the current project. A project's own `.claude/` files belong to
+  that project.
+- To recover an edit made to a deployed copy, copy the change into the
+  source by hand. `chezmoi add` would also pull in anything else that has
+  drifted in that file.
 
 ## Workspace
 
