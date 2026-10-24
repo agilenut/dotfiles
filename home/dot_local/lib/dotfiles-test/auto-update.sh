@@ -323,11 +323,33 @@ test_topgrade_config() {
   else
     pass "dry run runs neither chezmoi update nor docker pull"
   fi
-  if grep -q 'dotfiles-drift' <<<"$dry" && grep -q 'docker-pull-compose' <<<"$dry" \
-    && grep -q 'upgrade-strategy eager' <<<"$dry"; then
-    pass "dry run includes the drift, compose-pull, and eager pipx commands"
+  if grep -q 'dotfiles-drift' <<<"$dry" && grep -q 'docker-pull-compose' <<<"$dry"; then
+    pass "dry run includes the drift and compose-pull commands"
   else
     fail "dry run is missing a replacement command"
+  fi
+  # A dry run lists only `uv self update`; the real step goes on to
+  # `uv tool upgrade --all` and `uv python upgrade`.
+  if grep -q 'uv self update' <<<"$dry"; then
+    pass "dry run includes the uv step"
+  else
+    fail "dry run is missing the uv step (CLI tools won't upgrade)"
+  fi
+}
+
+# CLI tools install with `uv tool install`, which topgrade's uv step
+# upgrades. A pipx app would be missed by it.
+test_no_pipx_apps() {
+  section "pipx apps"
+
+  local apps=""
+  if command -v pipx &>/dev/null; then
+    apps="$(pipx list --short 2>/dev/null || true)"
+  fi
+  if [[ -n "$apps" ]]; then
+    fail "pipx apps installed; move them to \`uv tool install\`: $(tr '\n' ' ' <<<"$apps")"
+  else
+    pass "no pipx apps installed"
   fi
 }
 

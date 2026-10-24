@@ -31,6 +31,7 @@
     "topgrade",
     "tree",
     "tree-sitter-cli",
+    "uv",
     "zoxide",
     "zsh",
   ]

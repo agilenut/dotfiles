@@ -111,6 +111,7 @@ main() {
   test_dotfiles_drift
   test_docker_pull_compose
   test_topgrade_config
+  test_no_pipx_apps
   test_update_alias
 
   # Worktree hook tests

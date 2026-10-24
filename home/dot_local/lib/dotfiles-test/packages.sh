@@ -45,6 +45,7 @@ test_commands_installed() {
       "shfmt"
       "topgrade"
       "tree-sitter"
+      "uv"
     )
   fi
 

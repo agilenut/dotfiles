@@ -2,8 +2,8 @@
 # =============================================================================
 # Setup MacOs specific aliases and functions.
 
-# Upgrades everything topgrade detects (brew, mise, pipx, App Store, macOS,
-# ...); see ~/.config/topgrade.toml for the steps it skips.
+# Upgrades everything topgrade detects (brew, mise, uv tools, App Store,
+# macOS, ...); see ~/.config/topgrade.toml for the steps it skips.
 alias update='topgrade'
 
 alias dns-flush='sudo killall -HUP mDNSResponder'
