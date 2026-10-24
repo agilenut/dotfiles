@@ -70,12 +70,13 @@ become knowledge - you extract knowledge from them.
 substance in an embedded image or attachment (a screenshot, a signed PDF, a
 diagram), not the body text. Don't treat an attachment as opaque provenance,
 and don't assume a referenced file just repeats the note that mentions it -
-open it. For an `.eml`, an inline image is a base64 MIME part: find the
-`Content-Type: image/...` part, decode its base64 block to a file, and read it.
-Fold what it shows into the distilled note; the raw stays in `sources/`.
+open it. For an `.eml`, an inline image is usually a base64 MIME part: find the
+`Content-Type: image/...` part and decode its base64 block to a file (`base64
+-D` on macOS); other attachments may carry a different encoding. Fold what it
+shows into the distilled note; the raw stays in `sources/`.
 
 Ingesting a meeting or Teams transcript is its own small procedure (getting the
-file is often the hard part): see `references/teams-transcript-ingest.md`.
+file is often the hard part): see `~/.claude/references/teams-transcript-ingest.md`.
 
 ### `tags`
 
@@ -92,22 +93,27 @@ for any proper noun.
 
 ## Naming
 
-_File stem by type: dated events get a date prefix; stable references don't._
+_Stem by type. One-off dated events take a date prefix; stable references take
+a topic slug; recurring and batched records have their own forms._
 
-- **Dated events** - `meeting`, `decision`, `record`, and dated items like
-  invoices or email threads - get a `YYYY-MM-DD-<slug>` stem.
-- **Stable references** - `reference`, `runbook`, `profile`, `synthesis`,
-  `idea` - get a `<topic-slug>` stem, no date.
+- **One-off dated event** - a `meeting`, a `decision`, an invoice, a single
+  `record` - takes a `YYYY-MM-DD-<slug>` prefix.
+- **Stable reference** - `reference`, `runbook`, `profile`, `synthesis`,
+  `idea`, `assessment`, `troubleshooting` - takes a `<topic-slug>`, no date.
+- **Recurring readout, one file per period** - a cost or usage snapshot you
+  re-take on a schedule - takes a date _suffix_ so the topic sorts first:
+  `<topic>-YYYY-MM` (or `-YYYY-MM-DD` for day-grain).
+- **A batch of records for one period** - several files belonging to the same
+  month - group under a dated folder (`billing/2026-07/`) with plain
+  `<topic-slug>` files inside.
 - **A raw source shares the stem of the note it feeds**, so the pair sits
-  together (a transcript and its meeting note share one stem).
-- **A point-in-time snapshot takes a date even when it reads like reference.**
-  A dated snapshot of otherwise-stable material (a usage or cost readout, a
-  review done on a date) is really a `record`, or a `reference` pinned to a
-  moment. Prefix it `YYYY-MM-DD-`, or use a date _suffix_
-  (`running-costs-2026-10`) when you want the topic to sort first.
-- **A dated batch can carry its date in the folder, not each filename.** A
-  month of like records groups under a dated folder (e.g. `billing/2026-07/`)
-  and the files inside use plain `<topic-slug>` stems.
+  together (a transcript and its meeting note share one stem). A standalone
+  capture that feeds no note takes a descriptive `<topic-slug>`.
+
+**Date it or not?** Date a note when its content is a state that goes stale and
+gets superseded by a fresh version (a cost readout, a usage snapshot, a review
+as-of a date). Leave it undated when it's an evergreen fact you correct in
+place.
 
 ## What to store - the threshold
 

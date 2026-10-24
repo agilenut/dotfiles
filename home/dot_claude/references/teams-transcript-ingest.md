@@ -47,6 +47,13 @@ This turns `<v Jane Doe>text</v>` cues into `Jane Doe: text`, dropping the
 timestamp noise and cutting read cost by roughly 4x. A long transcript may
 still exceed one read - read it in chunks.
 
+Two things the strip drops silently: a cue with no `<v>` speaker tag, and the
+continuation lines of a cue whose text wraps onto the next line. Teams usually
+emits single-line, speaker-tagged cues, so this is intermittent - catch it by
+comparing the cue count to the stripped line count (`grep -c -- '-->'
+transcript.vtt` against `wc -l` of the output); a large gap means cues were
+dropped.
+
 ## Speaker attribution
 
 _The VTT labels are not trustworthy. Verify against content; caveat what you
@@ -62,8 +69,8 @@ can't verify._
 
 When labels are clean and match the attendees, attribute directly. When a room
 device, missing labels, or a suspect tag is in play, infer from content and
-role, and add a short speaker-caveat note at the top of the distilled note
-explaining the inference. Never invent precision you don't have.
+role, and record the uncertainty in the note's source-caveats section (below).
+Never invent precision you don't have.
 
 ## Distilling into a note
 
