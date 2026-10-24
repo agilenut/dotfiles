@@ -584,6 +584,26 @@ _Entering, exiting, where they land._
 - Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling).
   Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
 
+## Dotfiles
+
+_My Claude config and shell configs are deployed by chezmoi; edit the
+source._
+
+- **Never edit a deployed copy.** `~/.claude/**` (CLAUDE.md, skills,
+  agents, hooks, settings, keybindings) and the shell configs are deployed
+  by chezmoi from the `dotfiles` repo, and the next `chezmoi apply`
+  overwrites an in-place edit or stops on it. Edit the source under
+  `dotfiles/home/`, apply, then confirm `chezmoi diff` is empty.
+  `chezmoi source-path <file>` finds the source.
+- Local config that chezmoi doesn't manage (e.g. `recap.toml`,
+  `review-preferences.md`) is edited in place.
+- A request to change my Claude config, a skill, or a shell config is
+  work in the dotfiles repo, with its own issue and PR, not an edit in the
+  current project.
+- To recover an edit made to a deployed copy, copy the change into the
+  source by hand. `chezmoi add` would also pull in anything else that has
+  drifted in that file.
+
 ## Workspace
 
 _Where plans and reviews live; resolution order for plans directory._
