@@ -1,6 +1,6 @@
 ---
 name: pr-comment
-description: "Use when user says /pr-comment, wants to leave a PR review comment, or asks to draft a comment for a PR. Drafts single inline or PR-level comments using voice + PR-specific styleguide patterns, optionally with a suggestion block. Confirms before posting unless --auto-post."
+description: "Use when user says /pr-comment, wants to leave a PR review comment, or asks to draft a comment for a PR. Drafts single inline or PR-level comments using the my-voice skill + PR-specific styleguide patterns, optionally with a suggestion block. Confirms before posting unless --auto-post."
 user-invocable: true
 argument-hint: '"<description>" [PR#] [file:line] [--auto-post] [--fix-file <path>] [--dry-run]'
 ---
@@ -139,7 +139,8 @@ prose-only.
 
 ## Step 4: Draft the comment
 
-Apply the voice skill's process (its Step 3) for generic rules, then
+Apply the `my-voice` skill's process (Step 3 of
+`~/.claude/skills/my-voice/SKILL.md`) for generic rules, then
 layer the pr-comment styleguide's patterns on top. Key choices driven
 by context:
 
@@ -162,8 +163,8 @@ UI.
 
 ## Step 5: Cut-pass and validate
 
-Run the voice skill's Step 5 (Cut-pass) and Step 6 (Validate) on the
-drafted comment. Voice owns the full checklist; keeping it there avoids
+Run the `my-voice` skill's Step 5 (Cut-pass) and Step 6 (Validate) on the
+drafted comment. `my-voice` owns the full checklist; keeping it there avoids
 drift when it grows new rules.
 
 ## Step 6: Confirm (skip if --auto-post)

@@ -9,3 +9,10 @@
 # Safe to drop once every machine has applied this. Added 2026-10-01.
 .local/bin/claude-tcc-prune
 .local/lib/dotfiles-test/tcc-prune.sh
+
+# The voice skill was renamed to my-voice because its /voice name hid Claude
+# Code's built-in /voice dictation command. Deleting the old target makes the
+# built-in command reachable again.
+#
+# Safe to drop once every machine has applied this. Added 2026-10-23.
+.claude/skills/voice

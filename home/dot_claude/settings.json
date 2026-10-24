@@ -466,6 +466,10 @@
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
   "skipWorkflowUsageWarning": true,
+  "voice": {
+    "enabled": true,
+    "mode": "tap"
+  },
   "autoMode": {
     "environment": [
       "**Organization**: None configured",
