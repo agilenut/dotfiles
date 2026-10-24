@@ -356,10 +356,11 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
     asserts the new code is contentious too.
   - **No issue, AC, or plan references in code or committed docs**:
     "AC2:", "#84", "PR 5 consolidates this", "tracked as a follow-up".
-    A reader of the code has none of that context, and the numbers
+    A reader of the code has none of that context, and AC numbers
     change as issues are edited. Describe the behavior on its own terms;
     the references go in the PR, the commit, or the plan. Decision-log
-    entries that cite a closed issue are fine.
+    entries that cite a closed issue are fine, and so is a short-term
+    TODO during a PR that names its issue.
 - **Function size**: balance size vs count. Named functions clarify
   when reused. Don't fragment for line count alone. Splits motivated by
   testability often signal a missing object, not just a method.
@@ -470,7 +471,7 @@ _Branching, committing, PRs._
   link resolves for nobody but me.
 - No individuals' names in GitHub content (PR bodies, commits, issue
   comments): "validated in staging", not "Sam validated it". Chat,
-  plan files, and private knowledge bases are exempt.
+  gitignored plan files, and private knowledge bases are exempt.
 
 ## Issues and board
 
@@ -481,8 +482,8 @@ issues, when to move cards._
 
 - **Track real work with an issue.** Most work gets one, including
   infrastructure and test-infrastructure work. The only PRs that need no
-  issue: a small comment or doc change, a text fix, a security PR, a
-  dependency PR.
+  issue: a small comment or doc change, a text fix, a security patch or
+  dependency update.
 - **File only issues I've agreed to.** My request for real work counts as
   agreeing, and so does a plan that scopes the issue. Keep boy-scouting
   what the Boy-scout rule covers. Raise anything bigger found while coding
@@ -497,9 +498,10 @@ issues, when to move cards._
   getting its own.
 - **Start work with its issue, not a branch.** Reuse the issue that owns
   the work or file one, add it to the board if the project has one, move
-  it to In Progress, assign me, then code. When a plan governs the work, that is step 0 in
-  the plan file. One issue per workstream; a tracking issue with
-  several workstreams gets an issue per stream, each with its own PR.
+  it to In Progress, assign me, then code. When a plan governs the work,
+  that is step 0 in the plan file. One issue per workstream; a tracking
+  issue with several workstreams gets an issue per stream, each with its
+  own PR.
 - **Link a split-off issue to its parent both ways.** Reference the parent
   from the new issue, and comment on the parent naming what moved.
   Otherwise the parent reads as untouched while its main problem is solved
@@ -522,19 +524,19 @@ issues, when to move cards._
   to build it, another to collect and analyze the data.
 - **ACs stay current.** When new information shows an AC is wrong, update
   the issue right away, not when it closes. Fix wording, add detail, or
-  add an AC without asking. Ask me before any change that
-  lets less work satisfy an AC: removing it, weakening it, or moving it to
-  another issue. Skip the ask if I said yes to that change in this
-  conversation or in a plan I approved that names the AC change. Batch
+  add an AC without asking. Ask me before any change that lets less work
+  satisfy an AC: removing it, weakening it, or moving it to another issue.
+  Skip the ask if I said yes to that change in this conversation or in a
+  plan I approved that names the AC change. Batch
   several asks into one question. Being hard, slow, or unfinished is never
   a reason to change an AC; propose a split instead. For any change beyond
   wording, comment on the issue with the old text, the new text, and why.
 - **Check the ACs before opening each PR.** Give each AC one status: met
   by this PR (name the test or behavior that shows it), covered by a later
   PR (name the plan step, or the PR or issue if there is no plan), or
-  uncovered. Add uncovered work to this PR if
-  it fits the plan's scope (or the issue's, if there is no plan);
-  otherwise propose a split or an AC change. If the issue has no ACs,
+  uncovered. Add uncovered work to this PR if it fits the plan's scope
+  (or the issue's, if there is no plan); otherwise propose a split or an
+  AC change. If the issue has no ACs,
   propose some first. List every AC and its status in the PR body. Check
   an AC off only when the PR that meets it merges and any post-merge check
   for it passes; a partly met AC stays open.
@@ -554,10 +556,9 @@ issues, when to move cards._
 
 - **Keep the board in sync as you go, without being asked,** if the
   project has one. I watch it to see what is active and what recently
-  shipped. Columns other than In
-  Progress and your last allowed column move only as the project's memory
-  says. The board's Done means the last-column check below passed, not the
-  Done ladder's in-prod stage.
+  shipped. Columns other than In Progress and your last allowed column
+  move only as the project's memory says. The board's Done means the
+  last-column check below passed, not the Done ladder's in-prod stage.
 - **Keep cards in order.** Backlog, Todo, and In Progress are in priority
   order, highest first. Place a new card where you think it belongs and
   say where. Re-sort existing cards only when I ask. In Review and Done
@@ -589,17 +590,23 @@ _Entering, exiting, where they land._
 _My Claude config and shell configs are deployed by chezmoi; edit the
 source._
 
-- **Never edit a deployed copy.** `~/.claude/**` (CLAUDE.md, skills,
-  agents, hooks, settings, keybindings) and the shell configs are deployed
-  by chezmoi from the `dotfiles` repo, and the next `chezmoi apply`
-  overwrites an in-place edit or stops on it. Edit the source under
-  `dotfiles/home/`, apply, then confirm `chezmoi diff` is empty.
-  `chezmoi source-path <file>` finds the source.
-- Local config that chezmoi doesn't manage (e.g. `recap.toml`,
-  `review-preferences.md`) is edited in place.
-- A request to change my Claude config, a skill, or a shell config is
-  work in the dotfiles repo, with its own issue and PR, not an edit in the
-  current project.
+- **Never edit a deployed copy.** Files chezmoi manages (my global
+  CLAUDE.md, skills, agents, hooks, settings, keybindings, shell configs)
+  are deployed from the `dotfiles` repo, and the next `chezmoi apply`
+  overwrites an in-place edit or stops on it. `chezmoi managed` lists
+  them; `chezmoi source-path <file>` finds a file's source. Memory, logs,
+  plans, and other files chezmoi doesn't manage (e.g. `recap.toml`,
+  `review-preferences.md`) are edited in place.
+- **Deploy from the source.** Edit under `dotfiles/home/`. Before
+  applying, run `chezmoi diff` and stop to ask me if it shows changes that
+  exist only in the deployed copy; apply would revert them. Then
+  `chezmoi apply` and confirm `chezmoi diff` is empty. chezmoi reads the
+  main tree's checkout, so changes made in a worktree deploy only once
+  they reach the main tree.
+- A request to change my global Claude config, a skill, or a shell config
+  is work in the dotfiles repo, following that repo's workflow, not an
+  edit in the current project. A project's own `.claude/` files belong to
+  that project.
 - To recover an edit made to a deployed copy, copy the change into the
   source by hand. `chezmoi add` would also pull in anything else that has
   drifted in that file.
