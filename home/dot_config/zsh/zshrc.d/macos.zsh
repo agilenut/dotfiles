@@ -2,18 +2,9 @@
 # =============================================================================
 # Setup MacOs specific aliases and functions.
 
-# `brew cleanup` deletes old Caskroom versions, orphaning the TCC (privacy)
-# entries that pointed at them. Those have to be removed by hand now; see
-# docs/known-issues.md for why no script can do it on macOS 27.
-alias brewup='\
-  brew update \
-  && brew upgrade \
-  && brew cleanup'
-
-alias update='\
-  sudo softwareupdate -i -a \
-  && brewup \
-  && oh-my-posh upgrade'
+# Upgrades everything topgrade detects (brew, mise, pipx, App Store, macOS,
+# ...); see ~/.config/topgrade.toml for the steps it skips.
+alias update='topgrade'
 
 alias dns-flush='sudo killall -HUP mDNSResponder'
 

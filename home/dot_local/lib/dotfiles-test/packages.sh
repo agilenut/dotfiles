@@ -37,11 +37,13 @@ test_commands_installed() {
       "git-credential-manager"
       "git-ignore"
       "go"
+      "mas"
       "oh-my-posh"
       "op"
       "pwsh"
       "shellcheck"
       "shfmt"
+      "topgrade"
       "tree-sitter"
     )
   fi

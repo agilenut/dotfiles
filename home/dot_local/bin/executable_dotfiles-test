@@ -18,6 +18,7 @@ source "$LIB_DIR/utils.sh"
 source "$LIB_DIR/packages.sh"
 source "$LIB_DIR/shell.sh"
 source "$LIB_DIR/mise.sh"
+source "$LIB_DIR/auto-update.sh"
 source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/tmux-claude.sh"
 source "$LIB_DIR/tmux-continuum.sh"
@@ -105,6 +106,12 @@ main() {
 
   # mise global config
   test_mise_config
+
+  # Auto-update tooling
+  test_dotfiles_drift
+  test_docker_pull_compose
+  test_topgrade_config
+  test_update_alias
 
   # Worktree hook tests
   test_worktree_lib

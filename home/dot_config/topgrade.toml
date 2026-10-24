@@ -1,0 +1,28 @@
+# topgrade config
+# =============================================================================
+# `update` runs topgrade with this config. Every step topgrade detects runs
+# except the ones disabled below, so newly installed tools get upgraded
+# without being listed here.
+
+[misc]
+  # Each disabled step is replaced:
+  #   chezmoi    - `chezmoi update` pulls and applies unattended; the "Dotfiles
+  #                drift" command reports drift instead
+  #   containers - pulls every local tag, including locally built ones; the
+  #                "Compose images" command (docker-pull-compose) instead
+  #   pipx       - plain `upgrade-all` leaves app dependencies behind; the
+  #                "pipx" command upgrades them too
+  #   uv         - installed through pipx, which upgrades it
+  disable = [ "chezmoi", "containers", "pipx", "uv" ]
+
+  # Run custom commands after the package managers, so drift reflects any
+  # config a tool rewrote during its upgrade.
+  last = [ "custom_commands" ]
+
+  # Homebrew upgrades topgrade.
+  no_self_update = true
+
+[commands]
+  "pipx"           = "pipx upgrade-all --include-injected --pip-args='--upgrade-strategy eager'"
+  "Compose images" = "docker-pull-compose"
+  "Dotfiles drift" = "dotfiles-drift"
