@@ -86,6 +86,15 @@ pre-commit run --all-files
 
 - **Safe to auto-apply**: Env var changes, config additions, test updates
 - **Ask before applying**: Scripts, macOS defaults, system-wide changes
+- **From a worktree**: the configured source is the main checkout, so
+  point chezmoi at the worktree and name only the files you changed. A
+  broad apply from a branch also deploys anything else that differs
+  between that branch and the deployed copies.
+
+```bash
+chezmoi -S "$PWD/home" -W "$PWD" diff ~/.claude/CLAUDE.md
+chezmoi -S "$PWD/home" -W "$PWD" apply -v ~/.claude/CLAUDE.md
+```
 
 ### Theme Changes
 

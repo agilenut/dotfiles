@@ -600,9 +600,10 @@ source._
 - **Deploy from the source.** Edit under `dotfiles/home/`. Before
   applying, run `chezmoi diff` and stop to ask me if it shows changes that
   exist only in the deployed copy; apply would revert them. Then
-  `chezmoi apply` and confirm `chezmoi diff` is empty. chezmoi reads the
-  main tree's checkout, so changes made in a worktree deploy only once
-  they reach the main tree.
+  `chezmoi apply` and confirm `chezmoi diff` is empty. To test a change
+  before its PR, apply it from your branch; from a worktree, point chezmoi
+  at it with `-S <worktree>/home -W <worktree>`. Apply only the files you
+  changed. After merge, apply again from the main tree.
 - A request to change my global Claude config, a skill, or a shell config
   is work in the dotfiles repo, following that repo's workflow, not an
   edit in the current project. A project's own `.claude/` files belong to
