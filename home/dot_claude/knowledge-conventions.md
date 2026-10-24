@@ -66,6 +66,17 @@ A raw artifact and the knowledge drawn from it are SEPARATE, linked notes: the
 `synthesis`/`decision`/`meeting` note links `[[the source]]`. Artifacts don't
 become knowledge - you extract knowledge from them.
 
+**Attachments carry content - read them.** An email or document often puts the
+substance in an embedded image or attachment (a screenshot, a signed PDF, a
+diagram), not the body text. Don't treat an attachment as opaque provenance,
+and don't assume a referenced file just repeats the note that mentions it -
+open it. For an `.eml`, an inline image is a base64 MIME part: find the
+`Content-Type: image/...` part, decode its base64 block to a file, and read it.
+Fold what it shows into the distilled note; the raw stays in `sources/`.
+
+Ingesting a meeting or Teams transcript is its own small procedure (getting the
+file is often the hard part): see `references/teams-transcript-ingest.md`.
+
 ### `tags`
 
 Subjects (the topic: `api`, `auth`, `taxes`, `networking`, `mac`) plus a few
@@ -78,6 +89,17 @@ existing tag before inventing one. Subjects and flags only - never lifecycle
 Entities - people, products, vendors, repos - get a node; notes link to them.
 This makes the graph queryable without tag soup. Prefer a relation over a tag
 for any proper noun.
+
+## Naming
+
+_File stem by type: dated events get a date prefix; stable references don't._
+
+- **Dated events** - `meeting`, `decision`, `record`, and dated items like
+  invoices or email threads - get a `YYYY-MM-DD-<slug>` stem.
+- **Stable references** - `reference`, `runbook`, `profile`, `synthesis`,
+  `idea` - get a `<topic-slug>` stem, no date.
+- **A raw source shares the stem of the note it feeds**, so the pair sits
+  together (a transcript and its meeting note share one stem).
 
 ## What to store - the threshold
 
