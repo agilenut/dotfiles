@@ -66,6 +66,18 @@ A raw artifact and the knowledge drawn from it are SEPARATE, linked notes: the
 `synthesis`/`decision`/`meeting` note links `[[the source]]`. Artifacts don't
 become knowledge - you extract knowledge from them.
 
+**Attachments carry content - read them.** An email or document often puts the
+substance in an embedded image or attachment (a screenshot, a signed PDF, a
+diagram), not the body text. Don't treat an attachment as opaque provenance,
+and don't assume a referenced file just repeats the note that mentions it -
+open it. For an `.eml`, an inline image is usually a base64 MIME part: find the
+`Content-Type: image/...` part and decode its base64 block to a file (`base64
+-D` on macOS); other attachments may carry a different encoding. Fold what it
+shows into the distilled note; the raw stays in `sources/`.
+
+Ingesting a meeting or Teams transcript is its own small procedure (getting the
+file is often the hard part): see `~/.claude/references/teams-transcript-ingest.md`.
+
 ### `tags`
 
 Subjects (the topic: `api`, `auth`, `taxes`, `networking`, `mac`) plus a few
@@ -78,6 +90,30 @@ existing tag before inventing one. Subjects and flags only - never lifecycle
 Entities - people, products, vendors, repos - get a node; notes link to them.
 This makes the graph queryable without tag soup. Prefer a relation over a tag
 for any proper noun.
+
+## Naming
+
+_Stem by type. One-off dated events take a date prefix; stable references take
+a topic slug; recurring and batched records have their own forms._
+
+- **One-off dated event** - a `meeting`, a `decision`, an invoice, a single
+  `record` - takes a `YYYY-MM-DD-<slug>` prefix.
+- **Stable reference** - `reference`, `runbook`, `profile`, `synthesis`,
+  `idea`, `assessment`, `troubleshooting` - takes a `<topic-slug>`, no date.
+- **Recurring readout, one file per period** - a cost or usage snapshot you
+  re-take on a schedule - takes a date _suffix_ so the topic sorts first:
+  `<topic>-YYYY-MM` (or `-YYYY-MM-DD` for day-grain).
+- **A batch of records for one period** - several files belonging to the same
+  month - group under a dated folder (`billing/2026-07/`) with plain
+  `<topic-slug>` files inside.
+- **A raw source shares the stem of the note it feeds**, so the pair sits
+  together (a transcript and its meeting note share one stem). A standalone
+  capture that feeds no note takes a descriptive `<topic-slug>`.
+
+**Date it or not?** Date a note when its content is a state that goes stale and
+gets superseded by a fresh version (a cost readout, a usage snapshot, a review
+as-of a date). Leave it undated when it's an evergreen fact you correct in
+place.
 
 ## What to store - the threshold
 
