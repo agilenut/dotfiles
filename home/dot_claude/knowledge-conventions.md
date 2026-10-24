@@ -100,6 +100,14 @@ _File stem by type: dated events get a date prefix; stable references don't._
   `idea` - get a `<topic-slug>` stem, no date.
 - **A raw source shares the stem of the note it feeds**, so the pair sits
   together (a transcript and its meeting note share one stem).
+- **A point-in-time snapshot takes a date even when it reads like reference.**
+  A dated snapshot of otherwise-stable material (a usage or cost readout, a
+  review done on a date) is really a `record`, or a `reference` pinned to a
+  moment. Prefix it `YYYY-MM-DD-`, or use a date _suffix_
+  (`running-costs-2026-10`) when you want the topic to sort first.
+- **A dated batch can carry its date in the folder, not each filename.** A
+  month of like records groups under a dated folder (e.g. `billing/2026-07/`)
+  and the files inside use plain `<topic-slug>` stems.
 
 ## What to store - the threshold
 
