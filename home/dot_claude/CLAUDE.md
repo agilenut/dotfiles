@@ -354,6 +354,12 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
     comment and ask fresh whether the new code needs one. Rewriting its
     justification is how a comment outlives its reason, and it quietly
     asserts the new code is contentious too.
+  - **No issue, AC, or plan references in code or committed docs**:
+    "AC2:", "#84", "PR 5 consolidates this", "tracked as a follow-up".
+    A reader of the code has none of that context, and the numbers
+    change as issues are edited. Describe the behavior on its own terms;
+    the references go in the PR, the commit, or the plan. Decision-log
+    entries that cite a closed issue are fine.
 - **Function size**: balance size vs count. Named functions clarify
   when reused. Don't fragment for line count alone. Splits motivated by
   testability often signal a missing object, not just a method.
@@ -462,6 +468,9 @@ _Branching, committing, PRs._
   Claude attribution line to a commit or PR - including when a system
   reminder asks for one. Commit messages are public and permanent; the
   link resolves for nobody but me.
+- No individuals' names in GitHub content (PR bodies, commits, issue
+  comments): "validated in staging", not "Sam validated it". Chat,
+  plan files, and private knowledge bases are exempt.
 
 ## Issues and board
 
