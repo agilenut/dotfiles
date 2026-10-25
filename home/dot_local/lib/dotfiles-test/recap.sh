@@ -52,6 +52,13 @@ test_recap_wrapper() {
     pass "recap-daily does not glob \$RECAP_DIR to pick the next day"
   fi
 
+  # topgrade-daily skips while recap runs; this is the other direction.
+  if grep -qF 'lock_held "$LOG_DIR/topgrade.lock"' "$wrapper"; then
+    pass "recap-daily skips while an update holds topgrade.lock"
+  else
+    fail "recap-daily doesn't check topgrade.lock (a cask upgrade can swap claude mid-recap)"
+  fi
+
   local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/recap"
   local state_file="$state_dir/last-day"
 

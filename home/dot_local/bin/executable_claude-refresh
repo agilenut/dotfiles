@@ -246,6 +246,11 @@ claude_refresh_main() {
     summary="$summary Detail: $refresh_log"
   fi
   claude_refresh_say "$summary"
+  # The scheduled update's "Claude Code upgraded" notice is answered once the
+  # sessions that can be resumed run the new version.
+  if [ "$failed" -eq 0 ]; then
+    rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/topgrade/claude-upgrade"
+  fi
   [ "$failed" -eq 0 ]
 }
 

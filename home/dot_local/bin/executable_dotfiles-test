@@ -31,6 +31,8 @@ source "$LIB_DIR/theme-runtime.sh"
 source "$LIB_DIR/git-signing.sh"
 source "$LIB_DIR/recap.sh"
 source "$LIB_DIR/launchd.sh"
+source "$LIB_DIR/topgrade-daily.sh"
+source "$LIB_DIR/lock.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -113,7 +115,7 @@ main() {
   test_docker_pull_compose
   test_topgrade_config
   test_no_pipx_apps
-  test_update_alias
+  test_update_command
 
   # Worktree hook tests
   test_worktree_lib
@@ -152,6 +154,8 @@ main() {
   # Recap skill wrapper tests (macOS only)
   test_recap_wrapper
   test_reload_launchd
+  test_dotfiles_lock
+  test_topgrade_daily
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then

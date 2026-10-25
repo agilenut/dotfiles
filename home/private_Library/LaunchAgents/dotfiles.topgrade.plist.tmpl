@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dotfiles.topgrade</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{ .chezmoi.homeDir }}/.local/bin/topgrade-daily</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- A Mac asleep at 05:00 runs the calendar fire on wake. The hourly fire
+         retries a day that was skipped (a held lock) or stopped (a reload);
+         the wrapper runs once per day, so the other fires exit at once. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <!-- On stop, the wrapper forwards TERM to topgrade and kills what's left
+         45s later. launchd's default wait before SIGKILL is a few seconds
+         (5 for the recap job), and it caps this value at 60. -->
+    <key>ExitTimeOut</key>
+    <integer>60</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>{{ .chezmoi.homeDir }}/Library/Logs/topgrade-daily.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>{{ .chezmoi.homeDir }}/Library/Logs/topgrade-daily.err.log</string>
+
+    <!-- The wrapper's zsh adds ~/.local/bin and mise shims from ~/.zshenv. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>{{ .chezmoi.homeDir }}</string>
+    </dict>
+</dict>
+</plist>

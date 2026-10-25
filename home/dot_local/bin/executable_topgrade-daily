@@ -1,0 +1,199 @@
+#!/bin/zsh
+# topgrade-daily
+# =============================================================================
+# Scheduled, unattended topgrade run. launchd (dotfiles.topgrade) starts it at
+# 05:00, or on wake if the Mac slept through 05:00, and every hour after, so a
+# fire skipped for a held lock or a killed run is retried. It runs once per
+# day, on the first fire from 05:00.
+#
+# zsh rather than bash because zsh reads ~/.zshenv for every script, so this
+# run sees the same XDG, npm, dotnet, Go, and mise settings as a terminal and
+# each step upgrades the same locations `update` does.
+#
+# The day is marked done after one attempt, pass or fail, so a persistent
+# failure notifies once a day instead of hourly. The mark is written after
+# topgrade finishes: a run that's stopped (a launchd reload, a reboot) is
+# retried on the next fire.
+#
+# State goes to $XDG_STATE_HOME/topgrade/:
+#   last-day        date of the last finished run
+#   last-log        that run's log
+#   failed          why the last run failed: its failed steps, one per line,
+#                   or one line naming the reason (timeout, config); absent
+#                   after a clean run
+#   outdated-casks  casks with an upgrade waiting for `update`, one per line
+#   steps-known     every step seen so far
+#   new-steps       steps seen for the first time in the last run
+#   claude-upgrade  "<old> → <new>" since Claude Code was last upgraded by this
+#                   run; running sessions stay on <old> until claude-refresh
+#                   restarts them, which removes the file
+# dotfiles-drift and docker-pull-compose write drift and stale-containers there
+# too, as topgrade custom commands.
+
+setopt err_exit no_unset pipe_fail
+source "${0:A:h}/../lib/dotfiles-lock.sh"
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
+LOG_DIR="$HOME/Library/Logs"
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/topgrade.toml"
+# Shared with `update`, so the two never run brew at the same time.
+LOCK_DIR="$LOG_DIR/topgrade.lock"
+RUN_HOUR=5
+TIMEOUT_SECONDS=7200
+LOG_DAYS=30
+
+today=$(date +%Y-%m-%d)
+[[ "$(cat "$STATE_DIR/last-day" 2>/dev/null)" != "$today" ]] || exit 0
+(($(date +%H) >= RUN_HOUR)) || exit 0
+mkdir -p "$STATE_DIR" "$LOG_DIR"
+if ! lock_acquire "$LOCK_DIR"; then
+  print -u2 "$(date): another update (pid $(cat "$LOCK_DIR/pid" 2>/dev/null)) holds the lock; retrying next hour"
+  exit 0
+fi
+trap 'lock_release "$LOCK_DIR"' EXIT
+# A claude-code cask upgrade mid-recap would swap the binary under it. Checked
+# after taking our own lock (recap does the same), so when both start at once
+# at least one sees the other.
+if lock_held "$LOG_DIR/recap-daily.lock"; then
+  print -u2 "$(date): recap is running; retrying next hour"
+  exit 0
+fi
+# topgrade runs under gtimeout, which moves itself into its own process group,
+# so stopping this job (launchd's TERM) wouldn't reach it. Forward the signal
+# and wait for topgrade to stop before the EXIT trap releases the lock.
+# launchd SIGKILLs the job 60s after its TERM (it caps ExitTimeOut there), so
+# whatever is still running after the grace period is killed as a group first.
+STOP_GRACE_SECONDS="${TOPGRADE_DAILY_STOP_GRACE:-45}"
+child=""
+stop() {
+  if [[ -n "$child" ]]; then
+    kill -TERM "$child" 2>/dev/null || true
+    # The subshell is what goes to the background; zsh ran a bare
+    # `sleep && kill &` here in the foreground.
+    (
+      sleep "$STOP_GRACE_SECONDS"
+      kill -KILL -- "-$child" 2>/dev/null
+    ) &
+    local killer=$!
+    wait "$child" 2>/dev/null || true
+    kill "$killer" 2>/dev/null || true
+  fi
+  exit "$1"
+}
+trap 'stop 129' HUP
+trap 'stop 130' INT
+trap 'stop 143' TERM
+
+find "$LOG_DIR" -maxdepth 1 -name 'topgrade-daily-*.log' -mtime +$LOG_DAYS -delete
+log="$LOG_DIR/topgrade-daily-$today.log"
+: >"$STATE_DIR/new-steps"
+
+# notify <title> <message> [sound]
+# A banner from Script Editor: clicking it can't open anything, so messages
+# carry what to look at. The tmux marker is the lasting signal; this is the
+# prompt. (terminal-notifier 3.1 is ad-hoc signed, and macOS refuses it
+# notification permission.)
+notify() {
+  osascript -e 'on run argv' \
+    -e 'display notification (item 2 of argv) with title (item 1 of argv) sound name (item 3 of argv)' \
+    -e 'end run' "$1" "$2" "${3:-}" >/dev/null 2>&1 || true
+}
+
+# Record the failure, notify, and mark the day done.
+finish_failed() {
+  print -r -- "$1" >"$STATE_DIR/failed"
+  notify "Update failed" "${1//$'\n'/, }. Log: ${log/#$HOME/~}" Basso
+  print -r -- "$log" >"$STATE_DIR/last-log"
+  print -r -- "$today" >"$STATE_DIR/last-day"
+  exit 1
+}
+
+print "=== $(date) - scheduled topgrade ===" >>"$log"
+
+# topgrade treats a missing or invalid config as no config, which would bring
+# back `chezmoi update` and pulls of every local image. The custom commands
+# exist only in the config, so seeing one in a dry run proves it loaded.
+# Captured before matching: `grep -q` exits at the first match, and topgrade's
+# next write would then fail on the closed pipe.
+dry=""
+if ! dry=$(topgrade --config "$CONFIG" --dry-run --only custom_commands </dev/null 2>&1); then
+  print -r -- "$dry" >>"$log"
+  finish_failed "topgrade dry run failed, see log"
+fi
+[[ "$dry" == *dotfiles-drift* ]] || finish_failed "topgrade config not loaded ($CONFIG)"
+
+drift_before=$(cat "$STATE_DIR/drift" 2>/dev/null || true)
+claude_before=$(claude --version 2>/dev/null || true)
+start_line=$(($(wc -l <"$log") + 1))
+
+# system, mas, and brew_cask need sudo (macOS updates, App Store updates, and
+# casks with a background service or pkg installer), and an unanswered
+# password prompt would block the run until the timeout; they run in
+# `update`, and outdated casks are recorded below. shell, tmux, and vim pull
+# plugins from branch tips, so they update only when `update` runs with the
+# output in view. Run in the background so the traps above can fire.
+rc=0
+gtimeout --kill-after=60 "$TIMEOUT_SECONDS" \
+  topgrade --config "$CONFIG" --yes \
+  --disable system mas brew_cask shell tmux vim \
+  --no-ask-retry --notify-end never </dev/null >>"$log" 2>&1 &
+child=$!
+wait "$child" || rc=$?
+child=""
+print "=== $(date) - topgrade exit $rc ===" >>"$log"
+
+# This run's summary as "<step><TAB><status>": topgrade prints a
+# "―― <time> - Summary ――" header, then one "<step>: <status>" line per step.
+# IGNORED is a failure the config tolerates.
+summary=$(tail -n "+$start_line" "$log" | sed -n '/ - Summary /,$p' \
+  | sed -nE $'s/^(.*): (OK|FAILED|IGNORED|SKIPPED.*)$/\\1\t\\2/p')
+# C collation, so sort and comm agree whatever locale the run inherits.
+steps=$(print -r -- "$summary" | cut -f1 | sed '/^$/d' | LC_ALL=C sort -u)
+
+# On the first run every step is unseen; record them without calling them new.
+if [[ -n "$steps" ]]; then
+  if [[ -f "$STATE_DIR/steps-known" ]]; then
+    LC_ALL=C comm -13 "$STATE_DIR/steps-known" <(print -r -- "$steps") >"$STATE_DIR/new-steps"
+  fi
+  {
+    cat "$STATE_DIR/steps-known" 2>/dev/null || true
+    print -r -- "$steps"
+  } \
+    | LC_ALL=C sort -u >"$STATE_DIR/steps-known.tmp"
+  mv "$STATE_DIR/steps-known.tmp" "$STATE_DIR/steps-known"
+fi
+
+# Casks waiting for `update`. Read-only and needs no sudo; the Brew step has
+# already run `brew update`. Left as it was if brew fails.
+if casks=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask --quiet 2>>"$log"); then
+  print -r -- "$casks" | sed '/^$/d' >"$STATE_DIR/outdated-casks"
+fi
+
+# Keep the oldest version across upgrades: that's what running sessions use.
+claude_after=$(claude --version 2>/dev/null || true)
+if [[ -n "$claude_before" && -n "$claude_after" && "$claude_after" != "$claude_before" ]]; then
+  old="${claude_before%" (Claude Code)"}"
+  if [[ -s "$STATE_DIR/claude-upgrade" ]]; then
+    old="$(sed 's/ → .*//' "$STATE_DIR/claude-upgrade")"
+  fi
+  print -r -- "$old → ${claude_after%" (Claude Code)"}" >"$STATE_DIR/claude-upgrade"
+fi
+
+# Drift never fails the run; a file that newly drifted gets one notification.
+newly_drifted=$(LC_ALL=C comm -13 <(print -r -- "$drift_before" | LC_ALL=C sort) \
+  <(LC_ALL=C sort "$STATE_DIR/drift" 2>/dev/null || true) | sed '/^$/d; s|^|~/|')
+if [[ -n "$newly_drifted" ]]; then
+  notify "Dotfiles drift" "${newly_drifted//$'\n'/, }"
+fi
+
+# gtimeout exits 124 after its TERM, 137 if it had to escalate to KILL.
+if ((rc == 124 || rc == 137)); then
+  finish_failed "timed out after $((TIMEOUT_SECONDS / 3600))h"
+elif ((rc != 0)); then
+  failed_steps=$(print -r -- "$summary" | sed -n $'s/\tFAILED$//p')
+  finish_failed "${failed_steps:-update failed, see log}"
+fi
+
+rm -f "$STATE_DIR/failed"
+print -r -- "$log" >"$STATE_DIR/last-log"
+print -r -- "$today" >"$STATE_DIR/last-day"

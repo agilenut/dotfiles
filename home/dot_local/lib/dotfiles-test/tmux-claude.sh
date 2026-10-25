@@ -277,7 +277,7 @@ TMUXSTUB
   : >"$log"
   rc=0
   PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
-    CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
+    XDG_STATE_HOME="$stubdir/state" CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
     bash "$CLAUDE_REFRESH" >/dev/null 2>&1 || rc=$?
   if [ "$rc" -ne 0 ] && grep -q '^tmux send-keys$' "$log"; then
     pass "a vanished pane reaches the restart path and fails the refresh"
@@ -304,11 +304,20 @@ esac
 exit 0
 TMUXSTUCK
   chmod +x "$stubdir/tmux"
+  local upgrade="$stubdir/state/topgrade/claude-upgrade"
+  mkdir -p "${upgrade%/*}"
+  echo '2.1.1 → 2.1.2' >"$upgrade"
   out=$(PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    XDG_STATE_HOME="$stubdir/state" \
     CLAUDE_REFRESH_LOG="$reflog" CLAUDE_REFRESH_EXIT_TIMEOUT=1 \
     CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
     bash "$CLAUDE_REFRESH" 2>/dev/null | tail -1) || true
 
+  if [ -e "$upgrade" ]; then
+    pass "a refresh with a failed pane keeps the Claude Code upgrade notice"
+  else
+    fail "failed refresh cleared the upgrade notice"
+  fi
   if grep -qF 'Do you want to commit these changes?' "$reflog"; then
     pass "a stuck pane's screen is captured into the log"
   else
@@ -343,6 +352,7 @@ exit 0
 TMUXCLEAN
   chmod +x "$stubdir/tmux"
   out=$(PATH="$stubdir:/usr/bin:/bin" HOME="$fakehome" CALL_LOG="$log" \
+    XDG_STATE_HOME="$stubdir/state" \
     CLAUDE_REFRESH_LOG="$reflog" CLAUDE_REFRESH_EXIT_TIMEOUT=1 \
     CLAUDE_RESTORE_BIN="$CLAUDE_RESTORE" \
     bash "$CLAUDE_REFRESH" 2>/dev/null | tail -1) || true
@@ -350,6 +360,11 @@ TMUXCLEAN
     pass "a clean summary stays bare"
   else
     fail "clean summary should not name the log (got: '$out')"
+  fi
+  if [ ! -e "$upgrade" ]; then
+    pass "a clean refresh clears the Claude Code upgrade notice"
+  else
+    fail "clean refresh left the upgrade notice"
   fi
   # Truncated per run: stale detail from an earlier failure reads as current.
   if ! grep -qF 'Do you want to commit these changes?' "$reflog"; then

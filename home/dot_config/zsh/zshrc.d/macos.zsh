@@ -3,8 +3,34 @@
 # Setup MacOs specific aliases and functions.
 
 # Upgrades everything topgrade detects (brew, mise, uv tools, App Store,
-# macOS, ...); see ~/.config/topgrade.toml for the steps it skips.
-alias update='topgrade'
+# macOS, ...); see ~/.config/topgrade.toml for the steps it skips. Holds the
+# lock the scheduled run (topgrade-daily) takes, so the two never run brew at
+# the same time. A clean full run (no arguments, so every step ran) clears the
+# scheduled run's failure.
+update() {
+  local lock="$HOME/Library/Logs/topgrade.lock"
+  source "$HOME/.local/lib/dotfiles-lock.sh"
+  mkdir -p "${lock:h}"
+  if ! lock_acquire "$lock"; then
+    print -u2 "An update is already running (pid $(cat "$lock/pid" 2>/dev/null))." \
+      "The scheduled run logs to ~/Library/Logs/topgrade-daily-$(date +%Y-%m-%d).log"
+    return 1
+  fi
+  # Ctrl-C would otherwise end the function before the lock is released. A
+  # nonzero return keeps Ctrl-C's usual abort.
+  setopt local_options local_traps
+  TRAPINT() {
+    lock_release "$lock"
+    return $((128 + $1))
+  }
+  local rc=0
+  topgrade "$@" || rc=$?
+  lock_release "$lock"
+  if ((rc == 0 && $# == 0)); then
+    rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/topgrade/failed"
+  fi
+  return $rc
+}
 
 alias dns-flush='sudo killall -HUP mDNSResponder'
 

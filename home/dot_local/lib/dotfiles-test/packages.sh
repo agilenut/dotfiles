@@ -37,6 +37,7 @@ test_commands_installed() {
       "git-credential-manager"
       "git-ignore"
       "go"
+      "gtimeout"
       "mas"
       "oh-my-posh"
       "op"

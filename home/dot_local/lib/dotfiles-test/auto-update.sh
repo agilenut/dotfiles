@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Auto-update tooling tests: topgrade config, its custom-command scripts, and
-# the update alias.
+# the update command.
 #
 # Helpers that source a script under test must only run in a subshell
 # (command substitution or `( … )`), so the sourced functions and `set -e`
@@ -436,19 +436,106 @@ test_no_pipx_apps() {
   fi
 }
 
-test_update_alias() {
-  section "update alias"
+test_update_command() {
+  section "update command"
 
   if [[ "$(uname)" != "Darwin" ]]; then
     skip "Not on macOS"
     return
   fi
 
-  if zsh_check 'alias update 2>/dev/null | grep -q topgrade'; then
-    pass "update runs topgrade"
+  if zsh_check 'whence -w update | grep -q function'; then
+    pass "update is defined in interactive zsh"
   else
-    fail "update alias doesn't run topgrade"
+    fail "update function not defined"
   fi
+
+  # Source the function alone with a fake HOME and a stub topgrade that logs
+  # its arguments and exits $STUB_RC, or sends Ctrl-C's INT to the shell
+  # running `update` when $STUB_INT is set.
+  local stubdir fakehome lock failed calls rc out
+  stubdir=$(mktemp -d)
+  fakehome="$stubdir/home"
+  lock="$fakehome/Library/Logs/topgrade.lock"
+  failed="$stubdir/state/topgrade/failed"
+  calls="$stubdir/calls"
+  mkdir -p "$stubdir/bin" "$stubdir/state/topgrade" "$fakehome/.local/lib"
+  ln -s "$HOME/.local/lib/dotfiles-lock.sh" "$fakehome/.local/lib/dotfiles-lock.sh"
+  printf '#!/bin/sh\necho "topgrade $*" >>"$CALL_LOG"\n[ -n "$STUB_INT" ] && kill -INT "$PPID" && sleep 1\nexit "${STUB_RC:-0}"\n' >"$stubdir/bin/topgrade"
+  chmod +x "$stubdir/bin/topgrade"
+  run_update() {
+    env -i HOME="$fakehome" PATH="$stubdir/bin:/usr/bin:/bin" CALL_LOG="$calls" \
+      XDG_STATE_HOME="$stubdir/state" STUB_RC="${STUB_RC:-0}" STUB_INT="${STUB_INT:-}" \
+      zsh -fc "source '${XDG_CONFIG_HOME:-$HOME/.config}/zsh/zshrc.d/macos.zsh'; update ${UPDATE_ARGS-}" 2>&1
+  }
+
+  echo 'Brew (ARM)' >"$failed"
+  : >"$calls"
+  rc=0
+  run_update >/dev/null || rc=$?
+  if [ "$rc" -eq 0 ] && grep -Fqx 'topgrade ' "$calls" \
+    && [ ! -e "$lock" ] && [ ! -e "$failed" ]; then
+    pass "a full update runs topgrade, releases the lock, and clears a scheduled failure"
+  else
+    fail "update run wrong (rc=$rc, calls: $(cat "$calls"))"
+  fi
+
+  echo 'Brew (ARM)' >"$failed"
+  : >"$calls"
+  rc=0
+  UPDATE_ARGS="--only mise" run_update >/dev/null || rc=$?
+  if [ "$rc" -eq 0 ] && grep -Fqx 'topgrade --only mise' "$calls" && [ -e "$failed" ]; then
+    pass "an update limited by arguments passes them on and keeps the scheduled failure"
+  else
+    fail "limited update wrong (rc=$rc, calls: $(cat "$calls"))"
+  fi
+
+  echo 'Brew (ARM)' >"$failed"
+  : >"$calls"
+  rc=0
+  STUB_RC=1 run_update >/dev/null || rc=$?
+  if [ "$rc" -eq 1 ] && [ ! -e "$lock" ] && [ -e "$failed" ]; then
+    pass "a failed update returns its exit code and keeps the scheduled failure"
+  else
+    fail "failed update wrong (rc=$rc)"
+  fi
+
+  rc=0
+  STUB_INT=1 run_update >/dev/null || rc=$?
+  if [ "$rc" -ne 0 ] && [ ! -e "$lock" ]; then
+    pass "Ctrl-C during update still releases the lock"
+  else
+    fail "interrupted update wrong (rc=$rc, lock left: $([ -e "$lock" ] && echo yes || echo no))"
+  fi
+
+  # The test runner is a live owner.
+  mkdir -p "$lock"
+  echo $$ >"$lock/pid"
+  : >"$calls"
+  rc=0
+  out=$(run_update) || rc=$?
+  if [ "$rc" -ne 0 ] && [ ! -s "$calls" ] && [ -d "$lock" ] && grep -q "pid $$" <<<"$out"; then
+    pass "update refuses to run while another update holds the lock, and names it"
+  else
+    fail "update ran despite the lock (rc=$rc): $out"
+  fi
+
+  # A PID whose process has exited.
+  local dead
+  sh -c 'exit 0' &
+  dead=$!
+  wait "$dead"
+  echo "$dead" >"$lock/pid"
+  : >"$calls"
+  rc=0
+  run_update >/dev/null || rc=$?
+  if [ "$rc" -eq 0 ] && [ -s "$calls" ] && [ ! -e "$lock" ]; then
+    pass "update clears a lock left by a killed run"
+  else
+    fail "update blocked by a dead owner's lock (rc=$rc)"
+  fi
+
+  rm -rf "$stubdir"
 
   if zsh_check 'alias brewup &>/dev/null'; then
     fail "brewup alias still defined (topgrade's brew step replaces it)"
