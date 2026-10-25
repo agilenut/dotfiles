@@ -43,10 +43,10 @@ metadata:
 - Staging/device testing: <how this project verifies after merge, or "none">
 - Client repo: yes | no
 - Label conventions: <e.g. "bugs get a severity:\* label", or "none">
-- Columns: <only when names differ, e.g. "Up next = Ready; In Progress = Doing">
+- Columns: <only when names differ, e.g. "Up Next = Ready; In Progress = Doing">
 ```
 
-This skill names columns by role: Backlog, Up next, In Progress, In
+This skill names columns by role: Backlog, Up Next, In Progress, In
 Review, Done. A board copied from the template uses those names. When a
 board's Status options differ, the optional `Columns` line maps each role
 to the board's name; use the board's names in every command and message.
@@ -152,9 +152,9 @@ gh pr list --state all --search "<N> in:body" --json number,state,title
   parent issue: `gh issue create --parent <N>` or
   `gh issue edit <N> --add-sub-issue <child>,<child>`.
 - **Column:** pick one, place the card, then say which and why (column
-  roles map through `Columns` in `board-settings`). Up next: part of the
+  roles map through `Columns` in `board-settings`). Up Next: part of the
   active workstream's next PR or two, blocking planned work, or an urgent
-  fix, placed by priority ("Up next, 2nd: blocks the board allow rules").
+  fix, placed by priority ("Up Next, 2nd: blocks the board allow rules").
   Backlog: later in a plan, an idea, a kept find, or anything not likely
   soon. In Progress only when work starts. Only issues go on the board; a
   PR shows on its issue's card through "Linked pull requests". Boards with
@@ -284,13 +284,13 @@ names an AC change is the user's OK for that change.
 
 | Check                                                                                                                | Example proposal                                                                                      |
 | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Order                                                                                                                | "Move #42 above #38 in Up next; #38 depends on it"                                                    |
-| Stale In Progress (no issue update or linked PR activity for the stale period; `gh issue view <N> --json updatedAt`) | "#51 has had no activity in 9 days: resume, back to Up next, or close out?"                           |
+| Order                                                                                                                | "Move #42 above #38 in Up Next; #38 depends on it"                                                    |
+| Stale In Progress (no issue update or linked PR activity for the stale period; `gh issue view <N> --json updatedAt`) | "#51 has had no activity in 9 days: resume, back to Up Next, or close out?"                           |
 | Last-column checks                                                                                                   | "#47 passes all three checks; move to Done" / "#47 AC 3 unmet, nothing covers it"                     |
 | Moved or merged with ACs unchecked                                                                                   | "#50 is in Done with AC 2 unchecked; merged #112 meets it (test `upload_limits`): check it off?"      |
 | Merged PR, issue never closed out                                                                                    | "PR #118 merged 3 days ago; #50 is still In Progress with no closing comment"                         |
 | AC problems                                                                                                          | "#60 has plain-bullet ACs" / "#60 AC 2 waits on prod metrics; split it?"                              |
-| Column vs issue state                                                                                                | "#33 is closed but sits in Up next"                                                                   |
+| Column vs issue state                                                                                                | "#33 is closed but sits in Up Next"                                                                   |
 | PR cards on the board                                                                                                | "PR #90 has its own card; it already shows on #88's card: remove it?"                                 |
 | Parent ready to close                                                                                                | "All 5 sub-issues of #680 are closed; its own ACs are met: close it out?"                             |
 | Missing from the board                                                                                               | "#71 is open but not on the board"                                                                    |
@@ -303,7 +303,7 @@ names an AC change is the user's OK for that change.
 
 ### Pick the next ticket (`/board next`)
 
-Read Up next from the top and weigh the first few:
+Read Up Next from the top and weigh the first few:
 
 - **Size**: does it fit the time available?
 - **Overlap**: does it touch files that In Progress work touches?
