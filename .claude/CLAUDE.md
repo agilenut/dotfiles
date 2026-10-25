@@ -89,7 +89,11 @@ pre-commit run --all-files
 - **From a worktree**: the configured source is the main checkout, so
   point chezmoi at the worktree and name only the files you changed. A
   broad apply from a branch also deploys anything else that differs
-  between that branch and the deployed copies.
+  between that branch and the deployed copies. For a new file in a new
+  folder, name the folder (chezmoi won't create it from a file target).
+  Before applying, run `chezmoi diff` on each file from the main tree: a
+  difference you didn't make may be another branch's applied change, so
+  leave that file until one of you merges.
 
 ```bash
 chezmoi -S "$PWD/home" -W "$PWD" diff ~/.claude/CLAUDE.md
