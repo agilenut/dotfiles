@@ -462,7 +462,9 @@ test_update_command() {
   mkdir -p "$stubdir/bin" "$stubdir/state/topgrade" "$fakehome/.local/lib"
   ln -s "$HOME/.local/lib/dotfiles-lock.sh" "$fakehome/.local/lib/dotfiles-lock.sh"
   printf '#!/bin/sh\necho "topgrade $*" >>"$CALL_LOG"\n[ -n "$STUB_INT" ] && kill -INT "$PPID" && sleep 1\nexit "${STUB_RC:-0}"\n' >"$stubdir/bin/topgrade"
-  chmod +x "$stubdir/bin/topgrade"
+  # brew stub: one cask still outdated after the update.
+  printf '#!/bin/sh\necho warp\n' >"$stubdir/bin/brew"
+  chmod +x "$stubdir/bin/topgrade" "$stubdir/bin/brew"
   run_update() {
     env -i HOME="$fakehome" PATH="$stubdir/bin:/usr/bin:/bin" CALL_LOG="$calls" \
       XDG_STATE_HOME="$stubdir/state" STUB_RC="${STUB_RC:-0}" STUB_INT="${STUB_INT:-}" \
@@ -470,6 +472,7 @@ test_update_command() {
   }
 
   echo 'Brew (ARM)' >"$failed"
+  printf '%s\n' visual-studio-code warp >"$stubdir/state/topgrade/outdated-casks"
   : >"$calls"
   rc=0
   run_update >/dev/null || rc=$?
@@ -478,6 +481,11 @@ test_update_command() {
     pass "a full update runs topgrade, releases the lock, and clears a scheduled failure"
   else
     fail "update run wrong (rc=$rc, calls: $(cat "$calls"))"
+  fi
+  if [ "$(cat "$stubdir/state/topgrade/outdated-casks")" = warp ]; then
+    pass "update refreshes the list of casks waiting for it"
+  else
+    fail "outdated-casks not refreshed: '$(tr '\n' ',' <"$stubdir/state/topgrade/outdated-casks")'"
   fi
 
   echo 'Brew (ARM)' >"$failed"

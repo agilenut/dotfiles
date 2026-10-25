@@ -6,7 +6,7 @@
 # macOS, ...); see ~/.config/topgrade.toml for the steps it skips. Holds the
 # lock the scheduled run (topgrade-daily) takes, so the two never run brew at
 # the same time. A clean full run (no arguments, so every step ran) clears the
-# scheduled run's failure.
+# scheduled run's failure, and every run refreshes its list of waiting casks.
 update() {
   local lock="$HOME/Library/Logs/topgrade.lock"
   source "$HOME/.local/lib/dotfiles-lock.sh"
@@ -23,11 +23,18 @@ update() {
     lock_release "$lock"
     return $((128 + $1))
   }
-  local rc=0
+  local rc=0 state="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
   topgrade "$@" || rc=$?
   lock_release "$lock"
   if ((rc == 0 && $# == 0)); then
-    rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/topgrade/failed"
+    rm -f "$state/failed"
+  fi
+  # Casks it upgraded no longer wait; refresh the scheduled run's list.
+  if [[ -f "$state/outdated-casks" ]] \
+    && HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask --quiet >"$state/outdated-casks.tmp" 2>/dev/null; then
+    mv "$state/outdated-casks.tmp" "$state/outdated-casks"
+  else
+    rm -f "$state/outdated-casks.tmp"
   fi
   return $rc
 }

@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# update-status
+# =============================================================================
+# What the scheduled update (topgrade-daily) and its custom commands left for
+# you to act on, read from their state files in $XDG_STATE_HOME/topgrade/. It
+# only reads files, so the tmux status bar can run it on every refresh.
+#
+# Usage:
+#   update-status          one line per item, with what to run
+#   update-status --tmux   status-bar marker: nothing when all is well, else
+#                          ⚠N, N counting the kinds of item; red when the last
+#                          run failed or hasn't run in over 2 days
+
+set -euo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
+STALE_DAYS=2
+
+# Non-empty lines in state file $1; 0 when it's missing.
+update_status_count() {
+  [ -f "$STATE_DIR/$1" ] || {
+    echo 0
+    return
+  }
+  grep -c . "$STATE_DIR/$1" || true
+}
+
+# State file $1's non-empty lines joined with ", ", each prefixed with $2.
+# Joined in the shell, so a comma inside a line ("update failed, see log")
+# stays as it is.
+update_status_list() {
+  local line out=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    out="${out:+$out, }${2:-}$line"
+  done <"$STATE_DIR/$1"
+  printf '%s' "$out"
+}
+
+# Stale containers as "<container> (<project>)", joined with ", ".
+update_status_containers() {
+  local name image project out=""
+  while IFS=$'\t' read -r name image project; do
+    [ -n "$name" ] || continue
+    out="${out:+$out, }$name${project:+ ($project)}"
+  done <"$STATE_DIR/stale-containers"
+  printf '%s' "$out"
+}
+
+# Whole days since the YYYY-MM-DD date $1. BSD `date -j` fills in the current
+# time of day, so across a daylight-saving change the gap is a day plus or
+# minus an hour; rounding to the nearest day absorbs that.
+update_status_days_since() {
+  local then
+  then=$(date -j -f %Y-%m-%d "$1" +%s)
+  echo $((($(date +%s) - then + 43200) / 86400))
+}
+
+update_status_main() {
+  local mode="${1:-}"
+  local -a lines=()
+  local red=0 last log
+
+  last=$(cat "$STATE_DIR/last-day" 2>/dev/null || true)
+  log=$(cat "$STATE_DIR/last-log" 2>/dev/null || true)
+  case "$log" in
+    "$HOME"/*) log="~${log#"$HOME"}" ;;
+  esac
+
+  if [ "$(update_status_count failed)" -gt 0 ]; then
+    red=1
+    lines+=("Update failed: $(update_status_list failed). Log: $log")
+  fi
+  if [[ "$last" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] \
+    && [ "$(update_status_days_since "$last")" -gt "$STALE_DAYS" ]; then
+    red=1
+    lines+=("The scheduled update hasn't run since $last. Check ~/Library/Logs/topgrade-daily.err.log and \`launchctl print gui/$(id -u)/dotfiles.topgrade\`.")
+  fi
+  if [ "$(update_status_count drift)" -gt 0 ]; then
+    lines+=("Dotfiles drift: $(update_status_list drift '~/'). Keep this machine's version with \`chezmoi re-add <file>\`, or restore the dotfiles version with \`chezmoi apply <file>\`.")
+  fi
+  if [ "$(update_status_count stale-containers)" -gt 0 ]; then
+    lines+=("Containers on an older image: $(update_status_containers). Recreate them with \`docker compose up -d\` in each project.")
+  fi
+  if [ "$(update_status_count outdated-casks)" -gt 0 ]; then
+    lines+=("Casks waiting for \`update\`: $(update_status_list outdated-casks).")
+  fi
+  if [ "$(update_status_count new-steps)" -gt 0 ]; then
+    lines+=("New topgrade step: $(update_status_list new-steps). Check its output in the log.")
+  fi
+  if [ "$(update_status_count claude-upgrade)" -gt 0 ]; then
+    lines+=("Claude Code $(cat "$STATE_DIR/claude-upgrade"): running sessions are on the old version until \`claude-refresh\`.")
+  fi
+
+  # The marker goes last on the bar, so it carries its own leading space. The
+  # icon is Nerd Font's warning sign (U+F071), full size in the terminal font
+  # where ⚠ falls back to a smaller glyph. Gray like the rest of the right
+  # side; red for a failure.
+  if [ "$mode" = --tmux ]; then
+    [ ${#lines[@]} -gt 0 ] || return 0
+    local color=brightblack
+    [ "$red" -eq 0 ] || color=red
+    printf ' #[fg=%s]\xef\x81\xb1 %d#[default]' "$color" "${#lines[@]}"
+    return 0
+  fi
+
+  if [ ${#lines[@]} -eq 0 ]; then
+    echo "All clear${last:+ (last scheduled update: $last)}."
+    return 0
+  fi
+  printf '%s\n' "${lines[@]}"
+}
+
+# Run only when executed directly; sourcing (tests) just defines the functions.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  update_status_main "$@"
+fi

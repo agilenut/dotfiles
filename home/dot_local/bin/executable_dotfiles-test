@@ -33,6 +33,7 @@ source "$LIB_DIR/recap.sh"
 source "$LIB_DIR/launchd.sh"
 source "$LIB_DIR/topgrade-daily.sh"
 source "$LIB_DIR/lock.sh"
+source "$LIB_DIR/update-status.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -156,6 +157,7 @@ main() {
   test_reload_launchd
   test_dotfiles_lock
   test_topgrade_daily
+  test_update_status
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then
