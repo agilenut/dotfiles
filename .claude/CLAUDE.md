@@ -89,7 +89,11 @@ pre-commit run --all-files
 - **From a worktree**: the configured source is the main checkout, so
   point chezmoi at the worktree and name only the files you changed. A
   broad apply from a branch also deploys anything else that differs
-  between that branch and the deployed copies.
+  between that branch and the deployed copies. For a new file in a new
+  folder, name the folder (chezmoi won't create it from a file target).
+  Before applying, run `chezmoi diff` on each file from the main tree: a
+  difference you didn't make may be another branch's applied change, so
+  leave that file until one of you merges.
 
 ```bash
 chezmoi -S "$PWD/home" -W "$PWD" diff ~/.claude/CLAUDE.md
@@ -133,6 +137,21 @@ Before committing changes to this repo:
 4. `pre-commit run --all-files` - run linting/formatting
 
 Then make small, focused commits. When adding new functionality, suggest corresponding tests.
+
+## Before a PR
+
+`/pr` runs this block before creating a PR and when verifying a CI fix.
+The test script runs from the source, so the test code is the branch's.
+Some checks read applied files under `~/.config` or find the repo through
+`chezmoi source-path` (the main checkout), so apply the branch's changed
+files first when those checks matter (see Applying Changes, "From a
+worktree"). The Committing steps above run similar checks per commit,
+using the installed `dotfiles-test`.
+
+```bash
+./home/dot_local/bin/executable_dotfiles-test --auto-only
+pre-commit run --all-files
+```
 
 ## Common Tasks
 

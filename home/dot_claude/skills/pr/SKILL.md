@@ -51,6 +51,25 @@ relevant test plan section.
 ### NO_PR
 
 - `git log --oneline main..HEAD` to summarize commits
+- **Local checks** (see Reference: Local Checks). A failing check stops PR
+  creation: one fix attempt under CI_FAILED step 2's stop conditions,
+  commit (DIRTY), and re-run state detection.
+- **The issue.** Take its number from the plan's `stories:` or PR table,
+  the branch name, or the commits; if none, ask. A PR the global rules
+  exempt from needing an issue (small doc or text fix, security patch,
+  dependency update) skips the AC status step and says "No issue
+  (exempt: dependency update)" or similar in the body.
+- **AC status.** Read the issue's ACs (`gh issue view <N> --json body`)
+  and give each one status: met by this PR (name the test or behavior),
+  covered by a later PR (name it), or uncovered. An uncovered AC stops PR
+  creation: add the work to this PR, or propose a split or an AC change
+  under the global AC rules, then re-run state detection once the user
+  decides. If the issue has no ACs, propose some first.
+- **Plan follow-ups.** If a plan governs this PR and it is the plan's last
+  unmerged PR, read the plan's Open items. Each follow-up must already
+  have joined a planned PR, have an issue the user agreed to, or have been
+  dropped with the user's OK. Any left → raise them before creating the
+  PR.
 - Select one label based on the primary nature of the change. Check which
   labels exist in the repo (`gh label list --json name`) and use the best
   match:
@@ -61,10 +80,16 @@ relevant test plan section.
     maintenance (if label exists)
   - `documentation` — docs-only changes (if label exists)
   - No label if none of the above apply
-- Draft PR: short title (<70 chars), `## Summary` bullets
+- Draft PR: short title (<70 chars), `## Summary` bullets, and an
+  `## Acceptance criteria status` table (each AC and its status from
+  above; omit for an exempt PR)
 - `## Test Plan` — only include if there are items. Items must be
   not already covered by CI (don't list "tests pass", "build succeeds",
-  "deploy succeeds"). For each candidate, walk this decision tree:
+  "deploy succeeds"), and checkable within a day of merging; evidence
+  that needs days (prod metrics, someone's feedback) becomes its own
+  issue, not a test-plan item. The project's `board-settings` memory
+  (`Staging/device testing`) says how it verifies after merge; use it for
+  post-merge items. For each candidate, walk this decision tree:
 
   - Runnable now in this session? → run it, list under `### Pre-merge`
     as checked
@@ -78,7 +103,11 @@ relevant test plan section.
   Include `### Pre-merge` / `### Post-merge` only if they have items;
   omit `## Test Plan` entirely if neither section has items.
 
-- Link issue per CLAUDE.md `## Git` issue-reference rules.
+- Link the issue per CLAUDE.md `## Issues and board` referencing rules:
+  "Closes #N" when the user asks, or where the project's `board-settings`
+  memory says auto-close on merge is off (it links the PR without closing
+  the issue); otherwise "Part of #N". No `board-settings` yet → the
+  `board` skill's Step 1 creates it.
 - `gh pr create` (include `--label <label>` if a label was selected), then
   re-run state detection
 
@@ -108,9 +137,9 @@ relevant test plan section.
    failing test asserts behavior the change inverts (never edit a test
    to make it pass).
 3. **Verify**: run `pre-commit` (mandatory — re-stage and repeat until
-   clean; auto-runs where allow-listed, may prompt in other repos). If
-   CLAUDE.md has a fenced bash block under `## Testing`, `## Build`, or
-   `## Development`, run it too; else note "build/test: unavailable".
+   clean; auto-runs where allow-listed, may prompt in other repos), then
+   the Local Checks (Reference below); none found → note "local checks:
+   none found".
 4. Post a summary block — sections in this order, use `(none)` /
    `(unavailable)` for empty (never omit): **What failed** /
    **Root cause** / **Fix** / **Files** / **Local verification**.
@@ -181,11 +210,14 @@ relevant test plan section.
 3. **One attempt.** Stop (end turn; user re-invokes `/pr`) on the same
    conditions as CI_FAILED step 2.
 4. `git checkout -b fix/<branch>-ci`; apply the fix via Edit/Write.
-5. **Verify** (same rule as CI_FAILED step 3): `pre-commit` mandatory;
-   build/test if CLAUDE.md fenced block present.
+5. **Verify** (same rule as CI_FAILED step 3): `pre-commit` mandatory,
+   then the Local Checks.
 6. Post the summary block (same format as CI_FAILED step 4).
 7. Announce, then run `git commit -m "<message>" && git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
-   as one Bash call — one prompt covers commit, push, PR create.
+   as one Bash call, so one prompt covers commit, push, and PR create. The body
+   references the original PR's issue the same way the original PR did
+   ("Closes" or "Part of #N") and skips the AC status table: the fix
+   restores CI for work already reviewed.
 8. Post fix-PR follow-up comment on the original PR (link to fix PR) —
    announce, then `gh pr comment`.
 9. Comment on linked issue: "PR #N merged, post-merge CI failed:
@@ -201,20 +233,38 @@ relevant test plan section.
 
 ### MERGED_DONE
 
-1. Comment on PR: "All checks passed post-merge, all test plan items verified."
-2. Identify linked issue ("Part of #N"). If found:
-   - Comment: "PR #N merged, all post-merge checks passed."
-   - Remind user: "Link this PR in the issue's Development sidebar (no API
-     for this)"
-3. **Acceptance criteria**:
-   - Fetch the issue body: `gh issue view <number> --json body`
-   - Look for acceptance criteria checkboxes (`- [ ]` / `- [x]`)
-   - If any AC are unchecked:
-     - For each, determine if this PR's changes satisfy it → check off with
-       `gh issue edit <number> --body`
-     - If any still unchecked after this, report them. Do NOT move the
-       issue. STOP.
-   - If all AC are checked: remind user to update the board manually
+MERGED_DONE can be re-entered (`/pr` run again on a merged PR); skip any
+step whose comment already exists.
+
+1. Comment on PR: "All checks passed post-merge, all test plan items
+   verified." Skip if that comment is already on the PR.
+2. For each issue the PR references ("Closes", "Fixes", or "Resolves #N",
+   or "Part of #N"), run the `board` skill's "Close out after a PR
+   merges", in this session. On re-entry it skips the parts already done
+   and still runs the last-column check.
+3. For each issue, compare its ACs with this PR's "Acceptance criteria
+   status" table. Report only the ACs this PR was meant to meet that are
+   still unchecked, and any AC no PR covers. ACs a later PR covers are not
+   gaps. A PR with no status table (opened before it existed): report the
+   unchecked ACs and ask which belong to this PR.
+4. **Sidebar reminder**, only when the PR isn't already linked (it used
+   "Part of", not a closing keyword). One line, naming both sides:
+   `Reminder: link PR #<pr> to issue #<N> in the sidebar if wanted.`
+   (list several PRs or issues with commas). Say nothing about the API.
+
+## Reference: Local Checks
+
+_The repo's own checks, used by NO_PR, CI_FAILED, and MERGED_CI_FAILED._
+
+In the repo's CLAUDE.md, use the first that exists:
+
+1. The fenced bash block under `## Before a PR`.
+2. A fenced bash block under `## Testing`, `## Build`, or
+   `## Development` that runs tests, lint, or a build. Skip commands that
+   start servers, watchers, or bootstrap steps.
+3. None → note "local checks: none found" and continue; CI is the gate.
+
+This skill never names a project's commands; the repo's CLAUDE.md does.
 
 ## Rules
 

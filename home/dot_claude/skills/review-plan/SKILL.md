@@ -2,7 +2,7 @@
 name: review-plan
 description: "Use when user says /review-plan, asks to review a plan, or wants feedback on an implementation plan before coding"
 user-invocable: true
-argument-hint: "[plan-filename]"
+argument-hint: "[plan-filename] [--outline | --pr <N>]"
 ---
 
 # Plan Review Orchestrator
@@ -11,8 +11,28 @@ Mirrors `/review`'s pipeline against a plan markdown file: spawn reviewers,
 verify, auto-fix obvious, auto-skip obvious mistakes, dialog the ambiguous
 middle one finding at a time, persist reasoning to a triage file.
 
-Invoked from `/plan` Step 9 as an opt-in fresh-eyes pass, or directly by
-the user.
+Invoked from `/plan`, or directly by the user.
+
+**Scopes.** A multi-PR plan details only the next PR's commits, so a
+review judges what is ready to judge:
+
+- `--outline` - the plan's structure across PRs (order, dependencies,
+  decisions shared between PRs, what each PR hands the next, gaps) plus
+  the first unmerged PR's commits. Other PRs are judged only on whether
+  their goal, issue, ACs, and dependencies are stated, not on missing
+  commits.
+- `--pr <N>` - reviewers read the whole plan for context but judge only
+  PR N's commits: against the plan's Decisions and outline, against what
+  merged PRs actually changed, and against PR N's ACs (each AC met by a
+  commit in PR N or owned by a later PR).
+- No scope flag - a single-PR plan gets a full review. A multi-PR plan
+  gets `--outline` when no PR has merged yet, otherwise `--pr <first
+unmerged>`; say which scope was picked.
+
+"PR N" is the plan's own PR numbering (`### PR N:` headings), not a
+GitHub PR number. A PR counts as merged when its branch (from the
+heading's `(branch: <b>)`) has a merged GitHub PR:
+`gh pr list --head <b> --state merged --json number,title,body,files`.
 
 ## Invariants
 
@@ -22,10 +42,13 @@ These don't bend, regardless of step:
   the triage file before bucketing any finding. Missing those lines is
   self-evident protocol violation.
 - **Triage file is the audit trail.** Every decision lands in
-  `.reviews/plans/<timestamp>-<plan-name>-triage.md` with reasoning.
+  `.reviews/plans/<timestamp>-<plan-name>[-pr<N>|-outline]-triage.md` with reasoning.
 - **The plan is authoritative.** The plan IS the spec being reviewed.
   Issue bodies and other background context are supplementary; if they
-  disagree with the plan, the plan wins.
+  disagree with the plan, the plan wins. One exception: under `--pr <N>`,
+  PR N's ACs are check inputs, so an AC the plan leaves unmet (no PR N
+  commit and no later PR owns it) or contradicts is a finding, not settled
+  in the plan's favor.
 - **Hesitation → escalate.** Uncertain which auto-bucket fits (either
   direction)? Surface it. Auto-buckets are for unambiguous cases.
 - **Edits only in Step 10 / Step 12.** All other steps are read-only.
@@ -35,10 +58,19 @@ These don't bend, regardless of step:
 _Resolve the plan file to review._
 
 1. Resolve plans directory per "Plans Directory Resolution" in CLAUDE.md
-2. If argument provided, look for it in the resolved directory
+2. If a filename argument is provided, look for it in the resolved
+   directory
 3. Otherwise, find the most recently modified `.md` file in the resolved
    directory
 4. If no plan found, tell user and stop
+5. Resolve the scope. A flag (`--outline` or `--pr <N>`) wins; with
+   `--pr <N>`, confirm the plan has a `### PR N:` heading, or tell the
+   user and stop. No flag: a single-PR plan is `full`; a multi-PR plan is
+   `--outline` when no PR has merged, otherwise `--pr <first unmerged>`,
+   where first unmerged is the lowest-numbered `### PR N:` heading whose
+   branch has no merged GitHub PR (table order doesn't count). From here
+   on, treat the resolved scope as if the user passed it, and say which
+   scope runs.
 
 ## Step 2: Gather Context
 
@@ -53,16 +85,31 @@ _Read everything the orchestrator AND reviewers need before spawning._
 - **Optional background context** (pass to reviewers as supplementary;
   reviewers must NOT defer to it over the plan):
   - Issue body, ONLY if the plan's frontmatter `stories:` field lists
-    one or more issues. Use the first entry:
-    `gh issue view <stories[0]> --json body,title`. Mark as
-    "background only" in the spawn prompt.
+    one or more issues and the scope isn't `--pr`. Use the first entry:
+    `gh issue view <stories[0]> --json body,title`. Mark as "background
+    only" in the spawn prompt. (Under `--pr`, PR N's issue arrives as a
+    check input instead.)
+- **Scope context** (with `--pr <N>`; passed to reviewers as check
+  inputs, not background):
+  - PR N's ACs: from PR N's issue in the plan's PR table
+    (`gh issue view <issue> --json body`); if the issue isn't filed yet,
+    from the plan's draft AC list for PR N; if neither exists, say so, and
+    reviewers report the missing ACs as a finding.
+  - What merged PRs changed: for each PR in the plan whose branch has a
+    merged GitHub PR (lookup above), its title, body, and changed files,
+    plus plan triage files under `.reviews/plans/` with `scope: pr-<M>`
+    for that PR. Also the plan's Open items, which record what changed
+    along the way.
 - **Review preferences** (orchestrator-only, never sent to reviewers):
   - `~/.claude/review-preferences.md` (user-scope, if exists)
   - `<project-root>/.claude/review-preferences.md` (project-scope, if
     exists)
 - **Prior triage** (for carry-over): scan `.reviews/plans/` for triage
-  files whose frontmatter `plan:` or `plan-path:` matches this plan.
-  Pick the most recent.
+  files whose frontmatter `plan:` or `plan-path:` matches this plan. User
+  skips carry over from the most recent file whatever its scope (they're
+  decisions about a plan section). Resuming pending items uses the most
+  recent file whose `scope:` matches this run's; a file with no `scope:`
+  counts as `full`.
 
 ## Step 3: Spawn Reviewers (MUST use Agent tool — do NOT inline)
 
@@ -82,13 +129,17 @@ Subagent types (full strings):
 Spawn in parallel. Each Agent prompt receives:
 
 - **Plan file path** — the authoritative spec being reviewed
+- **Review scope** — the scope's definition from the top of this skill,
+  with the real PR number in place of `<N>`, plus: "Findings outside this
+  scope go under a separate `## Outside scope` heading." With `--pr <N>`,
+  also the scope context from Step 2, marked as check inputs.
 - **CLAUDE.md contents** (`~/.claude/CLAUDE.md` and project
   `.claude/CLAUDE.md`) — for convention checks
 - **Issue body** (if any) — mark explicitly as
   `background only; if the issue and the plan disagree, the plan wins`
 - Project root path (for codebase exploration)
 - Output path:
-  `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>-<type>.md`
+  `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>[-pr<N>|-outline]-<type>.md`
   where `<type>` is `plan` or `ux`. Run `date +%Y-%m-%d-%H%M%S` for
   timestamp — never hardcode.
 - **Mandatory write rule** (verbatim):
@@ -113,7 +164,8 @@ For each reviewer, in order:
    **salvage**: write that text to the path; buffer log line for Step 8:
    `<reviewer> output salvaged from text return — did not call Write tool.`
 4. Neither has structure → **re-spawn ONCE**. New prompt = original spawn
-   prompt verbatim (plan path, CLAUDE.md, issue body, output path)
+   prompt verbatim (plan path, review scope and scope context, CLAUDE.md,
+   issue body, output path)
    PREPENDED with:
    `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '^# .+ Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.`
 5. Still failing after re-spawn → **hard-fail** that reviewer. Log:
@@ -131,7 +183,9 @@ _Extract bullets from reviewer reports; dedupe across reviewers._
 For each accepted reviewer output:
 
 1. Extract each bullet. Capture verbatim reviewer text alongside the
-   finding (Step 12's `c`-for-context reads from this).
+   finding (Step 12's `c`-for-context reads from this). Skip bullets under
+   `## Outside scope`; list them in the triage file's `## Outside scope`
+   section, unbucketed, for a later review that covers them.
 2. **Composite split**: only when 2+ distinct plan-section refs AND
    recommendations don't share a single fix. Otherwise one.
 3. **Dedupe across reviewers**: same finding → one entry, attribute both
@@ -177,6 +231,11 @@ rules → second-pass flags.
 
 Match by `same plan section + same root issue (paraphrase equivalence)`.
 
+- **Outside this run's scope** (under `--outline` or `--pr`, a finding
+  filed under `## Findings` that judges a part of the plan the scope
+  doesn't cover) → remove it from bucketing and move it to the triage
+  file's `## Outside scope` section, so it is counted once, there. Not
+  hedging; the escalation rule below doesn't apply.
 - **Carry-over from prior triage**: user-driven skip status
   (`skipped (user redirected)` / `skipped (user accepted SKIP)`) → carry
   as auto-skip with
@@ -240,8 +299,9 @@ _Examples:_ reviewer proposes a different decomposition into commits
 - **Scope-creep hedging is hesitation.** Writing any of `"out of scope"`,
   `"separate plan revision"`, `"we'd be piggybacking"`,
   `"convention sweep deserves its own decision"` in your reasoning →
-  escalate. Two cases that LOOK like scope creep but are small-boyscout
-  when confident:
+  escalate. (A reviewer's `## Outside scope` section under `--outline` or
+  `--pr` is not hedging; Step 5 already set those aside.) Two cases that
+  LOOK like scope creep but are small-boyscout when confident:
 
   - **Pre-existing mechanical defects in the plan being reviewed** —
     typos, malformed markdown, missing language tags, broken
@@ -306,7 +366,7 @@ _Examples:_ reviewer proposes a different decomposition into commits
 
 _Create the persistent audit file before any auto-fix or dialog._
 
-Write `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>-triage.md` (same
+Write `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>[-pr<N>|-outline]-triage.md` (same
 timestamp as Step 3) using the canonical structure from Step 13 with:
 
 - Frontmatter: `snapshot-copy: null` (set at Step 10); other fields
@@ -346,7 +406,7 @@ _Apply mechanical plan edits via Edit; snapshot the plan first so changes
 can be inspected or reverted._
 
 1. Before the first fix, copy the plan to
-   `.reviews/plans/<timestamp>-<plan-name>-pre-fix.md` and set triage
+   `.reviews/plans/<timestamp>-<plan-name>[-pr<N>|-outline]-pre-fix.md` and set triage
    frontmatter `snapshot-copy: <pre-fix-path>`. If no auto-fixes run,
    `snapshot-copy` stays `null`. The snapshot copy is the only recovery
    primitive — plan files are gitignored, so `git checkout`/`git diff`
@@ -484,8 +544,9 @@ User types `stop` / `pause` / `quit` / interrupt → mark remaining items
 `Status: pending` in triage, print:
 
 ```text
-Paused at item #<i>/<N>. Resume with /review-plan — re-invocation reads
-the latest triage and resumes from pending items.
+Paused at item #<i>/<N>. Resume with /review-plan <plan> <scope flag>;
+re-invocation reads the latest triage for that scope and resumes from
+pending items.
 ```
 
 Exit cleanly. Re-invocation finds the triage via Step 2's prior-triage
@@ -503,7 +564,7 @@ Triage was created Step 8, updated Steps 9/10/12. Finalize:
 - Confirm every needs-review entry has a terminal `Status:` (no leftover
   `pending` unless user aborted)
 
-Path: `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>-triage.md` (same
+Path: `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>[-pr<N>|-outline]-triage.md` (same
 timestamp as Step 3).
 
 Frontmatter:
@@ -514,6 +575,7 @@ plan: <plan-name>
 plan-path: <absolute-path-to-plan>
 snapshot-copy: <path-to-pre-fix-copy or null> # parallel to /review's snapshot-sha
 reviewers-ran: [plan, ux]
+scope: <outline | pr-N | full>
 issue: <issue-number or null>
 timestamp: <iso>
 ---
@@ -566,6 +628,10 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 (... more entries ...)
 
+## Outside scope
+
+- <reviewer's out-of-scope bullets, verbatim, unbucketed> (only with `--outline` or `--pr`)
+
 ## Salvage / failure log
 
 - <reviewer> output salvaged from text return — did not call Write tool. (if any)
@@ -589,8 +655,9 @@ Auto-skipped (<N>/<total>): #<i> (<descriptor>), ...
 Needs-review (<N>/<total>; fixed: <x>, skipped: <y>, pending: <z>):
   #<i> — <status>: <5-word user reason or descriptor>
   ...
+Outside scope (<N>): listed in the triage file for a later review (omit when 0)
 
-Triage: .reviews/plans/<timestamp>-<plan-name>-triage.md
+Triage: .reviews/plans/<timestamp>-<plan-name>[-pr<N>|-outline]-triage.md
 
 Plan updated. Re-read before starting implementation.
 ```
