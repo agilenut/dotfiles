@@ -134,6 +134,13 @@ Not an email archive: distill the few knowledge-bearing emails; leave the rest
 in your mail app. Same for the web - clip what's important and link-rot-prone,
 link the rest, store nothing for the ephemeral.
 
+Not a status mirror either. When a live source already answers a question (an
+issue tracker, a code repo's docs, a lockfile), name the source and stop. Keep
+what it can't answer: why the work exists, what was decided and rejected, how
+it was sequenced. A dated one-line snapshot is fine when the history needs it;
+a status table or a restated rule is not, because nothing keeps it in step with
+its source.
+
 ## Write for the question, not the answer
 
 _Notes are reached by search, not loaded. Lead with the question and both
