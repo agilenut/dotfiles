@@ -145,7 +145,10 @@ Base is always included. Scan the diff for these signals to add others:
 **AI — include if diff touches any of:**
 
 - Agent definitions (`agents/*.md`) or skill definitions
-  (`skills/**/SKILL.md`)
+  (`skills/**/SKILL.md`), and other files a skill loads from its folder
+- Agent instruction files: `CLAUDE.md` (any folder, including `.claude/`
+  and `dot_claude/` sources) and `AGENTS.md`
+- Runbooks: files under `docs/runbooks/`
 - Prompt templates: `.yaml`/`.yml` with keys like `prompts:`, `system:`,
   `temperature:`, `max_tokens:`, `messages:`, `model:`
 - Files in directories named `prompt*`, `eval*`, `llm*`
