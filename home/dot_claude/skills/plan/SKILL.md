@@ -119,7 +119,7 @@ worktree: <true | false>
 
 Sections, in order (single-PR default):
 
-- **Step 0** - the board steps from the `board` skill. Single-PR plan: the issue (existing `#N` or new); file it if new, add it to the board, move it to In Progress, assign. Multi-PR plan: name the epic's parent issue (existing or new) and every PR's issue; file all of them now as sub-issues of the parent, in Backlog or Up next per the board skill's column rules, with their ACs; then move only PR 1's issue to In Progress. Each later PR's issue moves to In Progress at its kickoff (Step 10). Until an issue is filed, its draft ACs live here.
+- **Step 0** - the board steps from the `board` skill. Single-PR plan: the issue (existing `#N` or new); file it if new, add it to the board, move it to In Progress, assign. Multi-PR plan: name the epic's parent issue (existing or new) and every workstream's issue (usually one per PR); file all of them now as sub-issues of the parent, in Backlog or Up next per the board skill's column rules, with their ACs; then move only PR 1's issue to In Progress. Each later PR's issue moves to In Progress at its kickoff (Step 10). Until an issue is filed, its draft ACs live here.
 - **Goal** — 1–2 sentences
 - **Approach** — chosen direction + why (1–2 lines)
 - **Decisions** (when the walk had contested sub-choices): each entry: decision + 1-line reason. Include when the choice was contested in the walk, diverges from a convention or default, or its reason isn't self-evident from Approach. Skip no-brainers. When a decision changes, rewrite its entry in place (with "was X; changed because Y" if the history matters) instead of appending a correction.
@@ -206,7 +206,7 @@ Before starting PR N (N > 1):
 
 - Unit is the logical change, not the file
 - Same logical change across multiple files / apps = 1 commit
-- Code + tests together in the same commit; docs may land once per PR, in the commit that finishes the behavior they describe, and the PR never merges without them
+- Code + tests together in the same commit; docs can wait for the commit that finishes the behavior they describe, but a PR never merges without its docs
 - Don't split mechanical setup from the change that needs it
 - Split pre-refactor from new behavior only when pre-refactor stands alone (compiles + tests pass)
 - Too-fine smell: would each commit make sense to a reader without the others? If no, merge
@@ -224,5 +224,5 @@ Before starting PR N (N > 1):
 ## Reference: Review & Test Defaults
 
 - Review timing: `per-commit` for non-trivial; `end-of-PR` for a series of small mechanical commits in one PR
-- Default toward review; skip only for truly trivial (typo, dep bump). Files that instruct an agent or a person (skills, agents, prompts, CLAUDE.md, AGENTS.md, runbooks) are never trivial.
+- Default toward review; skip only for truly trivial (typo, dep bump). A change to the instructions in files an agent or a person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md, runbooks) is never trivial; a typo fix in them still is.
 - Manual test: only when something can't be fully automated (UX/CSS/runtime behavior). Distinguish "testable in CI" from "I can't verify without you"

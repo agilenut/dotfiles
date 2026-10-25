@@ -181,6 +181,11 @@ _Permission prompting, Preferred commands, and Hook behavior._
   or heredocs feeding interpreters when other tools will work since they
   prompt. Heredocs feeding non-interpreter commands are fine
   (e.g. `git commit -m "$(cat <<EOF ... EOF)"`).
+- Query and filter files are data, not scripts: a GraphQL query read with
+  `gh api graphql -F query=@<file>` or a `jq -f <file>` filter, kept in
+  the scratchpad. Use one when a one-line command gets too complex to
+  read, or when a session isolated in a worktree refuses a command it
+  can't verify.
 - `gh api` reads — place `-X GET` (or `--method GET`) IMMEDIATELY
   after `gh api`, before the path. Other placements prompt:
   - do: `gh api -X GET repos/x/y/pulls/1`
@@ -252,7 +257,7 @@ _How to scope, sequence, and pause work for non-trivial tasks._
 
 ## Workflow
 
-_Boy-scouting, atomic PRs, backward compat, "done" ladder, under pressure._
+_Boy-scouting, atomic PRs, backward compat, definition of done, under pressure._
 
 - **Boy-scout** unrelated debt in files you touch, same commit, unless
   very large/widespread (then follow-up commit or PR after — almost
@@ -260,7 +265,9 @@ _Boy-scouting, atomic PRs, backward compat, "done" ladder, under pressure._
 - **Refactor sequencing.** Predictable refactor: refactor first, then
   feature. Discovered refactor: judgment call.
 - **Atomic PRs.** Code + tests + docs together; clear single intent.
-  Reduce forward-looking work.
+  Reduce forward-looking work. Tests go in the same commit as their code.
+  Docs can wait for the commit that finishes the behavior they describe,
+  but a PR never merges without its docs.
 - **Tech debt.** Boy-scout first. TODO comments only short-term during
   PR or for genuine forward-looking notes.
 - **Backward compat.** Aggressive delete when controlling all sides. DB
@@ -274,14 +281,20 @@ _Boy-scouting, atomic PRs, backward compat, "done" ladder, under pressure._
   (e.g. .NET naming).
 - **CI.** Thoroughness over speed.
 
-### "Done" ladder
+### Definition of Done
 
-| Stage   | Bar                                                                                       |
-| ------- | ----------------------------------------------------------------------------------------- |
-| Commit  | code + tests + docs + pre-commit + review if non-trivial + local tests + manual if needed |
-| Merge   | CI green + security scans + dependency audits                                             |
-| Promote | main CI + staging tested                                                                  |
-| Done    | in prod; verify if needed                                                                 |
+| Stage  | Bar                                                                                |
+| ------ | ---------------------------------------------------------------------------------- |
+| Commit | code + tests + pre-commit + review if non-trivial + local tests + manual if needed |
+| Merge  | docs + CI green + security scans + dependency audits                               |
+| Done   | main CI + post-merge checks (staging where there is one) + every AC checked off    |
+
+The board's Done column means the Done row. After Done, work goes Live:
+deployed to prod, applied, or published. Release state lives where the
+deploy happens (deploy tags, GitHub Releases), not on cards. When Done
+work isn't Live yet, say so when I ask what's pending and at the end of a
+session. Work with no live stage (a spike, a doc in the repo) ends at
+Done.
 
 ### Under pressure
 
@@ -454,7 +467,10 @@ _Branching, committing, PRs._
 - Before committing, consider if a review is warranted. If a plan
   governs the work, follow its review tag. Otherwise, run `/review`
   for non-trivial changes (new behavior, multi-file refactors); skip
-  for truly trivial (typo, dep bump, comment edit).
+  for truly trivial (typo, dep bump, comment edit). Files an agent or a
+  person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md,
+  runbooks) are behavior, not docs: review a change to their instructions
+  like code. A typo fix in them is still trivial; a README is still docs.
 - Each commit must build, test, and pass independently, no dead code or
   forward refs
 - Commit message: title ≤70 chars, imperative summary. Body: 1-3
@@ -499,13 +515,12 @@ issues, when to move cards._
 - **Start work with its issue, not a branch.** Reuse the issue that owns
   the work or file one, add it to the board if the project has one, move
   it to In Progress, assign me, then code. When a plan governs the work,
-  that is step 0 in the plan file. One issue per workstream; a tracking
-  issue with several workstreams gets an issue per stream, each with its
-  own PR.
-- **Link a split-off issue to its parent both ways.** Reference the parent
-  from the new issue, and comment on the parent naming what moved.
-  Otherwise the parent reads as untouched while its main problem is solved
-  elsewhere.
+  that is step 0 in the plan file. One issue per workstream, usually one
+  per PR. An epic split into several workstreams gets a parent issue,
+  with each workstream's issue as a sub-issue.
+- **Link a split-off issue both ways.** Reference the issue it split from,
+  and comment on that issue naming what moved. Otherwise the original
+  reads as untouched while its main problem is solved elsewhere.
 
 ### Acceptance criteria
 
@@ -527,19 +542,19 @@ issues, when to move cards._
   add an AC without asking. Ask me before any change that lets less work
   satisfy an AC: removing it, weakening it, or moving it to another issue.
   Skip the ask if I said yes to that change in this conversation or in a
-  plan I approved that names the AC change. Batch
-  several asks into one question. Being hard, slow, or unfinished is never
-  a reason to change an AC; propose a split instead. For any change beyond
+  plan I approved that names the AC change. Batch several asks into one
+  question. Being hard, slow, or unfinished is never a reason to change an
+  AC; propose a split instead. For any change beyond
   wording, comment on the issue with the old text, the new text, and why.
 - **Check the ACs before opening each PR.** Give each AC one status: met
   by this PR (name the test or behavior that shows it), covered by a later
   PR (name the plan step, or the PR or issue if there is no plan), or
   uncovered. Add uncovered work to this PR if it fits the plan's scope
   (or the issue's, if there is no plan); otherwise propose a split or an
-  AC change. If the issue has no ACs,
-  propose some first. List every AC and its status in the PR body. Check
-  an AC off only when the PR that meets it merges and any post-merge check
-  for it passes; a partly met AC stays open.
+  AC change. If the issue has no ACs, propose some first. List every AC
+  and its status in the PR body. Check an AC off only when the PR that
+  meets it merges and any post-merge check for it passes; a partly met AC
+  stays open.
 
 ### Referencing
 
@@ -556,11 +571,13 @@ issues, when to move cards._
 
 - **Keep the board in sync as you go, without being asked,** if the
   project has one. I watch it to see what is active and what recently
-  shipped. Columns other than In Progress and your last allowed column
-  move only as the project's memory says. The board's Done means the
-  last-column check below passed, not the Done ladder's in-prod stage.
-- **Keep cards in order.** Backlog, Todo, and In Progress are in priority
-  order, highest first. Place a new card where you think it belongs and
+  shipped. Place new cards in Backlog or Up next; other moves beyond In
+  Progress and your last allowed column follow the project's memory. The
+  `board` skill has the commands.
+- **Blocked is a label, never a column,** with a comment saying why (the
+  `board` skill has the steps).
+- **Keep cards in order.** Backlog, Up next, and In Progress are in
+  priority order, highest first. Place a new card where you think it belongs and
   say where. Re-sort existing cards only when I ask. In Review and Done
   are most recent first, so a card you move there goes to the top.
 - **After each PR merges, update its issue in the same session.** Check
@@ -573,7 +590,9 @@ issues, when to move cards._
   merged (or closed, with the reason noted on the issue); every AC is
   checked off; and the issue has a comment naming the PRs that shipped it
   and any AC that changed. Your last allowed column is Done unless the
-  project's memory names another.
+  project's memory names another. When your last allowed column is Done
+  and the board doesn't close issues there, close the issue after the
+  move.
 
 ## Worktree
 
@@ -584,6 +603,10 @@ _Entering, exiting, where they land._
 - `ExitWorktree` triggers cleanup (docker compose down + worktree remove)
 - Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling).
   Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
+- A session isolated in a worktree can't write the main tree, where plans
+  and reviews live. Edit a copy in the worktree's `.plans/` (and
+  `.reviews/`), then after `ExitWorktree` with `keep`, copy them back to
+  the main tree before the worktree is removed.
 
 ## Dotfiles
 
@@ -703,9 +726,9 @@ Project docs (READMEs, guides, design docs):
   dedicated landing place.
 - When adding a new way to do something, audit and remove or merge the
   obsolete ways. Replace, don't append.
-- Update docs in the same commit as the code change — never separately —
-  when the change makes an existing doc wrong or incomplete. **Changing
-  code is not itself a reason to write documentation.**
+- Update docs in the same PR as the code change, never separately, when
+  the change makes an existing doc wrong or incomplete.
+  **Changing code is not itself a reason to write documentation.**
 - EXCEPTION: docs that record decisions preserve the history of the
   decision, not just its current state. HOW a project does that is its
   own convention — check its docs and CLAUDE.md before assuming. Two
