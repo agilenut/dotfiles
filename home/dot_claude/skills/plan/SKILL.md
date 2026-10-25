@@ -119,7 +119,7 @@ worktree: <true | false>
 
 Sections, in order (single-PR default):
 
-- **Step 0** - the board steps from the `board` skill. Single-PR plan: the issue (existing `#N` or new); file it if new, add it to the board, move it to In Progress, assign. Multi-PR plan: name the epic's parent issue (existing or new) and every workstream's issue (usually one per PR); file all of them now as sub-issues of the parent, in Backlog or Up next per the board skill's column rules, with their ACs; then move only PR 1's issue to In Progress. Each later PR's issue moves to In Progress at its kickoff (Step 10). Until an issue is filed, its draft ACs live here.
+- **Step 0** - the board steps from the `board` skill. Single-PR plan: the issue (existing `#N` or new); file it if new, add it to the board, move it to In Progress, assign. Multi-PR plan: name every workstream's issue (usually one per PR) and, when there are two or more, the epic's parent issue (existing or new); file all of them now (as sub-issues of the parent, when there is one), in Backlog or Up next per the board skill's column rules, with their ACs; then move only PR 1's issue to In Progress. Each later PR's issue moves to In Progress at its kickoff (Step 10). Until an issue is filed, its draft ACs live here.
 - **Goal** — 1–2 sentences
 - **Approach** — chosen direction + why (1–2 lines)
 - **Decisions** (when the walk had contested sub-choices): each entry: decision + 1-line reason. Include when the choice was contested in the walk, diverges from a convention or default, or its reason isn't self-evident from Approach. Skip no-brainers. When a decision changes, rewrite its entry in place (with "was X; changed because Y" if the history matters) instead of appending a correction.
@@ -156,7 +156,7 @@ Worktree: run all PRs from ONE working tree (substitute the real `work:` name). 
 
 ### PR 2: <title> (branch: <name>)
 
-Goal, open decisions. Before starting: run the PR kickoff (`/plan` Step 10: re-read, update the plan, write commits, `/review-plan --pr 2`, show the outline, then step 0).
+Goal, open decisions. Before starting: run the PR kickoff (`/plan` Step 10: confirm the previous PR's closeout, re-read, update the plan, write commits, `/review-plan --pr 2`, show the outline, then step 0).
 ```
 
 No "considered / rejected" section in the file — that lives in chat.
@@ -184,7 +184,7 @@ Plan files are gitignored, so there is no commit step for the plan.
 
 Before starting PR N (N > 1):
 
-1. Confirm the previous PR's closeout ran (its issue's ACs checked, closing comment, card moved per the `board` skill).
+1. Confirm the previous PR's closeout ran for each issue it worked (ACs checked, closing comment, card moved per the `board` skill).
 2. Re-read the plan's Decisions and Open items, and what merged PRs actually changed: their PR bodies, `.reviews/plans/*-pr<M>-*` triage, and `.reviews/code/*` triage for their branches.
 3. Update the plan before writing commits: rewrite any Decision a merged PR changed, update the PR table, and propose AC changes on PR N's issue per the global AC rules.
 4. Write PR N's commits in the plan file, numbering on from the previous PR's last commit.

@@ -65,6 +65,11 @@ relevant test plan section.
   creation: add the work to this PR, or propose a split or an AC change
   under the global AC rules, then re-run state detection once the user
   decides. If the issue has no ACs, propose some first.
+- **Plan follow-ups.** If a plan governs this PR and it is the plan's last
+  unmerged PR, read the plan's Open items. Each follow-up must already
+  have joined a planned PR, have an issue the user agreed to, or have been
+  dropped with the user's OK. Any left → raise them before creating the
+  PR.
 - Select one label based on the primary nature of the change. Check which
   labels exist in the repo (`gh label list --json name`) and use the best
   match:
@@ -82,8 +87,9 @@ relevant test plan section.
   not already covered by CI (don't list "tests pass", "build succeeds",
   "deploy succeeds"), and checkable within a day of merging; evidence
   that needs days (prod metrics, someone's feedback) becomes its own
-  issue, not a test-plan item. For each candidate, walk this decision
-  tree:
+  issue, not a test-plan item. The project's `board-settings` memory
+  (`Staging/device testing`) says how it verifies after merge; use it for
+  post-merge items. For each candidate, walk this decision tree:
 
   - Runnable now in this session? → run it, list under `### Pre-merge`
     as checked
@@ -208,7 +214,10 @@ relevant test plan section.
    then the Local Checks.
 6. Post the summary block (same format as CI_FAILED step 4).
 7. Announce, then run `git commit -m "<message>" && git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
-   as one Bash call — one prompt covers commit, push, PR create.
+   as one Bash call, so one prompt covers commit, push, and PR create. The body
+   references the original PR's issue the same way the original PR did
+   ("Closes" or "Part of #N") and skips the AC status table: the fix
+   restores CI for work already reviewed.
 8. Post fix-PR follow-up comment on the original PR (link to fix PR) —
    announce, then `gh pr comment`.
 9. Comment on linked issue: "PR #N merged, post-merge CI failed:
@@ -229,9 +238,10 @@ step whose comment already exists.
 
 1. Comment on PR: "All checks passed post-merge, all test plan items
    verified." Skip if that comment is already on the PR.
-2. For each issue the PR references ("Closes #N" or "Part of #N"), run the
-   `board` skill's "Close out after a PR merges", in this session, unless
-   the issue already has a closeout comment naming this PR.
+2. For each issue the PR references ("Closes", "Fixes", or "Resolves #N",
+   or "Part of #N"), run the `board` skill's "Close out after a PR
+   merges", in this session. On re-entry it skips the parts already done
+   and still runs the last-column check.
 3. For each issue, compare its ACs with this PR's "Acceptance criteria
    status" table. Report only the ACs this PR was meant to meet that are
    still unchecked, and any AC no PR covers. ACs a later PR covers are not

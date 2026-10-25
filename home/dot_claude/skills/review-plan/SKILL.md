@@ -544,7 +544,7 @@ User types `stop` / `pause` / `quit` / interrupt → mark remaining items
 `Status: pending` in triage, print:
 
 ```text
-Paused at item #<i>/<N>. Resume with /review-plan <plan> <scope flag> —
+Paused at item #<i>/<N>. Resume with /review-plan <plan> <scope flag>;
 re-invocation reads the latest triage for that scope and resumes from
 pending items.
 ```
