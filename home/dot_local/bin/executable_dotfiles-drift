@@ -9,8 +9,12 @@
 # the machine's version, `chezmoi apply` restores the source's. `re-add`
 # rather than `add` because it refuses to overwrite a template with its
 # rendered output; a templated file's change is copied into the source by
-# hand. Read-only; never applies anything. topgrade runs it in place of its
-# `chezmoi` step.
+# hand. Never applies anything. topgrade runs it in place of its `chezmoi`
+# step.
+#
+# The list also goes to $XDG_STATE_HOME/topgrade/drift (one home-relative
+# path per line, sorted), which the update status reads. If `chezmoi status`
+# fails, the file is left as it was.
 #
 # JSON is compared after normalizing (sorted keys, whitespace), so an app that
 # rewrites its own config file (karabiner) only counts once the content
@@ -46,6 +50,17 @@ dotfiles_drift_differs() {
   return 0
 }
 
+# Replace the drift state file with stdin. Written through a temp file so a
+# reader never sees half a list.
+dotfiles_drift_write_state() {
+  local dir="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
+  mkdir -p "$dir"
+  local tmp
+  tmp="$(mktemp "$dir/.drift.XXXXXX")"
+  sort >"$tmp"
+  mv "$tmp" "$dir/drift"
+}
+
 dotfiles_drift_main() {
   local status
   status="$(chezmoi status)"
@@ -60,9 +75,11 @@ dotfiles_drift_main() {
   done < <(printf '%s\n' "$status" | dotfiles_drift_candidates)
 
   if [[ ${#drifted[@]} -eq 0 ]]; then
+    dotfiles_drift_write_state </dev/null
     echo "No dotfiles drift."
     return 0
   fi
+  printf '%s\n' "${drifted[@]}" | dotfiles_drift_write_state
   echo "Dotfiles drift: ${#drifted[@]} file(s) changed outside chezmoi:"
   local source
   for path in "${drifted[@]}"; do

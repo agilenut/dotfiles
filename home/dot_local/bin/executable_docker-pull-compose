@@ -22,7 +22,12 @@
 # compose project, and then used image-only by a project.
 #
 # A pulled image takes effect once its container is recreated
-# (`docker compose up -d` in that project).
+# (`docker compose up -d` in that project). Running containers still on an
+# older image are reported and written to
+# $XDG_STATE_HOME/topgrade/stale-containers
+# (<container><TAB><image><TAB><compose project>), which the update status
+# reads. The file is replaced whenever the check succeeds, even if a pull
+# failed; if listing the running containers fails, it's left as it was.
 
 set -euo pipefail
 
@@ -90,8 +95,46 @@ docker_pull_compose_file_args() {
   done
 }
 
+# Print each running container whose image is older than the one its tag now
+# points to: <container><TAB><image><TAB><compose project, or empty>. A pull
+# moves only the tag. A container whose tag is gone has nothing to compare
+# against and is left out.
+docker_pull_compose_stale() {
+  local listing id
+  local -a ids=()
+  listing="$(docker ps -q)" || return 1
+  while IFS= read -r id; do
+    [[ -n "$id" ]] && ids+=("$id")
+  done <<<"$listing"
+  [[ ${#ids[@]} -gt 0 ]] || return 0
+
+  # One container per inspect: one that stopped since `ps` is skipped instead
+  # of failing the check.
+  local row name image image_id project current
+  for id in "${ids[@]}"; do
+    row="$(docker inspect --format '{{.Name}}{{"\t"}}{{.Config.Image}}{{"\t"}}{{.Image}}{{"\t"}}{{index .Config.Labels "com.docker.compose.project"}}' "$id" 2>/dev/null)" || continue
+    IFS=$'\t' read -r name image image_id project <<<"$row"
+    current="$(docker image inspect --format '{{.Id}}' "$image" 2>/dev/null)" || continue
+    [[ "$current" != "$image_id" ]] || continue
+    printf '%s\t%s\t%s\n' "${name#/}" "$image" "$project"
+  done
+}
+
+# Replace the stale-container state file with stdin. Written through a temp
+# file so a reader never sees half a list.
+docker_pull_compose_write_state() {
+  local dir="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
+  mkdir -p "$dir"
+  local tmp
+  tmp="$(mktemp "$dir/.stale-containers.XXXXXX")"
+  cat >"$tmp"
+  mv "$tmp" "$dir/stale-containers"
+}
+
 docker_pull_compose_main() {
   if ! docker info >/dev/null 2>&1; then
+    # Nothing runs while Docker is down.
+    docker_pull_compose_write_state </dev/null
     echo "Docker isn't running; skipping image pulls."
     return 0
   fi
@@ -144,6 +187,18 @@ docker_pull_compose_main() {
       failed=$((failed + 1))
     fi
   done <<<"$selected"
+
+  local stale container image
+  if stale="$(docker_pull_compose_stale)"; then
+    printf '%s' "${stale:+$stale$'\n'}" | docker_pull_compose_write_state
+    while IFS=$'\t' read -r container image _; do
+      [[ -n "$container" ]] || continue
+      echo "stale   $container is on an older image than $image; recreate it to update"
+    done <<<"$stale"
+  else
+    echo "FAILED  checking running containers for older images"
+    failed=$((failed + 1))
+  fi
 
   [[ $failed -eq 0 ]]
 }

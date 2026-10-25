@@ -115,9 +115,16 @@ CHEZMOISTUB
   : >"$stubdir/targets/app.conf.tmpl"
   printf '%s\n' 'MM .config/app.json' 'MM .config/app.conf' \
     ' M .config/pending' 'MM .config/broken.json' >"$stubdir/status"
+  local state="$stubdir/state/topgrade/drift"
   rc=0
   out=$(PATH="$stubdir:$PATH" HOME="$fakehome" STUB_STATUS="$stubdir/status" \
-    STUB_TARGETS="$stubdir/targets" bash "$DOTFILES_DRIFT" 2>&1) || rc=$?
+    STUB_TARGETS="$stubdir/targets" XDG_STATE_HOME="$stubdir/state" \
+    bash "$DOTFILES_DRIFT" 2>&1) || rc=$?
+  if [ "$(cat "$state" 2>/dev/null)" = "$(printf '%s\n' .config/app.conf .config/broken.json)" ]; then
+    pass "drifted files are written to the state file"
+  else
+    fail "drift state wrong: '$(tr '\n' ',' <"$state" 2>/dev/null)'"
+  fi
   if [ "$rc" -eq 0 ] && grep -q '^Dotfiles drift: 2 file' <<<"$out" \
     && grep -Fqx '  ~/.config/app.conf (template: copy the change into /src/app.conf.tmpl)' <<<"$out" \
     && grep -Fqx '  ~/.config/broken.json' <<<"$out" \
@@ -132,22 +139,35 @@ CHEZMOISTUB
     fail "report should suggest chezmoi re-add: $(tr '\n' '|' <<<"$out")"
   fi
 
+  # A failed run keeps the last good list rather than clearing it.
+  rc=0
+  PATH="$stubdir:$PATH" HOME="$fakehome" XDG_STATE_HOME="$stubdir/state" \
+    bash "$DOTFILES_DRIFT" >/dev/null 2>&1 || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    pass "a failing chezmoi status fails the report"
+  else
+    fail "chezmoi status failure was swallowed"
+  fi
+  if [ "$(cat "$state" 2>/dev/null)" = "$(printf '%s\n' .config/app.conf .config/broken.json)" ]; then
+    pass "a failed run leaves the drift state file as it was"
+  else
+    fail "failed run changed the drift state: '$(tr '\n' ',' <"$state" 2>/dev/null)'"
+  fi
+
   : >"$stubdir/status"
   rc=0
   out=$(PATH="$stubdir:$PATH" HOME="$fakehome" STUB_STATUS="$stubdir/status" \
-    STUB_TARGETS="$stubdir/targets" bash "$DOTFILES_DRIFT" 2>&1) || rc=$?
+    STUB_TARGETS="$stubdir/targets" XDG_STATE_HOME="$stubdir/state" \
+    bash "$DOTFILES_DRIFT" 2>&1) || rc=$?
   if [ "$rc" -eq 0 ] && [ "$out" = "No dotfiles drift." ]; then
     pass "no drift reports so and succeeds"
   else
     fail "no-drift run wrong (rc=$rc): $out"
   fi
-
-  rc=0
-  PATH="$stubdir:$PATH" HOME="$fakehome" bash "$DOTFILES_DRIFT" >/dev/null 2>&1 || rc=$?
-  if [ "$rc" -ne 0 ]; then
-    pass "a failing chezmoi status fails the report"
+  if [ -f "$state" ] && [ ! -s "$state" ]; then
+    pass "no drift empties the state file"
   else
-    fail "chezmoi status failure was swallowed"
+    fail "no-drift state wrong: '$(tr '\n' ',' <"$state" 2>/dev/null)'"
   fi
 
   rm -rf "$stubdir"
@@ -221,9 +241,24 @@ test_docker_pull_compose() {
   fi
 
   # docker stub: logs every call. DOCKER_DOWN fails `info`, LS_FAIL fails
-  # `compose ls`, PULL_FAIL fails `pull`.
-  local log rc out
+  # `compose ls`, PULL_FAIL fails `pull`, PS_FAIL fails `ps`. `ps -q` prints
+  # $STUB_PS; `inspect <id>` prints that container's row from $STUB_INSPECT
+  # ("<id><TAB><row>" lines) and `image inspect <image>` that image's ID from
+  # $STUB_IMAGES ("<image> <id>" lines), each failing when not listed.
+  local log rc out state
   log="$stubdir/calls"
+  state="$stubdir/state/topgrade/stale-containers"
+  printf '%s\n' c1 c2 c3 c4 c5 >"$stubdir/ps"
+  # db and tool run an older image than their tag now points to; cache is
+  # current; scratch's tag was removed, so there's nothing to compare; c5
+  # stopped between `ps` and `inspect`.
+  printf '%s\t/%s\t%s\t%s\t%s\n' \
+    c1 shop-db-1 postgres:18 sha256:old shop \
+    c2 shop-cache-1 redis:8 sha256:same shop \
+    c3 scratch alpine:3 sha256:x '' \
+    c4 tool tool:1 sha256:t1 '' >"$stubdir/inspect"
+  printf '%s\n' 'postgres:18 sha256:new' 'redis:8 sha256:same' 'tool:1 sha256:t2' \
+    >"$stubdir/images"
   jq -n --arg d "$stubdir" '[
     {Name: "api", Status: "running(1)",
      ConfigFiles: "\($d)/api/compose.yml,\($d)/api/compose.override.yml"},
@@ -241,6 +276,15 @@ case "$*" in
   "compose ls"*) [ -z "$LS_FAIL" ] && cat "$STUB_LS" ;;
   *" config "*) cat "$STUB_CONFIG" ;;
   *" pull "*) [ -z "$PULL_FAIL" ] ;;
+  "ps -q"*) [ -z "$PS_FAIL" ] && cat "${STUB_PS:-/dev/null}" ;;
+  "image inspect"*)
+    for img; do :; done
+    grep "^$img " "$STUB_IMAGES" | cut -d' ' -f2 | grep .
+    ;;
+  inspect*)
+    for id; do :; done
+    grep "^$id	" "$STUB_INSPECT" | cut -f2- | grep .
+    ;;
   *) exit 0 ;;
 esac
 DOCKERSTUB
@@ -248,7 +292,9 @@ DOCKERSTUB
 
   run_pull() {
     PATH="$stubdir:$PATH" CALL_LOG="$log" STUB_LS="$stubdir/ls.json" \
-      STUB_CONFIG="$stubdir/config.json" bash "$DOCKER_PULL_COMPOSE" 2>&1
+      STUB_CONFIG="$stubdir/config.json" STUB_PS="${STUB_PS-$stubdir/ps}" \
+      STUB_INSPECT="$stubdir/inspect" STUB_IMAGES="$stubdir/images" \
+      XDG_STATE_HOME="$stubdir/state" bash "$DOCKER_PULL_COMPOSE" 2>&1
   }
 
   : >"$log"
@@ -271,6 +317,34 @@ DOCKERSTUB
   else
     fail "pull not issued as expected (rc=$rc, log: $(tr '\n' '|' <"$log"))"
   fi
+  if [ "$(cat "$state" 2>/dev/null)" = "$(printf '%s\t%s\t%s\n' shop-db-1 postgres:18 shop tool tool:1 '')" ]; then
+    pass "running containers on an older image than their tag are written to the state file"
+  else
+    fail "stale-container state wrong: '$(tr '\n\t' '|,' <"$state" 2>/dev/null)'"
+  fi
+  if grep -Fqx 'stale   shop-db-1 is on an older image than postgres:18; recreate it to update' <<<"$out"; then
+    pass "stale containers are reported"
+  else
+    fail "stale containers not reported: $(tr '\n' '|' <<<"$out")"
+  fi
+
+  # A failed check keeps the last good list rather than showing none.
+  rc=0
+  out=$(PS_FAIL=1 run_pull) || rc=$?
+  if [ "$rc" -ne 0 ] && grep -q '^FAILED  checking running containers' <<<"$out" \
+    && [ "$(wc -l <"$state" | tr -d ' ')" = 2 ]; then
+    pass "a failed container check is reported, fails the step, and keeps the state file"
+  else
+    fail "failed container check wrong (rc=$rc): $(tr '\n' '|' <<<"$out")"
+  fi
+
+  rc=0
+  out=$(STUB_PS="" run_pull) || rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$state" ] && [ ! -s "$state" ]; then
+    pass "no running containers empties the stale-container state file"
+  else
+    fail "no-containers run wrong (rc=$rc): '$(tr '\n\t' '|,' <"$state" 2>/dev/null)'"
+  fi
 
   : >"$log"
   rc=0
@@ -288,6 +362,15 @@ DOCKERSTUB
     pass "a failing compose ls fails the step instead of pulling nothing"
   else
     fail "compose ls failure was swallowed"
+  fi
+
+  # Docker Desktop stopped means no containers are running.
+  rc=0
+  out=$(DOCKER_DOWN=1 run_pull) || rc=$?
+  if [ "$rc" -eq 0 ] && [ -f "$state" ] && [ ! -s "$state" ]; then
+    pass "Docker not running empties the stale-container state file"
+  else
+    fail "Docker-down stale state wrong (rc=$rc): '$(tr '\n\t' '|,' <"$state" 2>/dev/null)'"
   fi
 
   rm -rf "$stubdir"
