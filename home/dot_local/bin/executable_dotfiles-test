@@ -30,6 +30,7 @@ source "$LIB_DIR/theme-palette.sh"
 source "$LIB_DIR/theme-runtime.sh"
 source "$LIB_DIR/git-signing.sh"
 source "$LIB_DIR/recap.sh"
+source "$LIB_DIR/launchd.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -150,6 +151,7 @@ main() {
 
   # Recap skill wrapper tests (macOS only)
   test_recap_wrapper
+  test_reload_launchd
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then
