@@ -108,6 +108,31 @@ An `M` in the first column means the deployed copy was edited, or a tool
 rewrote it (Karabiner rewrites its config often). With `M` in both columns,
 an apply would overwrite that edit, so it stops on that file.
 
+## Files an app rewrites
+
+_Keep the source in the app's own format, so its saves show only real
+changes._
+
+Some apps write the file chezmoi deploys. chezmoi compares text, so a
+source that differs from what the app writes shows up in `chezmoi diff`
+after every save: a whole-file diff when the app reformats it, or a hunk
+when the app adds a value the source lacks. Either way, real changes are
+harder to see.
+
+- Store the file exactly as the app writes it: its format, section order,
+  values it adds, and file mode (`private_` for 600). For a template, match
+  the rendered output.
+- Keep formatters off it: list it in `.prettierignore`, and give it an
+  `.editorconfig` section if its indentation or final newline differs.
+- Check it: make the app save without changing anything (toggle a setting
+  and back, or run its setup step), then confirm `chezmoi diff <target>`
+  is empty.
+
+| File                                 | Written by                                           | What the source matches                             |
+| ------------------------------------ | ---------------------------------------------------- | --------------------------------------------------- |
+| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                    | Karabiner's own format, byte for byte, and 600 mode |
+| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`) | On macOS, GCM's full path as the credential helper  |
+
 ## When an apply isn't enough
 
 _Some changes need another step before they take effect._
