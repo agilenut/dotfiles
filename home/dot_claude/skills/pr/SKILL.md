@@ -16,6 +16,8 @@ _Inspect git and PR data; classify into a state from the table._
 1. If PR number provided as argument, use that. Otherwise:
 2. Run `git status`, `git branch --show-current`
 3. Run `gh pr view --json number,state,title,body,baseRefName,mergedAt,mergeCommit 2>&1`
+4. Read CI: `gh pr checks <number>` for an open PR, or the run list in
+   MERGED_CI_RUNNING step 1 for a merged one.
 
 | State              | Condition                                                                   |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -33,6 +35,12 @@ _Inspect git and PR data; classify into a state from the table._
 To distinguish CI_PASSED vs PRE_MERGE_TESTING and POST_MERGE_TESTING vs
 MERGED_DONE: read the PR body and check for unchecked items (`- [ ]`) in the
 relevant test plan section.
+
+**No checks yet.** For a minute or so after a push or a merge, GitHub lists
+no checks or runs for the new commit. In a repo with workflows
+(`gh workflow list --json name --jq length` prints more than `0`), classify
+an open PR with no checks as CI_RUNNING, and a merged PR with no runs since
+`mergedAt` as MERGED_CI_RUNNING.
 
 ## Step 2: Act on State
 
@@ -113,15 +121,22 @@ relevant test plan section.
 
 ### CI_RUNNING
 
-1. **Fire-and-forget; do not poll.** `gh pr checks <number> --watch` via
-   Bash with `run_in_background: true`. System notifies on exit.
+1. **Watch in the background; don't poll with repeated tool calls.** Run
+   this with `run_in_background: true`. `--watch` exits at once when no
+   checks are listed, so the loop first waits up to 3 minutes for them:
+
+   ```bash
+   for _ in $(seq 36); do gh pr checks <number> --json name --jq length | grep -qv '^0$' && break; sleep 5; done; gh pr checks <number> --watch
+   ```
+
 2. **Read the verdict, not the exit code.** On notification, run
    `gh pr checks <number> --json bucket --jq '[.[].bucket] | unique'`.
    The watch is a wake-up trigger only.
-   - `[]` (no checks) → CI_PASSED (treat as no CI)
+   - Prints nothing and exits 1 (no checks) → CI never started for this
+     commit; surface to user
    - Contains `fail` or `cancel` → CI_FAILED
-   - Contains `pending` → re-fire the watch. After 3 consecutive pending
-     re-fires, surface to user.
+   - Contains `pending` → run step 1's command again. After 3 pending
+     results in a row, surface to user.
    - Only `pass` / `skipping` → CI_PASSED/PRE_MERGE_TESTING
    - Anything else (unrecognized values, read errors) → surface to user
 
@@ -153,8 +168,9 @@ relevant test plan section.
 ### PRE_MERGE_TESTING
 
 1. **Re-verify checks complete.** `gh pr checks <number>` — one-shot read
-   (not `--watch`; need result inline). Confirm all passed/skipped; if any
-   still running, transition to CI_RUNNING.
+   (not `--watch`; need result inline). Confirm all passed/skipped. If any
+   are still running, or none are listed and Step 1's "No checks yet"
+   applies, transition to CI_RUNNING.
 2. Read PR body, process `### Pre-merge` items:
    - Verify locally if possible (run script, check file) → check off
    - Needs deploy → leave for post-merge
@@ -167,8 +183,9 @@ relevant test plan section.
 ### CI_PASSED
 
 1. **Re-verify checks complete.** `gh pr checks <number>` — one-shot read
-   (not `--watch`; need result inline). Confirm all passed/skipped; if any
-   still running, transition to CI_RUNNING.
+   (not `--watch`; need result inline). Confirm all passed/skipped. If any
+   are still running, or none are listed and Step 1's "No checks yet"
+   applies, transition to CI_RUNNING.
 2. Check `~/.claude/skills/pr/ask-before-merge.txt` (one `owner/repo` per
    line; `#` for comments; skip if missing). If current repo
    (`gh repo view --json nameWithOwner --jq .nameWithOwner`) is listed,
@@ -181,10 +198,20 @@ relevant test plan section.
 ### MERGED_CI_RUNNING
 
 1. `gh run list --branch main --created '><mergedAt>' --json databaseId,name` —
-   substitute `<mergedAt>` with the ISO timestamp from step 1's JSON
+   substitute `<mergedAt>` with the ISO timestamp from Step 1's JSON
    (post-merge workflows don't show in `gh pr checks`).
-2. No runs → transition to POST_MERGE_TESTING or MERGED_DONE.
-3. **Fire-and-forget; do not poll.** For each `databaseId` from step 1:
+2. No runs → run this with `run_in_background: true`; it waits up to 2
+   minutes for them to appear:
+
+   ```bash
+   for _ in $(seq 12); do gh run list --branch main --created '><mergedAt>' --json databaseId --jq length | grep -qv '^0$' && break; sleep 10; done
+   ```
+
+   Then repeat step 1. Still none → transition to POST_MERGE_TESTING or
+   MERGED_DONE, and say in the report that no post-merge runs were found.
+
+3. **Watch in the background; don't poll with repeated tool calls.** For
+   each `databaseId` from the latest list:
    `gh run watch <id> --exit-status` via Bash with `run_in_background: true`.
    Spawn in parallel; system notifies per process exit.
 4. **Read the verdict, not the exit code.** On each notification, run
