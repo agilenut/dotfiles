@@ -1,0 +1,3 @@
+# Kept in the format Karabiner writes, so `chezmoi diff` shows only real
+# changes after it saves. Read by pre-commit's prettier and by editors.
+home/dot_config/private_karabiner/private_karabiner.json

@@ -22,3 +22,8 @@ switch_case_indent = true
 space_redirects = false
 keep_padding = false
 function_next_line = false
+
+# Kept in the format Karabiner writes (see .prettierignore)
+[home/dot_config/private_karabiner/private_karabiner.json]
+indent_size = 4
+insert_final_newline = false
