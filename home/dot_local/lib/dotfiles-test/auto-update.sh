@@ -240,11 +240,47 @@ test_docker_pull_compose() {
     fail "compose select wrong: '$(printf '%s' "$result" | tr '\n\t' '|,')'"
   fi
 
+  # The same image spelled with and without Docker Hub's registry and
+  # `library/` prefixes; only the unrelated one is pulled.
+  result=$(jq -n '[
+    {name: "shop", files: "s.yml", services: {
+      api: {build: {context: "."}, image: "docker.io/u/backend"},
+      cache: {build: {context: "."}, image: "redis"}}},
+    {name: "web", files: "w.yml", services: {
+      site: {image: "u/backend"},
+      store: {image: "index.docker.io/library/redis:latest"},
+      db: {image: "docker.io/library/postgres:18"}}}
+  ]' | compose_select) || true
+  expected=$(printf 'none\tshop\npull\tweb\tw.yml\tdb\n')
+  if [ "$result" = "$expected" ]; then
+    pass "a built image matches however its Docker Hub name is spelled"
+  else
+    fail "compose select spelling wrong: '$(printf '%s' "$result" | tr '\n\t' '|,')'"
+  fi
+
+  # Building any tag of a repository blocks pulls of every tag and digest of
+  # it. A registry with a port is a different repository.
+  result=$(jq -n '[
+    {name: "shop", files: "s.yml", services: {
+      api: {build: {context: "."}, image: "u/backend:dev"}}},
+    {name: "web", files: "w.yml", services: {
+      site: {image: "u/backend:1.2"},
+      pinned: {image: "u/backend@sha256:abc"},
+      mirror: {image: "localhost:5000/u/backend:1.2"}}}
+  ]' | compose_select) || true
+  expected=$(printf 'none\tshop\npull\tweb\tw.yml\tmirror\n')
+  if [ "$result" = "$expected" ]; then
+    pass "a built repository blocks pulls of all its tags and digests"
+  else
+    fail "compose select tags wrong: '$(printf '%s' "$result" | tr '\n\t' '|,')'"
+  fi
+
   # docker stub: logs every call. DOCKER_DOWN fails `info`, LS_FAIL fails
-  # `compose ls`, PULL_FAIL fails `pull`, PS_FAIL fails `ps`. `ps -q` prints
-  # $STUB_PS; `inspect <id>` prints that container's row from $STUB_INSPECT
-  # ("<id><TAB><row>" lines) and `image inspect <image>` that image's ID from
-  # $STUB_IMAGES ("<image> <id>" lines), each failing when not listed.
+  # `compose ls`, CONFIG_FAIL fails `config`, PULL_FAIL fails `pull`, PS_FAIL
+  # fails `ps`. `ps -q` prints $STUB_PS; `inspect <id>` prints that
+  # container's row from $STUB_INSPECT ("<id><TAB><row>" lines) and
+  # `image inspect <image>` that image's ID from $STUB_IMAGES
+  # ("<image> <id>" lines), each failing when not listed.
   local log rc out state
   log="$stubdir/calls"
   state="$stubdir/state/topgrade/stale-containers"
@@ -274,7 +310,7 @@ printf '%s\n' "$*" >>"$CALL_LOG"
 case "$*" in
   info*) [ -z "$DOCKER_DOWN" ] ;;
   "compose ls"*) [ -z "$LS_FAIL" ] && cat "$STUB_LS" ;;
-  *" config "*) cat "$STUB_CONFIG" ;;
+  *" config "*) [ -z "$CONFIG_FAIL" ] && cat "$STUB_CONFIG" ;;
   *" pull "*) [ -z "$PULL_FAIL" ] ;;
   "ps -q"*) [ -z "$PS_FAIL" ] && cat "${STUB_PS:-/dev/null}" ;;
   "image inspect"*)
@@ -353,6 +389,19 @@ DOCKERSTUB
     pass "a failed pull is reported and fails the step"
   else
     fail "failed pull not surfaced (rc=$rc): $(tr '\n' '|' <<<"$out")"
+  fi
+
+  # An unreadable config hides that project's built images, so any pull could
+  # replace one of them. The container check still runs.
+  : >"$log"
+  rc=0
+  out=$(CONFIG_FAIL=1 run_pull) || rc=$?
+  if [ "$rc" -ne 0 ] && ! grep -q ' pull ' "$log" \
+    && grep -q '^skip    all image pulls' <<<"$out" \
+    && [ "$(wc -l <"$state" | tr -d ' ')" = 2 ]; then
+    pass "an unreadable compose config skips every pull, fails the step, and still checks containers"
+  else
+    fail "unreadable config run wrong (rc=$rc, log: $(tr '\n' '|' <"$log")): $(tr '\n' '|' <<<"$out")"
   fi
 
   : >"$log"

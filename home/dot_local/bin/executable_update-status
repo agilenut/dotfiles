@@ -10,9 +10,10 @@
 #
 # Usage:
 #   update-status          one line per item, with what to run
-#   update-status --tmux   status-bar marker: nothing when all is well, else
-#                          ⚠N, N counting the kinds of item; red when the last
-#                          run failed or hasn't run in over 2 days
+#   update-status --tmux   status-bar marker: nothing when all is well, else a
+#                          warning icon and N, the count of kinds of item;
+#                          gray, or red when the last run failed or hasn't run
+#                          in over 2 days
 
 set -euo pipefail
 
@@ -80,10 +81,10 @@ update_status_main() {
     lines+=("The scheduled update hasn't run since $last. Check ~/Library/Logs/topgrade-daily.err.log and \`launchctl print gui/$(id -u)/dotfiles.topgrade\`.")
   fi
   if [ "$(update_status_count drift)" -gt 0 ]; then
-    lines+=("Dotfiles drift: $(update_status_list drift '~/'). Keep this machine's version with \`chezmoi re-add <file>\`, or restore the dotfiles version with \`chezmoi apply <file>\`.")
+    lines+=("Dotfiles drift: $(update_status_list drift '~/'). Keep this machine's version with \`chezmoi re-add <file>\`, or restore the dotfiles version with \`chezmoi apply <file>\`. Run \`dotfiles-drift\` to recheck.")
   fi
   if [ "$(update_status_count stale-containers)" -gt 0 ]; then
-    lines+=("Containers on an older image: $(update_status_containers). Recreate them with \`docker compose up -d\` in each project.")
+    lines+=("Containers on an older image: $(update_status_containers). Recreate them with \`docker compose up -d\` in each project; the list refreshes on the next update.")
   fi
   if [ "$(update_status_count outdated-casks)" -gt 0 ]; then
     lines+=("Casks waiting for \`update\`: $(update_status_list outdated-casks).")

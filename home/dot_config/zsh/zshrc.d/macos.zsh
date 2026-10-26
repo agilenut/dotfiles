@@ -13,7 +13,7 @@ update() {
   mkdir -p "${lock:h}"
   if ! lock_acquire "$lock"; then
     print -u2 "An update is already running (pid $(cat "$lock/pid" 2>/dev/null))." \
-      "The scheduled run logs to ~/Library/Logs/topgrade-daily-$(date +%Y-%m-%d).log"
+      "If it's the scheduled run, it logs to ~/Library/Logs/topgrade-daily-$(date +%Y-%m-%d).log"
     return 1
   fi
   # Ctrl-C would otherwise end the function before the lock is released. A

@@ -7,7 +7,8 @@
 #
 # Sourced by bash (recap-daily) and zsh (topgrade-daily, `update`), so it
 # sticks to syntax both run. $$ is the sourcing shell, which is the owner.
-# macOS only (`stat -f`, `kern.boottime`), like the jobs that use it.
+# macOS only (`stat -f`, `kern.boottime`), like the jobs that use it. sysctl
+# is called by path: the launchd jobs' PATH leaves out /usr/sbin.
 
 # Succeed when lock <dir> is held by a running process. A lock with no PID yet
 # is being taken (between mkdir and the PID write) unless it's over a minute
@@ -16,7 +17,7 @@
 lock_held() {
   [ -d "$1" ] || return 1
   local boot
-  boot=$(sysctl -n kern.boottime 2>/dev/null | sed -n 's/^{ sec = \([0-9]*\),.*/\1/p')
+  boot=$(/usr/sbin/sysctl -n kern.boottime 2>/dev/null | sed -n 's/^{ sec = \([0-9]*\),.*/\1/p')
   if [ -n "$boot" ] && [ "$(stat -f %m "$1")" -lt "$boot" ]; then
     return 1
   fi

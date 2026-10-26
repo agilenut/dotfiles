@@ -60,14 +60,6 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# A running update can upgrade the claude-code cask, replacing the binary
-# mid-recap. Skip the hour; the next fire catches up. Checked after taking our
-# own lock (topgrade-daily does the same), so when both start at once at least
-# one sees the other.
-if lock_held "$LOG_DIR/topgrade.lock"; then
-  exit 0
-fi
-
 # Loop forward through any missing days, up to and including yesterday.
 # Bail on the first failure — the state file only advances after a day is
 # confirmed written, so the next run retries that day rather than skipping it.

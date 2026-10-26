@@ -2,7 +2,8 @@
 # =============================================================================
 # `update` runs topgrade with this config. Every step topgrade detects runs
 # except the ones disabled below, so newly installed tools get upgraded
-# without being listed here.
+# without being listed here. The scheduled run (topgrade-daily) uses it too
+# and turns off more steps on its command line.
 
 [misc]
   # Each disabled step is replaced:

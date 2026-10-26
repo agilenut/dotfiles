@@ -154,6 +154,8 @@ main() {
 
   # Recap skill wrapper tests (macOS only)
   test_recap_wrapper
+
+  # Scheduled jobs and update status tests (macOS only)
   test_reload_launchd
   test_dotfiles_lock
   test_topgrade_daily

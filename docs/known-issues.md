@@ -260,3 +260,22 @@ uniformity should have ruled out a permissions cause. PR #109 was built on that
 reasoning and changed nothing.
 
 _Diagnosed 2026-09-30, corrected and closed 2026-10-01._
+
+## terminal-notifier can't post notifications
+
+**Symptom:** `terminal-notifier` 3.1.0 (Homebrew) exits 3 and shows nothing,
+and it never appears in System Settings > Notifications, so there is no
+setting to turn on.
+
+**Root cause:** the app is ad-hoc signed, and macOS refuses notification
+permission to it.
+
+**What we do about it:** the scheduled update's banners come from
+`osascript -e 'display notification …'`, which posts as Script Editor. It
+takes a title, subtitle, message, and sound only, and clicking a banner opens
+Script Editor, so each message says what to look at.
+
+Do NOT reinstall terminal-notifier for click actions or app icons; it won't
+get permission.
+
+_Diagnosed 2026-10-25._

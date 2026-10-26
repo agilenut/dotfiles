@@ -16,10 +16,13 @@
 # `docker compose pull --ignore-buildable` only skips the service that has
 # the `build:` key: another service using the same image is still pulled.
 # So this collects every image any project builds and pulls only image-only
-# services whose image isn't one of them.
+# services whose image isn't one of them. If any project's config can't be
+# read, it pulls nothing that run.
 #
 # Not covered: an image built with a plain `docker build -t`, outside any
-# compose project, and then used image-only by a project.
+# compose project, by a project with no containers left (`compose ls`
+# doesn't list it), or by one whose config file is gone (a removed
+# worktree), and then used image-only by a project.
 #
 # A pulled image takes effect once its container is recreated
 # (`docker compose up -d` in that project). Running containers still on an
@@ -65,18 +68,25 @@ docker_pull_compose_plan() {
 # and print the image-only services safe to pull, one row per project:
 #   pull<TAB><name><TAB><files><TAB><space-separated services>
 #   none<TAB><name>
-# A build service without `image:` produces `<project>-<service>`.
+# A build service without `image:` produces `<project>-<service>`. Images
+# are compared by repository alone, in one spelling: building `u/backend:dev`
+# blocks `u/backend:1.2` and `docker.io/u/backend@sha256:...`, and
+# `docker.io/library/redis` matches `redis`.
 docker_pull_compose_select() {
   jq -r '
-    def norm: if test("@") or test(":[^/]+$") then . else . + ":latest" end;
+    def repo:
+      sub("@.*$"; "")
+      | sub(":[^/]+$"; "")
+      | sub("^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)/"; "")
+      | sub("^library/"; "");
     [ .[] | .name as $p | .services | to_entries[]
       | select(.value.build != null)
-      | (.value.image // "\($p)-\(.key)") | norm ] as $built
+      | (.value.image // "\($p)-\(.key)") | repo ] as $built
     | .[]
     | .name as $p
     | [ .services | to_entries[]
         | select(.value.build == null and .value.image != null)
-        | select((.value.image | norm) as $i | any($built[]; . == $i) | not)
+        | select((.value.image | repo) as $i | any($built[]; . == $i) | not)
         | .key ] as $safe
     | if ($safe | length) > 0
       then ["pull", $p, .files, ($safe | join(" "))]
@@ -168,9 +178,15 @@ docker_pull_compose_main() {
       '. + [{name: $n, files: $f, services: $s}]' <<<"$projects")"
   done <<<"$plan"
 
-  local selected services
+  # A project whose config couldn't be read may build an image another
+  # project uses image-only, so no pull is safe this run.
+  local selected="" services
   local -a svcs
-  selected="$(docker_pull_compose_select <<<"$projects")"
+  if [[ $failed -gt 0 ]]; then
+    echo "skip    all image pulls (a project's built images are unknown)"
+  else
+    selected="$(docker_pull_compose_select <<<"$projects")"
+  fi
   while IFS=$'\t' read -r action name files services; do
     [[ -n "$action" ]] || continue
     if [[ "$action" = none ]]; then

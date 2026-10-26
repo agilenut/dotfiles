@@ -18,7 +18,7 @@ test_dotfiles_lock() {
     return
   fi
 
-  local tmp sh lock out dead
+  local tmp shell_name lock out dead
   tmp=$(mktemp -d)
   lock="$tmp/job.lock"
   # Runs <code> in a fresh <shell> with the library sourced; prints the
@@ -33,75 +33,77 @@ test_dotfiles_lock() {
     fi
   }
 
-  for sh in bash zsh; do
+  for shell_name in bash zsh; do
 
     rm -rf "$lock"
-    out=$(in_shell "$sh" "lock_acquire '$lock' && echo ok") || true
+    out=$(in_shell "$shell_name" "lock_acquire '$lock' && echo ok") || true
     if [ "$(sed -n 2p <<<"$out")" = ok ] && [ "$(cat "$lock/pid")" = "$(sed -n 1p <<<"$out")" ]; then
-      pass "$sh: a free lock is taken and records its owner"
+      pass "$shell_name: a free lock is taken and records its owner"
     else
-      fail "$sh: free lock not taken: $(tr '\n' '|' <<<"$out")"
+      fail "$shell_name: free lock not taken: $(tr '\n' '|' <<<"$out")"
     fi
 
     # The test runner itself is a live owner.
     rm -rf "$lock" && mkdir "$lock" && echo $$ >"$lock/pid"
-    out=$(in_shell "$sh" "lock_acquire '$lock' && echo taken; lock_held '$lock' && echo held") || true
+    out=$(in_shell "$shell_name" "lock_acquire '$lock' && echo taken; lock_held '$lock' && echo held") || true
     if ! grep -q taken <<<"$out" && grep -q held <<<"$out" && [ "$(cat "$lock/pid")" = $$ ]; then
-      pass "$sh: a lock whose owner runs is held and not taken"
+      pass "$shell_name: a lock whose owner runs is held and not taken"
     else
-      fail "$sh: live lock mishandled: $(tr '\n' '|' <<<"$out")"
+      fail "$shell_name: live lock mishandled: $(tr '\n' '|' <<<"$out")"
     fi
 
-    # A live PID in a lock from before the last boot is a reused PID.
+    # A live PID in a lock from before the last boot is a reused PID. Run
+    # with the launchd jobs' PATH, which has no /usr/sbin.
     touch -t 200001010000 "$lock"
-    out=$(in_shell "$sh" "lock_held '$lock' && echo held") || true
+    out=$(PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin \
+      in_shell "$shell_name" "lock_held '$lock' && echo held") || true
     if ! grep -q held <<<"$out"; then
-      pass "$sh: a lock from before the last boot is not held, even if its PID runs"
+      pass "$shell_name: a lock from before the last boot is not held, even if its PID runs"
     else
-      fail "$sh: pre-boot lock treated as held"
+      fail "$shell_name: pre-boot lock treated as held"
     fi
 
     # The PID of a process that has already exited.
     sh -c 'exit 0' &
     dead=$!
     wait "$dead"
-    echo "$dead" >"$lock/pid"
-    out=$(in_shell "$sh" "lock_held '$lock' && echo held; lock_acquire '$lock' && echo taken") || true
+    rm -rf "$lock" && mkdir "$lock" && echo "$dead" >"$lock/pid"
+    out=$(in_shell "$shell_name" "lock_held '$lock' && echo held; lock_acquire '$lock' && echo taken") || true
     if ! grep -q held <<<"$out" && grep -q taken <<<"$out" \
       && [ "$(cat "$lock/pid")" = "$(sed -n 1p <<<"$out")" ]; then
-      pass "$sh: a lock whose owner is gone is cleared and taken"
+      pass "$shell_name: a lock whose owner is gone is cleared and taken"
     else
-      fail "$sh: dead owner's lock mishandled: $(tr '\n' '|' <<<"$out")"
+      fail "$shell_name: dead owner's lock mishandled: $(tr '\n' '|' <<<"$out")"
     fi
 
     rm -rf "$lock" && mkdir "$lock"
-    out=$(in_shell "$sh" "lock_held '$lock' && echo held") || true
+    out=$(in_shell "$shell_name" "lock_held '$lock' && echo held") || true
     if grep -q held <<<"$out"; then
-      pass "$sh: a lock still being taken (no PID yet) is held"
+      pass "$shell_name: a lock still being taken (no PID yet) is held"
     else
-      fail "$sh: fresh PID-less lock not held"
+      fail "$shell_name: fresh PID-less lock not held"
     fi
     touch -A -000200 "$lock"
-    out=$(in_shell "$sh" "lock_held '$lock' && echo held; lock_acquire '$lock' && echo taken") || true
+    out=$(in_shell "$shell_name" "lock_held '$lock' && echo held; lock_acquire '$lock' && echo taken") || true
     if ! grep -q held <<<"$out" && grep -q taken <<<"$out"; then
-      pass "$sh: a PID-less lock over a minute old is cleared"
+      pass "$shell_name: a PID-less lock over a minute old is cleared"
     else
-      fail "$sh: old PID-less lock mishandled: $(tr '\n' '|' <<<"$out")"
+      fail "$shell_name: old PID-less lock mishandled: $(tr '\n' '|' <<<"$out")"
     fi
 
     rm -rf "$lock" && mkdir "$lock" && echo $$ >"$lock/pid"
-    in_shell "$sh" "lock_release '$lock'" >/dev/null || true
+    in_shell "$shell_name" "lock_release '$lock'" >/dev/null || true
     if [ -d "$lock" ]; then
-      pass "$sh: release leaves a lock another process owns"
+      pass "$shell_name: release leaves a lock another process owns"
     else
-      fail "$sh: released a lock it didn't own"
+      fail "$shell_name: released a lock it didn't own"
     fi
     rm -rf "$lock"
-    in_shell "$sh" "lock_acquire '$lock' && lock_release '$lock'" >/dev/null || true
+    in_shell "$shell_name" "lock_acquire '$lock' && lock_release '$lock'" >/dev/null || true
     if [ ! -e "$lock" ]; then
-      pass "$sh: release removes the owner's lock"
+      pass "$shell_name: release removes the owner's lock"
     else
-      fail "$sh: owner's release left the lock"
+      fail "$shell_name: owner's release left the lock"
     fi
   done
 

@@ -51,13 +51,6 @@ if ! lock_acquire "$LOCK_DIR"; then
   exit 0
 fi
 trap 'lock_release "$LOCK_DIR"' EXIT
-# A claude-code cask upgrade mid-recap would swap the binary under it. Checked
-# after taking our own lock (recap does the same), so when both start at once
-# at least one sees the other.
-if lock_held "$LOG_DIR/recap-daily.lock"; then
-  print -u2 "$(date): recap is running; retrying next hour"
-  exit 0
-fi
 # topgrade runs under gtimeout, which moves itself into its own process group,
 # so stopping this job (launchd's TERM) wouldn't reach it. Forward the signal
 # and wait for topgrade to stop before the EXIT trap releases the lock.
@@ -91,8 +84,7 @@ log="$LOG_DIR/topgrade-daily-$today.log"
 # notify <title> <message> [sound]
 # A banner from Script Editor: clicking it can't open anything, so messages
 # carry what to look at. The tmux marker is the lasting signal; this is the
-# prompt. (terminal-notifier 3.1 is ad-hoc signed, and macOS refuses it
-# notification permission.)
+# prompt.
 notify() {
   osascript -e 'on run argv' \
     -e 'display notification (item 2 of argv) with title (item 1 of argv) sound name (item 3 of argv)' \
@@ -120,7 +112,10 @@ if ! dry=$(topgrade --config "$CONFIG" --dry-run --only custom_commands </dev/nu
   print -r -- "$dry" >>"$log"
   finish_failed "topgrade dry run failed, see log"
 fi
-[[ "$dry" == *dotfiles-drift* ]] || finish_failed "topgrade config not loaded ($CONFIG)"
+if [[ "$dry" != *dotfiles-drift* ]]; then
+  print -r -- "$dry" >>"$log"
+  finish_failed "topgrade config not loaded ($CONFIG)"
+fi
 
 drift_before=$(cat "$STATE_DIR/drift" 2>/dev/null || true)
 claude_before=$(claude --version 2>/dev/null || true)
@@ -129,9 +124,10 @@ start_line=$(($(wc -l <"$log") + 1))
 # system, mas, and brew_cask need sudo (macOS updates, App Store updates, and
 # casks with a background service or pkg installer), and an unanswered
 # password prompt would block the run until the timeout; they run in
-# `update`, and outdated casks are recorded below. shell, tmux, and vim pull
-# plugins from branch tips, so they update only when `update` runs with the
-# output in view. Run in the background so the traps above can fire.
+# `update`, and outdated casks are recorded below (claude-code is upgraded on
+# its own). shell, tmux, and vim pull plugins from branch tips, so they update
+# only when `update` runs with the output in view. Run in the background so
+# the traps above can fire.
 rc=0
 gtimeout --kill-after=60 "$TIMEOUT_SECONDS" \
   topgrade --config "$CONFIG" --yes \
@@ -141,6 +137,15 @@ child=$!
 wait "$child" || rc=$?
 child=""
 print "=== $(date) - topgrade exit $rc ===" >>"$log"
+
+# The one cask this run upgrades: claude-code is a single binary and needs no
+# sudo, and `claude update` defers to brew. Only some profiles install it. The
+# Brew step has already run `brew update`.
+claude_cask_failed=""
+if brew list --cask claude-code >/dev/null 2>&1 \
+  && ! HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --cask claude-code >>"$log" 2>&1; then
+  claude_cask_failed="Claude Code (cask)"
+fi
 
 # This run's summary as "<step><TAB><status>": topgrade prints a
 # "―― <time> - Summary ――" header, then one "<step>: <status>" line per step.
@@ -189,8 +194,9 @@ fi
 # gtimeout exits 124 after its TERM, 137 if it had to escalate to KILL.
 if ((rc == 124 || rc == 137)); then
   finish_failed "timed out after $((TIMEOUT_SECONDS / 3600))h"
-elif ((rc != 0)); then
+elif ((rc != 0)) || [[ -n "$claude_cask_failed" ]]; then
   failed_steps=$(print -r -- "$summary" | sed -n $'s/\tFAILED$//p')
+  failed_steps=$(print -r -- "$failed_steps"$'\n'"$claude_cask_failed" | sed '/^$/d')
   finish_failed "${failed_steps:-update failed, see log}"
 fi
 

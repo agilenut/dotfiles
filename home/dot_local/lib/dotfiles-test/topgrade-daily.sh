@@ -33,6 +33,16 @@ test_topgrade_daily() {
   else
     fail "plist ExitTimeOut must exceed the wrapper's 45s stop grace (got: $exit_timeout)"
   fi
+  # The calendar fire is the one that should run; the wrapper skips fires
+  # before its RUN_HOUR.
+  local plist_hour run_hour
+  plist_hour=$(plutil -extract StartCalendarInterval.Hour raw -o - "$plist" 2>/dev/null || echo none)
+  run_hour=$(sed -n 's/^RUN_HOUR=//p' "$TOPGRADE_DAILY")
+  if [ "$plist_hour" = "$run_hour" ]; then
+    pass "the plist's start hour matches the wrapper's ($run_hour)"
+  else
+    fail "plist Hour ($plist_hour) and topgrade-daily RUN_HOUR ($run_hour) differ"
+  fi
 
   local stubdir fakehome state logs calls notes
   stubdir=$(mktemp -d)
@@ -89,10 +99,21 @@ STUB
 if [ -e "$CLAUDE_SEEN" ]; then echo "$STUB_CLAUDE_AFTER"; else : >"$CLAUDE_SEEN"; echo "$STUB_CLAUDE_BEFORE"; fi
 STUB
   # brew stub: `outdated` prints $STUB_OUTDATED (comma-separated casks), or
-  # fails with STUB_BREW_FAIL.
+  # fails with STUB_BREW_FAIL; `upgrade` fails with STUB_UPGRADE_FAIL; `list`
+  # fails with STUB_NO_CLAUDE_CASK. An `upgrade` or `outdated` without
+  # HOMEBREW_NO_AUTO_UPDATE=1 logs an extra line.
   cat >"$stubdir/bin/brew" <<'STUB'
 #!/bin/sh
 printf 'brew %s\n' "$*" >>"$CALL_LOG"
+case "$1" in
+  upgrade | outdated)
+    [ "$HOMEBREW_NO_AUTO_UPDATE" = 1 ] || echo "brew $1 auto-updates" >>"$CALL_LOG"
+    ;;
+esac
+case "$1" in
+  list) [ -z "$STUB_NO_CLAUDE_CASK" ]; exit ;;
+  upgrade) [ -z "$STUB_UPGRADE_FAIL" ]; exit ;;
+esac
 [ -n "$STUB_BREW_FAIL" ] && exit 1
 [ -n "$STUB_OUTDATED" ] && printf '%s\n' "$STUB_OUTDATED" | tr ',' '\n'
 exit 0
@@ -137,6 +158,8 @@ STUB
       STUB_CLAUDE_BEFORE="${STUB_CLAUDE_BEFORE:-2.1.1 (Claude Code)}" \
       STUB_CLAUDE_AFTER="${STUB_CLAUDE_AFTER:-2.1.1 (Claude Code)}" \
       ${STUB_OUTPUT+STUB_OUTPUT="$STUB_OUTPUT"} ${STUB_RC+STUB_RC="$STUB_RC"} \
+      ${STUB_UPGRADE_FAIL+STUB_UPGRADE_FAIL="$STUB_UPGRADE_FAIL"} \
+      ${STUB_NO_CLAUDE_CASK+STUB_NO_CLAUDE_CASK="$STUB_NO_CLAUDE_CASK"} \
       ${STUB_TIMEOUT+STUB_TIMEOUT="$STUB_TIMEOUT"} ${STUB_DRYRUN+STUB_DRYRUN="$STUB_DRYRUN"} \
       ${STUB_DRYRUN_RC+STUB_DRYRUN_RC="$STUB_DRYRUN_RC"} ${STUB_HANG+STUB_HANG="$STUB_HANG"} \
       ${STUB_STUBBORN+STUB_STUBBORN="$STUB_STUBBORN"} \
@@ -175,26 +198,6 @@ STUB
 
   # The test runner is a live owner for held locks.
   reset_run
-  mkdir "$logs/recap-daily.lock"
-  echo $$ >"$logs/recap-daily.lock/pid"
-  rc=0
-  out=$(run_daily) || rc=$?
-  if [ "$rc" -eq 0 ] && ! ran_topgrade && [ ! -e "$state/last-day" ]; then
-    pass "recap running: skips this hour without marking the day"
-  else
-    fail "ran while recap held its lock (rc=$rc)"
-  fi
-  echo "$dead" >"$logs/recap-daily.lock/pid"
-  rc=0
-  out=$(STUB_OUTPUT="$stubdir/out-ok" run_daily) || rc=$?
-  if ran_topgrade; then
-    pass "a recap lock left by a killed recap doesn't block the run"
-  else
-    fail "stale recap lock blocked the run (rc=$rc)"
-  fi
-  rm -rf "$logs/recap-daily.lock"
-
-  reset_run
   mkdir "$logs/topgrade.lock"
   echo $$ >"$logs/topgrade.lock/pid"
   rc=0
@@ -218,10 +221,10 @@ STUB
   # ---- config not loaded: never run unattended without it ----
   reset_run
   rc=0
-  out=$(STUB_DRYRUN="" run_daily) || rc=$?
+  out=$(STUB_DRYRUN="warning: unknown key" run_daily) || rc=$?
   if [ "$rc" -ne 0 ] && ! ran_topgrade && grep -q 'config' "$state/failed" 2>/dev/null \
-    && grep -q 'Update failed' "$notes"; then
-    pass "config not loaded: fails and notifies without running topgrade"
+    && grep -q 'Update failed' "$notes" && cat "$logs"/topgrade-daily-*.log | grep -q 'warning: unknown key'; then
+    pass "config not loaded: fails, notifies, and logs topgrade's output without running it"
   else
     fail "config check wrong (rc=$rc, failed: $(cat "$state/failed" 2>/dev/null))"
   fi
@@ -403,10 +406,32 @@ STUB
   reset_run
   rc=0
   out=$(STUB_OUTPUT="$stubdir/out-ok" STUB_CLAUDE_AFTER="2.1.2 (Claude Code)" run_daily) || rc=$?
-  if [ "$(cat "$state/claude-upgrade" 2>/dev/null)" = "2.1.1 → 2.1.2" ]; then
-    pass "a Claude Code upgrade is recorded old → new"
+  if [ "$(cat "$state/claude-upgrade" 2>/dev/null)" = "2.1.1 → 2.1.2" ] \
+    && grep -Fqx 'brew upgrade --cask claude-code' "$calls" \
+    && ! grep -q 'auto-updates' "$calls"; then
+    pass "the claude-code cask is upgraded without a brew update, and the upgrade recorded old → new"
   else
-    fail "claude-upgrade wrong: '$(cat "$state/claude-upgrade" 2>/dev/null)'"
+    fail "claude-upgrade wrong: '$(cat "$state/claude-upgrade" 2>/dev/null)', calls: $(tr '\n' '|' <"$calls")"
+  fi
+
+  # Only the personal profile installs the cask.
+  reset_run
+  rc=0
+  out=$(STUB_OUTPUT="$stubdir/out-ok" STUB_NO_CLAUDE_CASK=1 run_daily) || rc=$?
+  if [ "$rc" -eq 0 ] && ! grep -q '^brew upgrade' "$calls" && [ ! -e "$state/failed" ]; then
+    pass "a machine without the claude-code cask skips its upgrade"
+  else
+    fail "missing claude-code cask wrong (rc=$rc, failed: $(cat "$state/failed" 2>/dev/null))"
+  fi
+
+  reset_run
+  rc=0
+  out=$(STUB_OUTPUT="$stubdir/out-ok" STUB_UPGRADE_FAIL=1 run_daily) || rc=$?
+  if [ "$rc" -ne 0 ] && [ "$(cat "$state/failed" 2>/dev/null)" = 'Claude Code (cask)' ] \
+    && [ "$(cat "$state/last-day" 2>/dev/null)" = 2026-10-25 ]; then
+    pass "a failed claude-code upgrade fails an otherwise clean run, by name"
+  else
+    fail "claude-code upgrade failure wrong (rc=$rc, failed: $(cat "$state/failed" 2>/dev/null))"
   fi
 
   # Sessions not yet refreshed still run the first old version.

@@ -74,14 +74,14 @@ test_update_status() {
   printf '%s\n' visual-studio-code warp >"$state/outdated-casks"
   out=$(us_status --tmux) || true
   if [ "$out" = " #[fg=brightblack]$icon 3#[default]" ]; then
-    pass "drift, stale containers, and waiting casks: a yellow marker counting 3"
+    pass "drift, stale containers, and waiting casks: a gray marker counting 3"
   else
     fail "attention marker wrong: '$out'"
   fi
   out=$(us_status) || true
   if grep -Fq "$tilde/.config/karabiner/karabiner.json" <<<"$out" && grep -Fq 'chezmoi re-add' <<<"$out" \
     && grep -Fq 'shop-db-1 (shop)' <<<"$out" && grep -Fq 'docker compose up -d' <<<"$out" \
-    && grep -Fq 'visual-studio-code, warp' <<<"$out"; then
+    && grep -Fq 'visual-studio-code, warp' <<<"$out" && grep -Fq 'Run `dotfiles-drift` to recheck' <<<"$out"; then
     pass "details list each item with what to run"
   else
     fail "attention details wrong: $(tr '\n' '|' <<<"$out")"
@@ -151,6 +151,29 @@ test_update_status() {
     pass "the marker ends the tmux status bar"
   else
     fail "tmux status-right doesn't end with the update-status marker"
+  fi
+  # Its #(...) commands go to sh, and no quoting makes every directory name
+  # safe there (#{q:} leaves newlines), so the path never goes in one.
+  local jobs
+  jobs=$(grep -E '^set -g status-right ' "$conf" | grep -o '#([^)]*)')
+  if [[ -n "$jobs" ]] && ! grep -q 'pane_current_path' <<<"$jobs"; then
+    pass "the status bar's shell commands never get the pane's path"
+  else
+    fail "a tmux status-right #(...) command gets #{pane_current_path}: $(tr '\n' ' ' <<<"$jobs")"
+  fi
+
+  # tmux-git-status gets a pane ID and asks tmux for its path.
+  local git_status="$HOME/.local/bin/tmux-git-status" repo="$tmp/repo dir" out
+  mkdir -p "$tmp/bin" "$repo"
+  git -C "$repo" init -q -b trunk
+  printf '#!/bin/sh\n[ "$*" = "display -p -t %%7 #{pane_current_path}" ] && echo "$STUB_PANE_PATH"\n' \
+    >"$tmp/bin/tmux"
+  chmod +x "$tmp/bin/tmux"
+  out=$(PATH="$tmp/bin:$PATH" STUB_PANE_PATH="$repo" "$git_status" %7)
+  if [[ "$out" == *"⎇ trunk"* ]]; then
+    pass "tmux-git-status reads the pane's path from tmux"
+  else
+    fail "tmux-git-status with a pane ID printed: '$out'"
   fi
 
   rm -rf "$tmp"
