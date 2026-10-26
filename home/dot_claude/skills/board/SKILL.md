@@ -154,9 +154,10 @@ gh pr list --state all --search "<N> in:body" --json number,state,title
 - **Column:** pick one, place the card, then say which and why (column
   roles map through `Columns` in `board-settings`). Up Next: part of the
   active workstream's next PR or two, blocking planned work, or an urgent
-  fix, placed by priority ("Up Next, 2nd: blocks the board allow rules").
-  Backlog: later in a plan, an idea, a kept find, or anything not likely
-  soon. In Progress only when work starts. Only issues go on the board; a
+  fix. Backlog: later in a plan, an idea, a kept find, or anything not
+  likely soon. Place the card in best order (the global "Keep cards in
+  order" rule) and say where ("Up Next, 2nd: blocks the board allow
+  rules"). In Progress only when work starts. Only issues go on the board; a
   PR shows on its issue's card through "Linked pull requests". Boards with
   "Auto-add to project" enabled may already have the card (look it up);
   otherwise add it with
@@ -202,7 +203,8 @@ matches are unclear, show them and ask.
 1. Find the card; add it if missing (as above).
 2. Set Status to In Progress (command reference) and assign the user
    (`gh issue edit <N> --add-assignee @me`).
-3. Place the card by priority and say where it went.
+3. Place the card in best order (the global "Keep cards in order" rule)
+   and say where it went.
 
 ### Mark blocked
 
