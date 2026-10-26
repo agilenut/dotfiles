@@ -184,8 +184,24 @@ test_config_files() {
     fail "fd ignore not found"
   fi
 
-  if [[ -f "$config_home/git/config" ]]; then
+  local git_cfg="$config_home/git/config"
+  if [[ -f "$git_cfg" ]]; then
     pass "git config exists"
+
+    # TPM clones from https://git::@github.com/...; with a credential helper,
+    # git saves "git" as a second GitHub account and GCM then asks which to
+    # use. git applies every matching credential section in file order, while
+    # --get-urlmatch returns only the best match, so the order is checked too.
+    local tpm_helper own_helper base_line tpm_line
+    tpm_helper=$(git config --file "$git_cfg" --get-urlmatch credential.helper https://git@github.com/x 2>/dev/null || true)
+    own_helper=$(git config --file "$git_cfg" --get-urlmatch credential.helper https://github.com/x 2>/dev/null || true)
+    base_line=$(grep -n -m1 '^\[credential\]' "$git_cfg" | cut -d: -f1 || true)
+    tpm_line=$(grep -n -m1 '^\[credential "https://git@github.com"\]' "$git_cfg" | cut -d: -f1 || true)
+    if [[ -z "$tpm_helper" && -n "$own_helper" && -n "$base_line" && -n "$tpm_line" && "$tpm_line" -gt "$base_line" ]]; then
+      pass "no credential helper for github.com's git user (TPM), one for your own"
+    else
+      fail "credential helper for git@github.com: '$tpm_helper' (section line ${tpm_line:-none}, after [credential] at ${base_line:-none}), for github.com: '$own_helper'"
+    fi
   else
     fail "git config not found"
   fi

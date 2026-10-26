@@ -279,3 +279,29 @@ Do NOT reinstall terminal-notifier for click actions or app icons; it won't
 get permission.
 
 _Diagnosed 2026-10-25._
+
+## GCM asks which GitHub account to use
+
+**Symptom:** a push to github.com opens Git Credential Manager's account
+picker, listing your account and one named `git`.
+
+**Root cause:** TPM clones plugins from `https://git::@github.com/...`, a
+dummy login that makes a missing plugin fail instead of prompting. When a
+fetch with that login succeeds, git hands it to the credential helper to
+save, and GCM stores it as a second GitHub account. Updating tmux plugins
+(prefix + U, or the tmux step of `update`) is enough to trigger it.
+
+**What we do about it:** the git config turns off credential helpers for
+`https://git@github.com`, so TPM's login is never saved. Your own account
+still uses GCM. To clear an account that was already saved, run
+`git credential-manager github logout git`.
+
+On macOS the `[credential]` helper is GCM's full path, not `manager`. GCM's
+installer runs `git-credential-manager configure`, which adds that path
+unless it's already set; with `manager` alone, the file drifts from the
+dotfiles after every GCM install.
+
+Do NOT point TPM's plugin clones at plain URLs to fix the picker; TPM uses
+`git::@` again on every plugin install.
+
+_Diagnosed 2026-10-26._
