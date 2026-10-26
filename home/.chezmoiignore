@@ -23,6 +23,9 @@
 # it in the dotfiles repo.
 .claude/skills/recap/recap.toml
 
+# Repos where /pr asks before merging. Local-only: it names client repos.
+.claude/skills/pr/ask-before-merge.txt
+
 # LaunchAgents — macOS-only (~/Library/LaunchAgents has no analogue elsewhere)
 {{ if ne .chezmoi.os "darwin" }}
 Library/LaunchAgents/

@@ -619,27 +619,19 @@ _Entering, exiting, where they land._
 _My Claude config and shell configs are deployed by chezmoi; edit the
 source._
 
-- **Never edit a deployed copy.** Files chezmoi manages (my global
-  CLAUDE.md, skills, agents, hooks, settings, keybindings, shell configs)
-  are deployed from the `dotfiles` repo, and the next `chezmoi apply`
-  overwrites an in-place edit or stops on it. `chezmoi managed` lists
-  them; `chezmoi source-path <file>` finds a file's source. Memory, logs,
-  plans, and other files chezmoi doesn't manage (e.g. `recap.toml`,
+- **Never edit a deployed copy unless I ask.** Files chezmoi manages (my
+  global CLAUDE.md, skills, agents, hooks, settings, keybindings, shell
+  configs) are deployed from the `dotfiles` repo, and the next
+  `chezmoi apply` overwrites an in-place edit or stops on it. Memory,
+  logs, plans, and other files chezmoi doesn't manage (e.g. `recap.toml`,
   `review-preferences.md`) are edited in place.
-- **Deploy from the source.** Edit under `dotfiles/home/`. Before
-  applying, run `chezmoi diff` and stop to ask me if it shows changes that
-  exist only in the deployed copy; apply would revert them. Then
-  `chezmoi apply` and confirm `chezmoi diff` is empty. To test a change
-  before its PR, apply it from your branch; from a worktree, point chezmoi
-  at it with `-S <worktree>/home -W <worktree>`. Apply only the files you
-  changed. After merge, apply again from the main tree.
-- A request to change my global Claude config, a skill, or a shell config
+- **Changing a managed file is dotfiles work; use the `dotfiles` skill.**
+  A request to change my global Claude config, a skill, or a shell config
   is work in the dotfiles repo, following that repo's workflow, not an
-  edit in the current project. A project's own `.claude/` files belong to
-  that project.
-- To recover an edit made to a deployed copy, copy the change into the
-  source by hand. `chezmoi add` would also pull in anything else that has
-  drifted in that file.
+  edit in the current project. Load the skill before that work and before
+  any `chezmoi apply`, `add`, `edit`, or `update`: it has the steps to find
+  the source, deploy only what changed, and recover an edit made to a
+  deployed copy. A project's own `.claude/` files belong to that project.
 
 ## Workspace
 

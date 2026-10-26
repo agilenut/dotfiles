@@ -133,19 +133,10 @@ VSCode, 1Password, Firefox, Chrome, Alfred, Rectangle Pro, and more via Homebrew
 
 ## Daily Usage
 
-```bash
-# Preview what will change
-chezmoi diff
-
-# Apply changes
-chezmoi apply -v
-
-# Update from remote
-chezmoi update
-
-# Add a new dotfile
-chezmoi add ~/.config/newapp/config
-```
+Edit files under `home/`, never the deployed copies.
+[docs/deployment.md](docs/deployment.md) covers how source files map to
+targets, the diff and apply loop, applying from a worktree, reading
+`chezmoi status`, and recovering an edit made to a deployed copy.
 
 ## Testing
 
@@ -193,17 +184,6 @@ dotfiles/
 └── .claude/                        # Project-specific Claude config
 ```
 
-### File Naming Conventions
-
-| Prefix          | Effect                           |
-| --------------- | -------------------------------- |
-| `dot_`          | Becomes `.` (hidden file)        |
-| `executable_`   | chmod +x                         |
-| `private_`      | chmod 600                        |
-| `.tmpl` suffix  | Go template processing           |
-| `run_once_`     | Script runs once per machine     |
-| `run_onchange_` | Script runs when content changes |
-
 ### Pre-commit Hooks
 
 ```bash
@@ -221,45 +201,6 @@ together - the config sets `default_install_hook_types`, so no extra flags are
 needed. The commit-msg hook rejects attribution trailers (`Co-Authored-By:`
 naming a model, `Claude-Session:`, "Generated with Claude Code"); CI re-checks
 every commit on a PR, since a hook only runs for whoever installed it.
-
-### Local Development
-
-To develop against a local clone instead of the remote repo:
-
-```bash
-# Clone the repo
-git clone https://github.com/agilenut/dotfiles.git ~/Developer/dotfiles
-cd ~/Developer/dotfiles
-
-# Configure chezmoi to use local source
-# Edit ~/.config/chezmoi/chezmoi.toml and set:
-#   [data]
-#   name = "Your Name"
-#   email = "you@example.com"
-#
-# Then run:
-chezmoi init --source=~/Developer/dotfiles
-
-# Preview and apply changes
-chezmoi diff
-chezmoi apply -v
-```
-
-### Resetting Chezmoi State
-
-To re-run `run_once_` scripts (e.g., after changing install-packages.sh):
-
-```bash
-# View tracked script state
-chezmoi state dump | grep scriptState
-
-# Clear state for a specific script (forces re-run)
-chezmoi state delete-bucket --bucket=scriptState
-
-# Or clear all chezmoi state
-rm -rf ~/.local/share/chezmoi
-chezmoi init --source=/path/to/dotfiles
-```
 
 ## Platform Support
 
