@@ -142,47 +142,19 @@ targets, the diff and apply loop, applying from a worktree, reading
 
 _A scheduled job keeps CLI tools patched; `update` does the rest by hand._
 
-`update` runs [topgrade](https://github.com/topgrade-rs/topgrade) with
-`~/.config/topgrade.toml`: Homebrew formulae and casks, the App Store, mise,
-uv tools, npm, .NET tools, VS Code extensions, Claude Code, compose images,
-and macOS updates. topgrade runs every step it finds a tool for; the config
-turns off two it shouldn't run and adds the drift and image commands below.
+`update` upgrades everything with
+[topgrade](https://github.com/topgrade-rs/topgrade): Homebrew, the App Store,
+mise, uv tools, npm, .NET tools, VS Code extensions, Claude Code, compose
+images, and macOS updates. A launchd job runs the steps that don't ask for a
+password once a day from 05:00.
 
-The `dotfiles.topgrade` launchd job runs `topgrade-daily` once a day from
-05:00 (on wake if the Mac was asleep). It skips the steps that can ask for a
-password (macOS updates, the App Store, casks other than Claude Code) and
-the plugin updates for zsh, tmux, and nvim, which `update` runs with the
-output in view. After a Claude Code upgrade, open sessions stay on the old
-version until `claude-refresh` restarts them.
+When something needs you, the tmux status bar ends with a warning icon and a
+count (red for a failed or missed run). `update-status` lists each item and
+what to run. After a Claude Code upgrade, `claude-refresh` moves open
+sessions to the new version.
 
-- **Status**: the tmux status bar ends with a warning icon and a count when
-  something needs you: gray, or red when the last run failed or there's been
-  no run in over 2 days. `update-status` lists each item and what to run.
-- **Logs**: each run writes `~/Library/Logs/topgrade-daily-<day>.log`; the
-  job's own messages (why an hour was skipped) go to
-  `~/Library/Logs/topgrade-daily.err.log`.
-- **A failure** means a step failed, the run timed out after 2 hours, or
-  topgrade's config didn't load (the run then stops before upgrading
-  anything). A banner names the steps. The next day's run tries again, and a
-  clean `update` clears the failure. Every `update` also refreshes the list
-  of casks waiting for it.
-- **Dotfiles drift** is a managed file changed on this machine that also
-  differs from the dotfiles source. `chezmoi re-add <file>` keeps this
-  machine's version; `chezmoi apply <file>` restores the dotfiles version. A
-  templated file's change is copied into its `.tmpl` by hand. JSON is
-  compared after normalizing, so an app reformatting its own config doesn't
-  count. `mise use -g` edits `~/.config/mise/config.toml`, so it shows up as
-  drift until the change goes into the source. Run `dotfiles-drift` to
-  recheck after acting.
-- **Images**: the job pulls new images for compose projects that have
-  containers, never ones a project builds. It can't see images built with a
-  plain `docker build -t`, or by a project whose containers are gone
-  (`docker compose down`) or whose compose file is gone (a removed
-  worktree); another project using one of those image-only
-  gets it pulled from the registry. A running container keeps its old image
-  until you recreate it (`docker compose up -d` in its project); the list
-  refreshes on the next update. Pinned tags and Dockerfile base images
-  belong to each repo and aren't changed here.
+[docs/updates.md](docs/updates.md) covers what the daily job skips, logs,
+failures, dotfiles drift, and which images it pulls.
 
 ## Testing
 
