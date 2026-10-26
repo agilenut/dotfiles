@@ -59,22 +59,13 @@ Profile data is defined in `home/.chezmoidata.toml`. The install script (`run_on
 
 ### Editing Files
 
-Always edit in `home/`, never target files directly.
-
-| Prefix          | Effect                           |
-| --------------- | -------------------------------- |
-| `dot_`          | Becomes `.` (hidden file)        |
-| `executable_`   | chmod +x                         |
-| `private_`      | chmod 600                        |
-| `run_once_`     | Script runs once per machine     |
-| `run_onchange_` | Script runs when content changes |
+Always edit in `home/`, never target files directly. The `dotfiles` skill
+has the deploy steps; [docs/deployment.md](../docs/deployment.md) explains
+source names and why each step exists.
 
 ### Testing Changes
 
 ```bash
-# Preview what will change
-chezmoi diff
-
 # Run automated tests
 dotfiles-test --auto-only
 
@@ -86,19 +77,8 @@ pre-commit run --all-files
 
 - **Safe to auto-apply**: Env var changes, config additions, test updates
 - **Ask before applying**: Scripts, macOS defaults, system-wide changes
-- **From a worktree**: the configured source is the main checkout, so
-  point chezmoi at the worktree and name only the files you changed. A
-  broad apply from a branch also deploys anything else that differs
-  between that branch and the deployed copies. For a new file in a new
-  folder, name the folder (chezmoi won't create it from a file target).
-  Before applying, run `chezmoi diff` on each file from the main tree: a
-  difference you didn't make may be another branch's applied change, so
-  leave that file until one of you merges.
-
-```bash
-chezmoi -S "$PWD/home" -W "$PWD" diff ~/.claude/CLAUDE.md
-chezmoi -S "$PWD/home" -W "$PWD" apply -v ~/.claude/CLAUDE.md
-```
+- **How**: the `dotfiles` skill's Deploy step (named targets only, diff
+  from the main checkout first, `-S`/`-W` from a worktree).
 
 ### Theme Changes
 
@@ -131,10 +111,11 @@ dynamically when a change trips the trigger above.
 
 Before committing changes to this repo:
 
-1. `chezmoi diff` - preview what will change. **Always run this first** — it surfaces local-only divergence (changes you've made directly to managed files like `~/.claude/settings.json` that aren't in dotfiles yet) so you don't accidentally clobber them in step 2.
-2. `chezmoi apply -v` - apply and verify files land correctly. **If `chezmoi diff` shows local-only changes** (changes to managed files that aren't in the dotfiles source), `apply` will revert them. **Stop and ask the user** how to proceed — options: `chezmoi add` those changes first to bring them under management, ignore the divergence and commit without applying, or accept the revert. Don't auto-decide.
-3. `dotfiles-test --auto-only` - run automated tests
-4. `pre-commit run --all-files` - run linting/formatting
+1. Deploy the changed files per the `dotfiles` skill, so tests run against
+   them. It stops to ask when a diff shows changes that exist only in the
+   deployed copy.
+2. `dotfiles-test --auto-only` - run automated tests
+3. `pre-commit run --all-files` - run linting/formatting
 
 Then make small, focused commits. When adding new functionality, suggest corresponding tests.
 
@@ -144,8 +125,8 @@ Then make small, focused commits. When adding new functionality, suggest corresp
 The test script runs from the source, so the test code is the branch's.
 Some checks read applied files under `~/.config` or find the repo through
 `chezmoi source-path` (the main checkout), so apply the branch's changed
-files first when those checks matter (see Applying Changes, "From a
-worktree"). The Committing steps above run similar checks per commit,
+files first when those checks matter (the `dotfiles` skill's Deploy
+step). The Committing steps above run similar checks per commit,
 using the installed `dotfiles-test`.
 
 ```bash
@@ -159,14 +140,8 @@ pre-commit run --all-files
 # Bootstrap new machine
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply agilenut
 
-# Add a new dotfile
+# Add a new dotfile (writes to the main checkout; from a worktree, add -S/-W)
 chezmoi add ~/.config/newapp/config
-
-# Preview and apply
-chezmoi diff && chezmoi apply -v
-
-# Update external dependencies
-chezmoi update
 ```
 
 ## Privacy
@@ -193,7 +168,7 @@ re-chase a ruled-out cause (e.g. delta not syntax-highlighting PHP diffs).
 ## Gotchas
 
 - The `.tmpl` suffix is stripped from target filenames
-- `run_once_` scripts track execution by filename hash - rename to re-run
+- `run_once_` scripts run once per version of their contents: an edited one runs again on the next apply, and a rename alone doesn't re-run it
 - macOS sandboxed apps (Safari) store prefs in `~/Library/Containers/` - requires Full Disk Access
 - Some dotfiles-test checks require sudo (firewall tests) or Full Disk Access (Safari)
 - `dotfiles-test` runs from installed location (`~/.local/bin`); to test source changes before `chezmoi apply`, run `./home/dot_local/bin/executable_dotfiles-test` or use VS Code's "Run Test Task"
