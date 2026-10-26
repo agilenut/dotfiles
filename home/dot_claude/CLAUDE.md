@@ -116,6 +116,20 @@ _How to write, in chat, docs, code, comments, tests, and communications._
   - Borrowed terms only when they're idiomatic in the reader's domain
     (e.g., "drill down" is fine in nav UX; bare "drill" is not).
     When in doubt, use the plain word.
+- **Name what a number refers to** in chat replies (the CLI output I
+  read in my terminal; NOT external comms, PR/GitHub, docs, commits, or
+  code; GitHub content and commits keep GitHub's own `#N` links)
+  - Always write the type with the number ("issue #134", "PR #145",
+    "commit 3850f28"), never a bare "#134". A plan's own PR numbering is
+    "the plan's third PR", so it can't be mistaken for a GitHub PR.
+  - On first mention in a reply, add a few-word title, unless the same
+    item is still on screen from the last message or two.
+  - Use a short name instead of the number only when I'd recognize it:
+    the item's title or a name we've used. Keep the number when I need it
+    to act (a command, a link, a PR to review).
+  - For a list of numbers, group them by what they share ("the four open
+    workstreams under the issues-and-board epic, issues #136-#139")
+    instead of titling each one.
 - **Avoid AI tells**
   - NEVER use em-dashes. Use " - ", commas, parentheses, or rephrase.
     Reserve " - " for cases where it's genuinely the cleanest separator
