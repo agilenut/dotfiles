@@ -46,7 +46,13 @@
 
 [credential]
 	helper =
+{{- if eq .chezmoi.os "darwin" }}
+	; GCM's macOS installer runs `git-credential-manager configure`, which adds
+	; this path unless it's already set; `manager` alone shows up as drift.
+	helper = /usr/local/share/gcm-core/git-credential-manager
+{{- else }}
 	helper = manager
+{{- end }}
 
 {{- if $signingkey }}
 [gpg]
@@ -58,6 +64,13 @@
 {{- end }}
 [credential "https://dev.azure.com"]
 	useHttpPath = true
+
+; TPM clones from https://git::@github.com/... so a missing plugin fails
+; instead of prompting. With a helper, git saves that "git" login as a second
+; GitHub account, and GCM then asks which account to use on every push. Keep
+; it after [credential]: git applies matching sections in file order.
+[credential "https://git@github.com"]
+	helper =
 
 {{- if lookPath "delta" }}
 

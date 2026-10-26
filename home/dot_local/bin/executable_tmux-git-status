@@ -5,8 +5,9 @@
 #   ⇣N   commits on the upstream branch not yet pulled
 # Prints nothing if not in a git repo.
 #
-# Usage: tmux-git-status [path]
-# Pass the pane's current path so git runs in the right directory.
+# Usage: tmux-git-status <pane-id>
+# Takes the pane ID (#{pane_id}) rather than its path: the status bar runs
+# this through sh, and no quoting makes every directory name safe there.
 
 # Status-bar polling must never take .git/index.lock — a plain `git status`
 # opportunistically writes the refreshed index, and this runs every 5s in the
@@ -14,7 +15,8 @@
 export GIT_OPTIONAL_LOCKS=0
 
 if [ -n "$1" ]; then
-  cd "$1" 2>/dev/null || exit 0
+  path=$(tmux display -p -t "$1" '#{pane_current_path}') || exit 0
+  cd "$path" 2>/dev/null || exit 0
 fi
 
 # Branch name, or short SHA when detached; bail if not a repo.

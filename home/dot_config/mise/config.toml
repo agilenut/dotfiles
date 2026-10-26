@@ -1,0 +1,12 @@
+# mise global config
+# =============================================================================
+# Applies wherever no closer config or version file sets a tool.
+
+[tools]
+  # A release line, not a fixed version, so `mise upgrade` picks up patches.
+  # Repos that need a specific version pin it in their own .nvmrc.
+  node = "lts"
+
+[settings]
+  # Honor .nvmrc / .node-version so each repo runs the Node its CI uses.
+  idiomatic_version_file_enable_tools = [ "node" ]

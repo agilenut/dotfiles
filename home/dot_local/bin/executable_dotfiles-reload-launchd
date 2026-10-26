@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# dotfiles-reload-launchd
+# =============================================================================
+# Reload every dotfiles.* launchd job in ~/Library/LaunchAgents. launchd reads
+# a job's plist only when the job is loaded (at login or by `bootstrap`), so an
+# edited schedule or program does nothing until the job is reloaded. chezmoi
+# runs this after an apply that changes any plist source.
+
+set -euo pipefail
+
+reload_launchd_main() {
+  if [[ -n "${CI:-}" ]]; then
+    echo "CI; skipping launchd job reload."
+    return 0
+  fi
+  local domain
+  domain="gui/$(id -u)"
+  if ! launchctl print "$domain" >/dev/null 2>&1; then
+    echo "No GUI session ($domain); skipping launchd job reload."
+    return 0
+  fi
+
+  local dir="${LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
+  local plist label failed=0
+  shopt -s nullglob
+  for plist in "$dir"/dotfiles.*.plist; do
+    if ! label="$(plutil -extract Label raw -o - "$plist" 2>/dev/null)"; then
+      echo "FAILED  $(basename "$plist") (no Label)"
+      failed=$((failed + 1))
+      continue
+    fi
+    # A job that isn't loaded yet (first install) has nothing to unload.
+    if launchctl print "$domain/$label" >/dev/null 2>&1 \
+      && ! launchctl bootout "$domain/$label"; then
+      echo "FAILED  $label (couldn't unload)"
+      failed=$((failed + 1))
+      continue
+    fi
+    if launchctl bootstrap "$domain" "$plist"; then
+      echo "reloaded $label"
+    else
+      echo "FAILED  $label"
+      failed=$((failed + 1))
+    fi
+  done
+  [[ $failed -eq 0 ]]
+}
+
+# Run only when executed directly; sourcing (tests) just defines the functions.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  reload_launchd_main "$@"
+fi

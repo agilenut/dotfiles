@@ -138,6 +138,24 @@ Edit files under `home/`, never the deployed copies.
 targets, the diff and apply loop, applying from a worktree, reading
 `chezmoi status`, and recovering an edit made to a deployed copy.
 
+## Updates (macOS)
+
+_A scheduled job keeps CLI tools patched; `update` does the rest by hand._
+
+`update` upgrades everything with
+[topgrade](https://github.com/topgrade-rs/topgrade): Homebrew, the App Store,
+mise, uv tools, npm, .NET tools, VS Code extensions, Claude Code, compose
+images, and macOS updates. A launchd job runs the steps that don't ask for a
+password once a day from 05:00.
+
+When something needs you, the tmux status bar ends with a warning icon and a
+count (red for a failed or missed run). `update-status` lists each item and
+what to run. After a Claude Code upgrade, `claude-refresh` moves open
+sessions to the new version.
+
+[docs/updates.md](docs/updates.md) covers what the daily job skips, logs,
+failures, dotfiles drift, and which images it pulls.
+
 ## Testing
 
 ```bash

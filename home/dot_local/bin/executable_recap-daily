@@ -4,6 +4,7 @@
 # missed while asleep) and write them to ~/Documents/recaps/.
 set -euo pipefail
 umask 077
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/dotfiles-lock.sh"
 
 RECAP_DIR="$HOME/Documents/recaps"
 LOG_DIR="$HOME/Library/Logs"
@@ -48,14 +49,16 @@ if [[ "$DAY" > "$YESTERDAY" ]]; then
 fi
 
 # Mutex against concurrent fires — the midnight calendar trigger and an
-# hourly tick can land near the same minute. mkdir is atomic; the loser
-# exits silently. Trap covers normal exit + common signals (SIGKILL can't
-# be caught — manual cleanup if launchd ever force-stops the job).
+# hourly tick can land near the same minute. The loser exits silently. A
+# signal exits, so the run never continues after releasing its lock.
 LOCK_DIR="$LOG_DIR/recap-daily.lock"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+if ! lock_acquire "$LOCK_DIR"; then
   exit 0
 fi
-trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT HUP INT TERM
+trap 'lock_release "$LOCK_DIR"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # Loop forward through any missing days, up to and including yesterday.
 # Bail on the first failure — the state file only advances after a day is

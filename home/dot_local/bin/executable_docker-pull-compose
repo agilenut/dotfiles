@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# docker-pull-compose
+# =============================================================================
+# Pull fresh images for the compose projects Docker knows about (any project
+# with a container, running or stopped), never pulling an image that is built
+# locally. topgrade runs it in place of its `containers` step, which pulls
+# every local tag.
+#
+# Why the care: a locally built `<name>/backend` resolves to a Docker Hub
+# namespace anyone can register, so pulling it can replace your image with a
+# stranger's. The image can't say where it came from (Docker Desktop's
+# containerd store gives local builds a registry digest too), and
+# `docker compose pull --ignore-buildable` only skips the service that has
+# the `build:` key: another service using the same image is still pulled.
+# So this collects every image any project builds and pulls only image-only
+# services whose image isn't one of them. If any project's config can't be
+# read, it pulls nothing that run.
+#
+# Not covered: an image built with a plain `docker build -t`, outside any
+# compose project, by a project with no containers left (`compose ls`
+# doesn't list it), or by one whose config file is gone (a removed
+# worktree), and then used image-only by a project.
+#
+# A pulled image takes effect once its container is recreated
+# (`docker compose up -d` in that project). Running containers still on an
+# older image are reported and written to
+# $XDG_STATE_HOME/topgrade/stale-containers
+# (<container><TAB><image><TAB><compose project>), which the update status
+# reads. The file is replaced whenever the check succeeds, even if a pull
+# failed; if listing the running containers fails, it's left as it was.
+
+set -euo pipefail
+
+# Read `docker compose ls --all --format json` on stdin and print one row per
+# project:
+#   pull<TAB><name><TAB><comma-separated config files>
+#   skip<TAB><name><TAB><first missing config file, or "<none>">
+# Projects of removed worktrees stay listed with config files that are gone.
+docker_pull_compose_plan() {
+  local name files file missing
+  local -a parts
+  jq -r '.[] | [.Name, .ConfigFiles // ""] | @tsv' | while IFS=$'\t' read -r name files; do
+    if [[ -z "$files" ]]; then
+      printf 'skip\t%s\t<none>\n' "$name"
+      continue
+    fi
+    missing=""
+    IFS=',' read -r -a parts <<<"$files"
+    for file in "${parts[@]}"; do
+      if [[ ! -f "$file" ]]; then
+        missing="$file"
+        break
+      fi
+    done
+    if [[ -n "$missing" ]]; then
+      printf 'skip\t%s\t%s\n' "$name" "$missing"
+    else
+      printf 'pull\t%s\t%s\n' "$name" "$files"
+    fi
+  done
+}
+
+# Read a JSON array of projects on stdin,
+#   [{"name": ..., "files": "a,b", "services": <`compose config` .services>}]
+# and print the image-only services safe to pull, one row per project:
+#   pull<TAB><name><TAB><files><TAB><space-separated services>
+#   none<TAB><name>
+# A build service without `image:` produces `<project>-<service>`. Images
+# are compared by repository alone, in one spelling: building `u/backend:dev`
+# blocks `u/backend:1.2` and `docker.io/u/backend@sha256:...`, and
+# `docker.io/library/redis` matches `redis`.
+docker_pull_compose_select() {
+  jq -r '
+    def repo:
+      sub("@.*$"; "")
+      | sub(":[^/]+$"; "")
+      | sub("^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)/"; "")
+      | sub("^library/"; "");
+    [ .[] | .name as $p | .services | to_entries[]
+      | select(.value.build != null)
+      | (.value.image // "\($p)-\(.key)") | repo ] as $built
+    | .[]
+    | .name as $p
+    | [ .services | to_entries[]
+        | select(.value.build == null and .value.image != null)
+        | select((.value.image | repo) as $i | any($built[]; . == $i) | not)
+        | .key ] as $safe
+    | if ($safe | length) > 0
+      then ["pull", $p, .files, ($safe | join(" "))]
+      else ["none", $p]
+      end
+    | @tsv'
+}
+
+# Echo `-f <file>` for each comma-separated config file in $1.
+docker_pull_compose_file_args() {
+  local file
+  local -a parts
+  IFS=',' read -r -a parts <<<"$1"
+  for file in "${parts[@]}"; do
+    printf '%s\n' -f "$file"
+  done
+}
+
+# Print each running container whose image is older than the one its tag now
+# points to: <container><TAB><image><TAB><compose project, or empty>. A pull
+# moves only the tag. A container whose tag is gone has nothing to compare
+# against and is left out.
+docker_pull_compose_stale() {
+  local listing id
+  local -a ids=()
+  listing="$(docker ps -q)" || return 1
+  while IFS= read -r id; do
+    [[ -n "$id" ]] && ids+=("$id")
+  done <<<"$listing"
+  [[ ${#ids[@]} -gt 0 ]] || return 0
+
+  # One container per inspect: one that stopped since `ps` is skipped instead
+  # of failing the check.
+  local row name image image_id project current
+  for id in "${ids[@]}"; do
+    row="$(docker inspect --format '{{.Name}}{{"\t"}}{{.Config.Image}}{{"\t"}}{{.Image}}{{"\t"}}{{index .Config.Labels "com.docker.compose.project"}}' "$id" 2>/dev/null)" || continue
+    IFS=$'\t' read -r name image image_id project <<<"$row"
+    current="$(docker image inspect --format '{{.Id}}' "$image" 2>/dev/null)" || continue
+    [[ "$current" != "$image_id" ]] || continue
+    printf '%s\t%s\t%s\n' "${name#/}" "$image" "$project"
+  done
+}
+
+# Replace the stale-container state file with stdin. Written through a temp
+# file so a reader never sees half a list.
+docker_pull_compose_write_state() {
+  local dir="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
+  mkdir -p "$dir"
+  local tmp
+  tmp="$(mktemp "$dir/.stale-containers.XXXXXX")"
+  cat >"$tmp"
+  mv "$tmp" "$dir/stale-containers"
+}
+
+docker_pull_compose_main() {
+  if ! docker info >/dev/null 2>&1; then
+    # Nothing runs while Docker is down.
+    docker_pull_compose_write_state </dev/null
+    echo "Docker isn't running; skipping image pulls."
+    return 0
+  fi
+
+  # Captured rather than piped so a failing `compose ls` fails the step
+  # instead of reading as "nothing to pull".
+  local listing plan
+  listing="$(docker compose ls --all --format json)"
+  plan="$(docker_pull_compose_plan <<<"$listing")"
+
+  local action name files config arg projects="[]" failed=0
+  local -a fargs
+  while IFS=$'\t' read -r action name files; do
+    [[ -n "$action" ]] || continue
+    if [[ "$action" = skip ]]; then
+      echo "skip    $name (config file gone: $files)"
+      continue
+    fi
+    fargs=()
+    while IFS= read -r arg; do fargs+=("$arg"); done < <(docker_pull_compose_file_args "$files")
+    # `--profile '*'` so services behind profiles are seen too.
+    # `--no-env-resolution` because env files only feed container
+    # environment, never `image:` or `build:`, and a missing one would
+    # otherwise fail the read.
+    if ! config="$(docker compose -p "$name" "${fargs[@]}" --profile '*' config --no-env-resolution --format json </dev/null | jq '.services')"; then
+      echo "FAILED  $name (couldn't read its compose config)"
+      failed=$((failed + 1))
+      continue
+    fi
+    projects="$(jq --arg n "$name" --arg f "$files" --argjson s "$config" \
+      '. + [{name: $n, files: $f, services: $s}]' <<<"$projects")"
+  done <<<"$plan"
+
+  # A project whose config couldn't be read may build an image another
+  # project uses image-only, so no pull is safe this run.
+  local selected="" services
+  local -a svcs
+  if [[ $failed -gt 0 ]]; then
+    echo "skip    all image pulls (a project's built images are unknown)"
+  else
+    selected="$(docker_pull_compose_select <<<"$projects")"
+  fi
+  while IFS=$'\t' read -r action name files services; do
+    [[ -n "$action" ]] || continue
+    if [[ "$action" = none ]]; then
+      echo "none    $name (every image is built locally)"
+      continue
+    fi
+    fargs=()
+    while IFS= read -r arg; do fargs+=("$arg"); done < <(docker_pull_compose_file_args "$files")
+    read -r -a svcs <<<"$services"
+    if docker compose -p "$name" "${fargs[@]}" --profile '*' pull --quiet "${svcs[@]}" </dev/null; then
+      echo "pulled  $name ($services)"
+    else
+      echo "FAILED  $name"
+      failed=$((failed + 1))
+    fi
+  done <<<"$selected"
+
+  local stale container image
+  if stale="$(docker_pull_compose_stale)"; then
+    printf '%s' "${stale:+$stale$'\n'}" | docker_pull_compose_write_state
+    while IFS=$'\t' read -r container image _; do
+      [[ -n "$container" ]] || continue
+      echo "stale   $container is on an older image than $image; recreate it to update"
+    done <<<"$stale"
+  else
+    echo "FAILED  checking running containers for older images"
+    failed=$((failed + 1))
+  fi
+
+  [[ $failed -eq 0 ]]
+}
+
+# Run only when executed directly; sourcing (tests) just defines the functions.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  docker_pull_compose_main "$@"
+fi

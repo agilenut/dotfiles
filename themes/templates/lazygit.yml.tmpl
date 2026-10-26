@@ -17,22 +17,22 @@ gui:
       - "{{ $t.ui.selection }}"
     optionsTextColor:
       - blue
-  authorColors:
-    "agilenut": blue # your commits in the theme blue
-    "*": "{{ $t.ui.muted }}" # everyone else muted
-  branchColorPatterns:
-    "^feat/": "green"
-    "^fix/": "red"
-    "^refactor/": "magenta"
-    "^perf/": "magenta"
-    "^docs/": "blue"
-    "^test/": "yellow"
-    "^ci/": "cyan"
-    "^build/": "cyan"
-    "^chore/": "{{ $t.ui.dim }}"
-    "^style/": "{{ $t.ui.dim }}"
+    authorColors:
+      "agilenut": blue # your commits in the theme blue
+      "*": "{{ $t.ui.muted }}" # everyone else muted
+    branchColorPatterns:
+      "^feat/": "green"
+      "^fix/": "red"
+      "^refactor/": "magenta"
+      "^perf/": "magenta"
+      "^docs/": "blue"
+      "^test/": "yellow"
+      "^ci/": "cyan"
+      "^build/": "cyan"
+      "^chore/": "{{ $t.ui.dim }}"
+      "^style/": "{{ $t.ui.dim }}"
 git:
   diffContextSize: 10
-  pagers:
+  diffRenderers:
     - colorArg: always
-      pager: delta --paging=never
+      command: delta --paging=never

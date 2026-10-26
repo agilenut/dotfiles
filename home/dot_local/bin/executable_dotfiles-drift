@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# dotfiles-drift
+# =============================================================================
+# Report chezmoi-managed files that changed outside chezmoi and also differ
+# from the dotfiles source. Each one needs a decision: `chezmoi re-add` keeps
+# the machine's version, `chezmoi apply` restores the source's. `re-add`
+# rather than `add` because it refuses to overwrite a template with its
+# rendered output; a templated file's change is copied into the source by
+# hand. Never applies anything. topgrade runs it in place of its `chezmoi`
+# step.
+#
+# The list also goes to $XDG_STATE_HOME/topgrade/drift (one home-relative
+# path per line, sorted), which the update status reads. If `chezmoi status`
+# fails, the file is left as it was.
+#
+# JSON is compared after normalizing (sorted keys, whitespace), so an app that
+# rewrites its own config file (karabiner) only counts once the content
+# changes.
+
+set -euo pipefail
+
+# Read `chezmoi status` lines on stdin and print the target path of each entry
+# with both columns set. The first column is "changed since chezmoi last
+# wrote it", the second "differs from the source". Second-column-only lines
+# are pending applies; first-column-only lines already match the source.
+dotfiles_drift_candidates() {
+  local line
+  while IFS= read -r line; do
+    [[ "${line:0:1}" != " " && "${line:1:1}" != " " ]] || continue
+    printf '%s\n' "${line:3}"
+  done
+}
+
+# Succeed when the home-relative path $1 really differs from its target
+# state. Unparseable JSON counts as different.
+dotfiles_drift_differs() {
+  local target="$HOME/$1"
+  case "$1" in
+    *.json)
+      local live wanted
+      live="$(jq -S . "$target" 2>/dev/null)" || return 0
+      wanted="$(chezmoi cat "$target" | jq -S . 2>/dev/null)" || return 0
+      [[ "$live" != "$wanted" ]]
+      return
+      ;;
+  esac
+  return 0
+}
+
+# Replace the drift state file with stdin. Written through a temp file so a
+# reader never sees half a list.
+dotfiles_drift_write_state() {
+  local dir="${XDG_STATE_HOME:-$HOME/.local/state}/topgrade"
+  mkdir -p "$dir"
+  local tmp
+  tmp="$(mktemp "$dir/.drift.XXXXXX")"
+  sort >"$tmp"
+  mv "$tmp" "$dir/drift"
+}
+
+dotfiles_drift_main() {
+  local status
+  status="$(chezmoi status)"
+
+  local -a drifted=()
+  local path
+  while IFS= read -r path; do
+    [[ -n "$path" ]] || continue
+    if dotfiles_drift_differs "$path"; then
+      drifted+=("$path")
+    fi
+  done < <(printf '%s\n' "$status" | dotfiles_drift_candidates)
+
+  if [[ ${#drifted[@]} -eq 0 ]]; then
+    dotfiles_drift_write_state </dev/null
+    echo "No dotfiles drift."
+    return 0
+  fi
+  printf '%s\n' "${drifted[@]}" | dotfiles_drift_write_state
+  echo "Dotfiles drift: ${#drifted[@]} file(s) changed outside chezmoi:"
+  local source
+  for path in "${drifted[@]}"; do
+    source="$(chezmoi source-path "$HOME/$path")"
+    if [[ "$source" = *.tmpl ]]; then
+      printf '  ~/%s (template: copy the change into %s)\n' "$path" "$source"
+    else
+      printf '  ~/%s\n' "$path"
+    fi
+  done
+  echo "Keep this machine's version: chezmoi re-add <file>."
+  echo "Restore the dotfiles version: chezmoi apply <file>."
+}
+
+# Run only when executed directly; sourcing (tests) just defines the functions.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  dotfiles_drift_main "$@"
+fi

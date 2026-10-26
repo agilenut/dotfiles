@@ -17,22 +17,22 @@ gui:
       - "#253748"
     optionsTextColor:
       - blue
-  authorColors:
-    "agilenut": blue # your commits in the theme blue
-    "*": "#8b949e" # everyone else muted
-  branchColorPatterns:
-    "^feat/": "green"
-    "^fix/": "red"
-    "^refactor/": "magenta"
-    "^perf/": "magenta"
-    "^docs/": "blue"
-    "^test/": "yellow"
-    "^ci/": "cyan"
-    "^build/": "cyan"
-    "^chore/": "#a3a9ae"
-    "^style/": "#a3a9ae"
+    authorColors:
+      "agilenut": blue # your commits in the theme blue
+      "*": "#8b949e" # everyone else muted
+    branchColorPatterns:
+      "^feat/": "green"
+      "^fix/": "red"
+      "^refactor/": "magenta"
+      "^perf/": "magenta"
+      "^docs/": "blue"
+      "^test/": "yellow"
+      "^ci/": "cyan"
+      "^build/": "cyan"
+      "^chore/": "#a3a9ae"
+      "^style/": "#a3a9ae"
 git:
   diffContextSize: 10
-  pagers:
+  diffRenderers:
     - colorArg: always
-      pager: delta --paging=never
+      command: delta --paging=never

@@ -199,9 +199,9 @@ _Permission prompting, Preferred commands, and Hook behavior._
   — too-small first window forces a re-run, paying twice. Read full
   output once; truncate once you know the shape.
 - No global installs: `npx` for one-off commands, `pip` only inside a
-  venv, `pipx` for CLI tools, `npm install` only in a project (never
-  `-g`), `dotnet tool` use `--local` in projects or `--global` only
-  outside a project
+  venv, `uv tool install --managed-python` for CLI tools, `npm install`
+  only in a project (never `-g`), `dotnet tool` use `--local` in projects
+  or `--global` only outside a project
 
 ### PreToolUse Hook
 

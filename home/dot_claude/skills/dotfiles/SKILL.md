@@ -51,6 +51,12 @@ _The change is dotfiles work, not an edit in the current project._
   its sibling) and name the branch per the global Git rules. After the
   branch merges, remove it with `git -C <repo> worktree remove <path>`.
 - Edit the source with the Edit tool.
+- If an app also writes the file, keep the source in the app's own format,
+  order, and mode, and keep formatters off it. Known cases are in the
+  deployment doc's "Files an app rewrites"; an `M` in the first column of
+  `chezmoi status`, or a diff that reformats the whole file, points to a new
+  one. To adopt the app's format, copy the deployed file over the source
+  once its diff shows only formatting and changes you mean to keep.
 - Edit a deployed copy only when the user explicitly asks for that. Use
   the Edit tool, not Bash: Claude Code prompts before an Edit under
   `~/.claude` or outside the project, which leaves the user the choice,
@@ -95,6 +101,10 @@ applying scripts, macOS defaults, or system-wide changes.
    create it from a file target.
 5. Run `chezmoi diff <target>` again (with the same flags) and confirm it is
    empty.
+   - For a file an app also writes, make the app save without a real
+     change, then run the diff once more; it should stay empty. Run a
+     setup command yourself (`git-credential-manager configure`); for a GUI
+     app, ask the user to toggle a setting and back.
 6. After the branch merges: if the main checkout is on main and clean, run
    `git -C <repo> pull`, then repeat steps 2, 4, and 5 from it. If it
    isn't, tell the user the merged change deploys once it is back on main.

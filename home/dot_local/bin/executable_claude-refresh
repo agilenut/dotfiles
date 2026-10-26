@@ -12,8 +12,8 @@
 # =============================================================================
 # Restart every claude process running in tmux panes, in place, so each picks
 # up a newly installed Claude Code version and resumes its session. Run it
-# after `brewup`/`update` bumps the claude-code cask; tmux itself (windows,
-# layouts, scrollback, non-claude panes) is untouched.
+# after `update` bumps the claude-code cask; tmux itself (windows, layouts,
+# scrollback, non-claude panes) is untouched.
 #
 # Per pane whose current command is `claude`:
 #   named session  → send C-c C-c to exit, wait for the shell, `claude -r <name>`
@@ -246,6 +246,11 @@ claude_refresh_main() {
     summary="$summary Detail: $refresh_log"
   fi
   claude_refresh_say "$summary"
+  # The scheduled update's "Claude Code upgraded" notice is answered once the
+  # sessions that can be resumed run the new version.
+  if [ "$failed" -eq 0 ]; then
+    rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/topgrade/claude-upgrade"
+  fi
   [ "$failed" -eq 0 ]
 }
 

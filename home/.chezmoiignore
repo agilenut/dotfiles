@@ -26,9 +26,10 @@
 # Repos where /pr asks before merging. Local-only: it names client repos.
 .claude/skills/pr/ask-before-merge.txt
 
-# LaunchAgents — macOS-only (~/Library/LaunchAgents has no analogue elsewhere)
+# launchd jobs and their reload script: macOS-only
 {{ if ne .chezmoi.os "darwin" }}
 Library/LaunchAgents/
+.local/bin/dotfiles-reload-launchd
 {{ end }}
 
 # Encrypted SSH config snippets — skip when no age private key exists

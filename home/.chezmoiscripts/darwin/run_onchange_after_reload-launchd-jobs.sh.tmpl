@@ -1,0 +1,18 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# -*- mode: bash; sh-shell: bash -*-
+# vim: set ft=bash :
+
+# Reload the dotfiles launchd jobs after an apply that changes one.
+#
+# run_onchange tracks this script's rendered content, so embedding each
+# rendered plist's hash below re-runs it whenever any of them changes,
+# including a new one. Run it as part of a full `chezmoi apply`: with
+# `--include scripts` alone, it reloads the old plists and records the new
+# hashes, so the real change is never reloaded.
+# {{ range glob (joinPath .chezmoi.sourceDir "private_Library/LaunchAgents/*.plist*") }}{{ includeTemplate . $ | sha256sum }} {{ end }}
+
+set -euo pipefail
+
+"$HOME/.local/bin/dotfiles-reload-launchd"
+{{ end -}}

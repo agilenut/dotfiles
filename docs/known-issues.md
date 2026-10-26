@@ -260,3 +260,48 @@ uniformity should have ruled out a permissions cause. PR #109 was built on that
 reasoning and changed nothing.
 
 _Diagnosed 2026-09-30, corrected and closed 2026-10-01._
+
+## terminal-notifier can't post notifications
+
+**Symptom:** `terminal-notifier` 3.1.0 (Homebrew) exits 3 and shows nothing,
+and it never appears in System Settings > Notifications, so there is no
+setting to turn on.
+
+**Root cause:** the app is ad-hoc signed, and macOS refuses notification
+permission to it.
+
+**What we do about it:** the scheduled update's banners come from
+`osascript -e 'display notification …'`, which posts as Script Editor. It
+takes a title, subtitle, message, and sound only, and clicking a banner opens
+Script Editor, so each message says what to look at.
+
+Do NOT reinstall terminal-notifier for click actions or app icons; it won't
+get permission.
+
+_Diagnosed 2026-10-25._
+
+## GCM asks which GitHub account to use
+
+**Symptom:** a push to github.com opens Git Credential Manager's account
+picker, listing your account and one named `git`.
+
+**Root cause:** TPM clones plugins from `https://git::@github.com/...`, a
+dummy login that makes a missing plugin fail instead of prompting. When a
+fetch with that login succeeds, git hands it to the credential helper to
+save, and GCM stores it as a second GitHub account. Updating tmux plugins
+(prefix + U, or the tmux step of `update`) is enough to trigger it.
+
+**What we do about it:** the git config turns off credential helpers for
+`https://git@github.com`, so TPM's login is never saved. Your own account
+still uses GCM. To clear an account that was already saved, run
+`git credential-manager github logout git`.
+
+On macOS the `[credential]` helper is GCM's full path, not `manager`. GCM's
+installer runs `git-credential-manager configure`, which adds that path
+unless it's already set; with `manager` alone, the file drifts from the
+dotfiles after every GCM install.
+
+Do NOT point TPM's plugin clones at plain URLs to fix the picker; TPM uses
+`git::@` again on every plugin install.
+
+_Diagnosed 2026-10-26._
