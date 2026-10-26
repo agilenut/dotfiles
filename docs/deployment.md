@@ -128,10 +128,11 @@ harder to see.
   and back, or run its setup step), then confirm `chezmoi diff <target>`
   is empty.
 
-| File                                 | Written by                                           | What the source matches                             |
-| ------------------------------------ | ---------------------------------------------------- | --------------------------------------------------- |
-| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                    | Karabiner's own format, byte for byte, and 600 mode |
-| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`) | On macOS, GCM's full path as the credential helper  |
+| File                                 | Written by                                           | What the source matches                                           |
+| ------------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                    | Karabiner's own format, byte for byte, and 600 mode               |
+| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`) | On macOS, GCM's full path as the credential helper                |
+| `~/.config/lazygit/themes/*.yml`     | lazygit, when it migrates renamed config keys        | The current key names, set in `themes/templates/lazygit.yml.tmpl` |
 
 ## When an apply isn't enough
 
