@@ -13,6 +13,13 @@
 	minus-style = syntax "{{ $t.ui.diff_del_bg }}"
 	plus-emph-style = syntax "{{ $t.ui.diff_add_emph_bg }}"
 	minus-emph-style = syntax "{{ $t.ui.diff_del_emph_bg }}"
+	; Repaint git's moved-block colors (from diff.colorMoved in git config):
+	; keep the syntax foreground, replace the stock bold magenta/cyan with calm
+	; theme bands marking a relocated block's old spot vs its new spot.
+	; purple/cyan are git's main moved slots; blue/yellow are the alternates
+	; zebra mode uses for a second adjacent block of the same direction. Map
+	; each alternate to its direction's band so neighbors stay on-palette.
+	map-styles = bold purple => syntax "{{ $t.ui.move_from_bg }}", bold blue => syntax "{{ $t.ui.move_from_bg }}", bold cyan => syntax "{{ $t.ui.move_to_bg }}", bold yellow => syntax "{{ $t.ui.move_to_bg }}"
 	; Calmer line-number gutter; muted tint instead of saturated green/red.
 	line-numbers-plus-style = "{{ $t.ui.git_add }}"
 	line-numbers-minus-style = "{{ $t.ui.git_delete }}"

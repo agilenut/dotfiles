@@ -58,6 +58,8 @@
   diff_del_bg      = "#3d2027"
   diff_add_emph_bg = "#274a30" # brightened changed words within an added line
   diff_del_emph_bg = "#42272d" # brightened changed words within a removed line
+  move_from_bg     = "#322a48" # band for a block's old spot (git colorMoved oldMoved)
+  move_to_bg       = "#124458" # band for the same block's new spot (newMoved)
   diff_text        = "#4a9d64"
   git_add          = "#55805f"
   git_change       = "#d7ba7d"
@@ -116,6 +118,8 @@
   diff_del_bg      = "#331a1f"
   diff_add_emph_bg = "#21402b" # brightened changed words within an added line
   diff_del_emph_bg = "#3a2026" # brightened changed words within a removed line
+  move_from_bg     = "#2a2440" # band for a block's old spot (git colorMoved oldMoved)
+  move_to_bg       = "#0f3a4b" # band for the same block's new spot (newMoved)
   diff_text        = "#2ea043"
   git_add          = "#4a9d63"
   git_change       = "#d29922"
