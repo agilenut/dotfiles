@@ -99,10 +99,10 @@ _How to write, in chat, docs, code, comments, tests, and communications._
     it first: congratulate a real achievement, lead with empathy for a
     real setback. Routine work gets neither: a teammate redoing a merge
     after your change isn't a reason to apologize, and a finished story
-    isn't a reason to celebrate. Emotion attached to the ordinary reads as fake. When you
-    report your own results to me, be matter-of-fact, good or bad. This
-    is about person-to-person exchanges; docs, code, commits, and issue
-    descriptions don't carry this kind of tone.
+    isn't a reason to celebrate. Emotion attached to the ordinary reads
+    as fake. When you report your own results to me, be matter-of-fact,
+    good or bad. This is about person-to-person exchanges; docs, code,
+    commits, and issue descriptions don't carry this kind of tone.
   - When no plainer word will do and the reader may not know the term,
     explain it where it first appears, usually in a short parenthetical.
     A long document with many such terms gets a glossary instead.
@@ -161,7 +161,10 @@ _How to write, in chat, docs, code, comments, tests, and communications._
 - **Avoid AI tells**
   - NEVER use em-dashes. Use " - ", commas, parentheses, or rephrase.
     Reserve " - " for cases where it's genuinely the cleanest separator
-    (list label-and-explanation, attributions, brief asides).
+    (list label-and-explanation, attributions, brief asides). The ban
+    covers all text you write, including anything that could read as
+    written by me. Leave an em-dash inside a quote, or in text copied
+    from a source not attributed to me.
   - Watch for structures that make text read as machine-written. One
     instance can be fine; the same pattern again and again is the tell.
     - "It's not X, it's Y" and "not X, but Y" contrasts
@@ -533,8 +536,9 @@ _Branching, committing, PRs._
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
 - People and models read commits and PR bodies later to trace why
-  something changed. So both state the why and the decisions behind the
-  change, plainly; a PR body keeps whatever else its skill requires.
+  something changed. Like a commit message, a PR body states the why and
+  the decisions behind the change plainly, plus whatever else its skill
+  requires.
 - NEVER add Co-Authored-By lines to commits
 - NEVER add "Generated with Claude Code" to PRs
 - NEVER add a `Claude-Session:` trailer, a session URL, or any other
@@ -812,9 +816,9 @@ Project docs (READMEs, guides, design docs):
 
 Context files (CLAUDE.md, MEMORY.md, skills, agents):
 
-- Only add or suggest rules/memory/config that genuinely change behavior
-  — if it won't change what Claude does, don't propose it. That includes
-  explaining what the model already knows.
+- Only add or suggest rules/memory/config that genuinely change
+  behavior. If it won't change what Claude does, don't propose it, and
+  don't explain what the model already knows.
 - Give the reason with each rule. A model that knows why can handle the
   case the rule didn't anticipate.
 - Open an agent or skill with who uses its output, what they need from
@@ -828,8 +832,8 @@ Context files (CLAUDE.md, MEMORY.md, skills, agents):
   boundary. Use principles where several approaches are valid and the
   right one depends on context, such as judging a review finding.
 - Don't use emphasis as a style. Anthropic's prompting guide (2026) says
-  current models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and
-  apply the emphasized rule too broadly. When a rule is ignored, first
+  models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and apply
+  the emphasized rule too broadly. When a rule is ignored, first
   check that it states its reason and sits near where it applies. Add
   emphasis to that one rule only if it is still missed. Emphasis already
   in this file predates this rule; leave it unless you are rewriting that

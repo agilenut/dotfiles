@@ -125,8 +125,8 @@ Subagent types (full strings):
 
 - `plan-reviewer` — always
 - `language-reviewer` — always. Later sessions carry out the plan, and
-  the summaries the user approves are drawn from it, so a hard-to-read
-  plan leads to steps done wrong.
+  the user often approves it from a summary, so a hard-to-read plan gets
+  carried out or approved on a misreading.
 - `ux-reviewer` — if plan involves UI
 
 Spawn in parallel. Each Agent prompt receives:
@@ -198,8 +198,9 @@ For each accepted reviewer output:
    conflict (one adds detail, the other cuts it, or any other pair that
    can't both be applied) become one entry at the higher of their two
    severities, listing both fixes and both reviewers. In triage, pick one
-   fix or one that satisfies both, and log the reason; when unsure which
-   is right, escalate to the user. Kept apart, the clash is easy to miss.
+   of the two fixes, or write a new one that satisfies both, and log the
+   reason; when unsure which is right, escalate to the user. Kept apart,
+   the clash is easy to miss.
 
 ## Step 6: Verify-First Per Finding
 

@@ -26,7 +26,8 @@ These don't bend, regardless of step:
   direction)? Surface it. Auto-buckets are for unambiguous cases.
 - **Code edits only in Step 10 / Step 12.** All other steps are
   read-only with respect to the codebase. Triage / audit file writes
-  (Step 8 init, Step 13 finalize) are part of the protocol.
+  (Step 8 init, Step 13 finalize) and the commit-message draft (Step 2)
+  are part of the protocol.
 
 ## Step 1: Detect Scope and Reviewer Selection
 
@@ -96,6 +97,15 @@ _Read everything the orchestrator AND reviewers need before spawning._
 
   If the diff is >500 lines, tell the user and offer to focus on specific
   files before continuing.
+
+- **Commit message** (local mode): draft the message for the commit that
+  follows this review, per the Git rules in CLAUDE.md, and save it to
+  `.reviews/code/<timestamp>-<branch>-commit-msg.txt` (run
+  `date +%Y-%m-%d-%H%M%S` now; every file this review writes uses that
+  timestamp). The file holds only the message, since git commits it as
+  written. Fixes to the message edit that file. When other fixes change
+  what the commit does, update the message to match. Reviewing it before
+  it is in history lets its fixes apply like any other.
 
 - **Review preferences** (orchestrator-only, never sent to reviewers):
   - `~/.claude/review-preferences.md` (user-scope, if exists)
@@ -173,16 +183,19 @@ Each Agent prompt receives:
 - Branch name
 - Output path:
   `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-<type>.md`
-  (run `date +%Y-%m-%d-%H%M%S` for timestamp — never hardcode)
+  (reuse Step 2's timestamp in local mode; otherwise run
+  `date +%Y-%m-%d-%H%M%S` for timestamp — never hardcode)
 - Full diff
 - CLAUDE.md contents
 - Plan file PATH (not content) if intent context found one — reviewer
   reads it directly. Review-preferences are NEVER sent to reviewers; they
   live orchestrator-only.
-- `language-reviewer` only, in branch, unreviewed, and PR modes: the
-  commit messages in the diff's range (`git log <range> --format='%h%n%B'`)
-  as text to review. People and models read them later to trace why
-  something changed. Local mode has no commits yet.
+- `language-reviewer` only: commit messages as text to review. Local
+  mode passes the drafted message file. Branch, unreviewed, and PR modes
+  pass the messages in the diff's range
+  (`git log <range> --format='commit %h%n%B'`, with `main..HEAD` in
+  branch mode, `<sha>..HEAD` in unreviewed mode, and
+  `<baseRefName>..HEAD` in PR mode).
 - **Mandatory write rule** (verbatim):
   `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
 
@@ -229,8 +242,9 @@ For each accepted reviewer output:
    conflict (one adds detail, the other cuts it, or any other pair that
    can't both be applied) become one entry at the higher of their two
    severities, listing both fixes and both reviewers. In triage, pick one
-   fix or one that satisfies both, and log the reason; when unsure which
-   is right, escalate to the user. Kept apart, the clash is easy to miss.
+   of the two fixes, or write a new one that satisfies both, and log the
+   reason; when unsure which is right, escalate to the user. Kept apart,
+   the clash is easy to miss.
 
 ## Step 6: Verify-First Per Finding
 
@@ -252,21 +266,25 @@ For every finding, BEFORE bucketing:
    ```text
    Claim: <reviewer's claim + interpretive premise>
    Code reality: <what the code does + what it's trying to do in context>
-   Verified: yes | no — <fact-check + premise-check>
+   Verified: yes | no - <fact-check + premise-check>
    ```
 
 4. **`Verified: no` covers two cases** — both map to Step 7's "Reviewer
    clearly wrong" auto-skip; don't re-spawn in either case:
    - **Invalid citation**: file/line doesn't exist, or code doesn't
-     match the factual claim → `Verified: no — citation invalid`.
+     match the factual claim → `Verified: no - citation invalid`.
    - **Premise doesn't hold**: claim is factually accurate but the
      reviewer's framing assumes a constraint that doesn't apply, or
      critiques scope the artifact isn't trying to address → `Verified:
-no — premise doesn't hold: <one-line reason>`.
-5. **Commit-message findings** cite a commit hash, not a file: verify
-   against `git log -1 --format=%B <hash>`. Never auto-fix one; fixing it
-   rewrites a commit, which needs the user's go-ahead. Bucket it for the
-   user.
+no - premise doesn't hold: <one-line reason>`.
+5. **Commit-message findings** cite the draft file or a commit hash
+   (verify a hash against `git log -1 --format=%B <hash>`). A finding on
+   the draft buckets like any other finding. A finding on a commit
+   already made is never applied and never goes to the Step 12 dialog,
+   whatever a review preference says, because rewording it rewrites
+   history. Record it in the triage file's `## Commit messages` section
+   with the reworded message, and list it in Step 14's final summary
+   for the user to apply if they want.
 
 Missing `Claim:` / `Verified:` lines = protocol violation. Self-check
 before Step 7: scan the draft triage; any finding missing the triplet →
@@ -291,8 +309,9 @@ number is a soft signal only.
   `previously skipped by user: <reason>; reference: <prior-triage-path>`.
   Other prior statuses (`auto-skipped` / `fixed` / `pending`) → do NOT
   carry; re-bucket fresh.
-- **Preferences match** (rule in either `review-preferences.md`) →
-  auto-skip with `matches review-preference: "<rule>"`.
+- **Preferences match** (rule in either `review-preferences.md`) that
+  says to skip → auto-skip with `matches review-preference: "<rule>"`.
+  Preferences that name another bucket apply under Bucket criteria.
 - **CLAUDE.md / plan Decisions match**: finding contradicts an explicit
   rule or settled Decision → auto-skip citing it. Exception: reviewer
   cites a fresh library API change or implication the plan didn't
@@ -319,8 +338,8 @@ markdown fix.
 
 **Auto-skip** — ANY of:
 
-- Reviewer clearly wrong — covers both citation issues (`Verified: no —
-citation invalid`) and interpretive misfires (`Verified: no — premise
+- Reviewer clearly wrong — covers both citation issues (`Verified: no -
+citation invalid`) and interpretive misfires (`Verified: no - premise
 doesn't hold`); see Step 6.
 - Diminishes plan goal with no alt path that preserves both
 - Large architectural / maintenance / developer burden
@@ -346,6 +365,14 @@ _Examples:_ `IEnumerable` vs `List` return-type tradeoff; API contract
 drift from plan endpoint table; `Result<T>` instead of throwing for one
 function; rename of a method in 6 call sites; missing test requires
 mocking an external service.
+
+**Preferences** (verified findings only): a rule in either
+`review-preferences.md` that names auto-fix or needs-review for the
+finding sets that bucket in place of the criteria above, with
+`matches review-preference: "<rule>"`. A rule that recommends a direction
+without naming a bucket sets the Recommendation and leaves the bucket to
+the criteria. The escalation rules below still run and win, so a
+preference never auto-fixes a plan deviation or a hesitant call.
 
 ### Escalation rules (override auto-skip → force needs-review)
 
@@ -423,6 +450,8 @@ initial values:
 - Needs-review section: full entries with `Status: pending`,
   foundational/pattern-wide flags
 - Auto-fixed section: empty
+- Commit messages section: full entries (known from Step 6; omit when
+  none)
 - Salvage log: buffered entries from Step 4 (empty if none)
 
 Steps 9, 10, 12 update in place. Step 13 finalizes.
@@ -641,26 +670,27 @@ Sections (in order):
 Auto-fixed: <N>
 Auto-skipped: <N>
 Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
+Commit messages, not applied: <N>
 
 ## Auto-fixed
 
-### #<i> — [<Severity>] <file>:<line> (<reviewer>)
+### #<i> - [<Severity>] <file>:<line> (<reviewer>)
 
 - Claim: ...
 - Code reality: ...
-- Verified: yes — <fact-check + premise-check>
-- Action: FIX — <one-line summary of change>
+- Verified: yes - <fact-check + premise-check>
+- Action: FIX - <one-line summary of change>
 - Reasoning: <why this met auto-fix criteria>
 
 (... more entries ...)
 
 ## Auto-skipped
 
-### #<i> — [<Severity>] <file>:<line> (<reviewer>)
+### #<i> - [<Severity>] <file>:<line> (<reviewer>)
 
 - Claim: ...
 - Code reality: ...
-- Verified: <yes — <fact-check + premise-check> | no — citation invalid | no — premise doesn't hold: <reason>>
+- Verified: <yes - <fact-check + premise-check> | no - citation invalid | no - premise doesn't hold: <reason>>
 - Action: SKIP
 - Reasoning: <which criterion; cite CLAUDE.md/preference/Decision if relevant>
 
@@ -668,11 +698,11 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 ## Needs-review
 
-### #<i> — [<Severity>] <file>:<line> (<reviewer>)
+### #<i> - [<Severity>] <file>:<line> (<reviewer>)
 
 - Claim: ...
 - Code reality: ...
-- Verified: yes — <fact-check + premise-check>
+- Verified: yes - <fact-check + premise-check>
 - Recommendation: <FIX | SKIP>
 - Foundational: <true | false>
 - Pattern-wide: <true | false; if true, N occurrences>
@@ -680,9 +710,20 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 
 (... more entries ...)
 
+## Commit messages
+
+### #<i> - [<Severity>] commit <hash> (language)
+
+- Claim: ...
+- Code reality: <the message text the claim is about>
+- Verified: yes - <checked against `git log -1 --format=%B <hash>`>
+- Reworded message: <full text>
+
+(... more entries; omit the section when there are none ...)
+
 ## Salvage / failure log
 
-- <reviewer> output salvaged from text return — did not call Write tool. (if any)
+- <reviewer> output salvaged from text return - did not call Write tool. (if any)
 - Reviewer <name> failed after retry; findings unavailable. (if any)
 ```
 
@@ -714,7 +755,7 @@ output._
 
    ```text
    Fixes introduced [<one-line summary of new surface or approach
-   change>] — re-run `/review` on the updated state before committing?
+   change>] - re-run `/review` on the updated state before committing?
    y/n
    ```
 
@@ -727,19 +768,25 @@ output._
    Auto-fixed (<N>/<total>): #<i> (<5-word descriptor>), #<j> (<descriptor>), ...
    Auto-skipped (<N>/<total>): #<i> (<descriptor>), ...
    Needs-review (<N>/<total>; fixed: <x>, skipped: <y>, pending: <z>):
-     #<i> — <status>: <5-word user reason or descriptor>
+     #<i> - <status>: <5-word user reason or descriptor>
      ...
+   Commit messages, not applied (<N>/<total>): #<i> (commit <hash>), ...
+     Reworded messages are in the triage file; reword a commit only if
+     you want to.
 
    Triage: .reviews/code/<timestamp>-<branch>-triage.md
 
-   Build green. Fixes above are unstaged — re-stage every file the fixes
+   Build green. Fixes above are unstaged: re-stage every file the fixes
    touched (even if already staged), run `pre-commit run`, re-stage, then
    commit. Skipping the re-stage commits the pre-review blob and drops the
    fixes.
+   Local mode: commit with the reviewed message,
+   `git commit -F <absolute path to the commit-msg.txt file>`.
    Re-build and run full test suite if pre-commit touched code.
    ```
 
-   `<total>` is the total count of findings across all buckets. Omit a
+   `<total>` is the total count of findings across all buckets, plus
+   the commit-message findings that weren't applied. Omit a
    section if its count is 0. Descriptor format: short (≤6 words),
    action-or-content focused. Examples: `typo in error msg`,
    `missing using directive`, `matches review-preference`,

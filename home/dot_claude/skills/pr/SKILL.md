@@ -117,11 +117,16 @@ an open PR with no checks as CI_RUNNING.
   the issue); otherwise "Part of #N". No `board-settings` yet → the
   `board` skill's Step 1 creates it.
 - **Review the drafted body.** Spawn `language-reviewer` with the drafted
-  title and body as text to review, plus the issue's ACs, the plan path
-  if one governs this PR, and `git log main..HEAD --format=%B`, so it can
-  tell whether the body states the why. Apply its Critical and Important
-  findings. Ask the user first when a finding would change what the PR
-  claims, or asks for a detail you don't have.
+  title and body as text to review. Pass as context, not text to review:
+  the issue's ACs, the plan path if one governs this PR, and
+  `git log main..HEAD --format=%B`, so it can tell whether the body states
+  the why. Tell it that the `## Acceptance criteria status` table, the
+  `## Test Plan`, and the issue link are required when present, so it
+  judges their wording, not whether they belong. Check each Critical and
+  Important finding against the draft and the commits, and apply the
+  ones that hold. Ask the user first when a finding would change what
+  the PR claims, or when its fix needs a detail you don't have. If the
+  reviewer's output has no `## Findings` section, say so and continue.
 - `gh pr create` (include `--label <label>` if a label was selected), then
   re-run state detection
 
