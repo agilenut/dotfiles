@@ -351,7 +351,7 @@ STUB
     && ! pgrep -f 'sleep 31' >/dev/null && [ ! -e "$logs/topgrade.lock" ]; then
     pass "a topgrade that ignores TERM is killed with its children after the grace period"
   else
-    fail "stubborn topgrade survived the stop (rc=$rc, sleep 31 running: $(pgrep -f 'sleep 31' || echo no))"
+    fail "stubborn topgrade survived the stop (rc=$rc, $((SECONDS - started))s, sleep 31 pid/pgid/state: $(pgrep -f 'sleep 31' | xargs -I{} ps -o pid=,pgid=,stat= -p {} | tr -s ' ' | tr '\n' ';' | grep . || echo none))"
     pkill -f 'sleep 31' || true
   fi
 

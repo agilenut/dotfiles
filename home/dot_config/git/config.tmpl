@@ -45,12 +45,15 @@
 	rebase = false
 
 [credential]
-	helper =
 {{- if eq .chezmoi.os "darwin" }}
-	; GCM's macOS installer runs `git-credential-manager configure`, which adds
-	; this path unless it's already set; `manager` alone shows up as drift.
+	helper = 
 	helper = /usr/local/share/gcm-core/git-credential-manager
+	; GCM's macOS installer runs `git-credential-manager configure`, which
+	; rewrites this section as git writes it: helpers first, the empty one
+	; with a trailing space, comments last. Any other layout, or `manager`
+	; instead of the path, shows up as drift.
 {{- else }}
+	helper =
 	helper = manager
 {{- end }}
 
