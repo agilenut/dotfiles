@@ -16,6 +16,8 @@ _Inspect git and PR data; classify into a state from the table._
 1. If PR number provided as argument, use that. Otherwise:
 2. Run `git status`, `git branch --show-current`
 3. Run `gh pr view --json number,state,title,body,baseRefName,mergedAt,mergeCommit 2>&1`
+4. Open PR → read CI with `gh pr checks <number>`. A merged PR always
+   starts at MERGED_CI_RUNNING, and only its verdict (step 5) moves it on.
 
 | State              | Condition                                                                   |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -33,6 +35,11 @@ _Inspect git and PR data; classify into a state from the table._
 To distinguish CI_PASSED vs PRE_MERGE_TESTING and POST_MERGE_TESTING vs
 MERGED_DONE: read the PR body and check for unchecked items (`- [ ]`) in the
 relevant test plan section.
+
+**No checks yet.** For a minute or so after a push, GitHub lists no checks
+for the new commit. In a repo with workflows
+(`gh workflow list --json name --jq length` prints more than `0`), classify
+an open PR with no checks as CI_RUNNING.
 
 ## Step 2: Act on State
 
@@ -113,15 +120,22 @@ relevant test plan section.
 
 ### CI_RUNNING
 
-1. **Fire-and-forget; do not poll.** `gh pr checks <number> --watch` via
-   Bash with `run_in_background: true`. System notifies on exit.
+1. **Watch in the background; don't poll with repeated tool calls.** Run
+   this with `run_in_background: true`. `--watch` exits at once when no
+   checks are listed, so the loop first waits up to 3 minutes for them:
+
+   ```bash
+   for _ in $(seq 36); do gh pr checks <number> --json name --jq length | grep -qv '^0$' && break; sleep 5; done; gh pr checks <number> --watch
+   ```
+
 2. **Read the verdict, not the exit code.** On notification, run
    `gh pr checks <number> --json bucket --jq '[.[].bucket] | unique'`.
    The watch is a wake-up trigger only.
-   - `[]` (no checks) → CI_PASSED (treat as no CI)
+   - Prints nothing and exits 1 (no checks) → CI never started for this
+     commit; surface to user
    - Contains `fail` or `cancel` → CI_FAILED
-   - Contains `pending` → re-fire the watch. After 3 consecutive pending
-     re-fires, surface to user.
+   - Contains `pending` → run step 1's command again. After 3 pending
+     results in a row, surface to user.
    - Only `pass` / `skipping` → CI_PASSED/PRE_MERGE_TESTING
    - Anything else (unrecognized values, read errors) → surface to user
 
@@ -153,8 +167,9 @@ relevant test plan section.
 ### PRE_MERGE_TESTING
 
 1. **Re-verify checks complete.** `gh pr checks <number>` — one-shot read
-   (not `--watch`; need result inline). Confirm all passed/skipped; if any
-   still running, transition to CI_RUNNING.
+   (not `--watch`; need result inline). Confirm all passed/skipped. If any
+   are still running, or none are listed and Step 1's "No checks yet"
+   applies, transition to CI_RUNNING.
 2. Read PR body, process `### Pre-merge` items:
    - Verify locally if possible (run script, check file) → check off
    - Needs deploy → leave for post-merge
@@ -167,8 +182,9 @@ relevant test plan section.
 ### CI_PASSED
 
 1. **Re-verify checks complete.** `gh pr checks <number>` — one-shot read
-   (not `--watch`; need result inline). Confirm all passed/skipped; if any
-   still running, transition to CI_RUNNING.
+   (not `--watch`; need result inline). Confirm all passed/skipped. If any
+   are still running, or none are listed and Step 1's "No checks yet"
+   applies, transition to CI_RUNNING.
 2. Check `~/.claude/skills/pr/ask-before-merge.txt` (one `owner/repo` per
    line; `#` for comments; skip if missing). If current repo
    (`gh repo view --json nameWithOwner --jq .nameWithOwner`) is listed,
@@ -180,27 +196,69 @@ relevant test plan section.
 
 ### MERGED_CI_RUNNING
 
-1. `gh run list --branch main --created '><mergedAt>' --json databaseId,name` —
-   substitute `<mergedAt>` with the ISO timestamp from step 1's JSON
-   (post-merge workflows don't show in `gh pr checks`).
-2. No runs → transition to POST_MERGE_TESTING or MERGED_DONE.
-3. **Fire-and-forget; do not poll.** For each `databaseId` from step 1:
-   `gh run watch <id> --exit-status` via Bash with `run_in_background: true`.
-   Spawn in parallel; system notifies per process exit.
-4. **Read the verdict, not the exit code.** On each notification, run
-   `gh run view <id> --json status,conclusion --jq '{status,conclusion}'`.
-   The watch is a wake-up trigger only.
-   - `status != "completed"` → re-fire the watch. After 3 consecutive
-     re-fires, surface to user.
-   - `conclusion` is `success`, `skipped`, or `neutral` → remove from
-     pending. When empty, transition to POST_MERGE_TESTING or MERGED_DONE.
-   - `conclusion` is `failure`, `cancelled`, `timed_out`, `startup_failure`,
-     or `stale` → MERGED_CI_FAILED. Other watches keep running; their
-     notifications can be ignored. Dump per-job conclusions to name the
-     failure:
+Post-merge CI is finished when every run for the merge commit has passed
+(step 5) and no new run has appeared for 2 minutes. The wait catches runs
+that start when another run finishes, such as a deploy started by CI.
+
+Each command reads the merge commit's runs (`<sha>` is `mergeCommit.oid`
+from Step 1's JSON) and leaves out runs with event `dynamic`: Dependabot's
+update jobs, which run against main but aren't started by the merge.
+
+1. List the runs. Keep `--limit 200`: with the default of 20, other runs on
+   the same commit can push the merge's CI off the list.
+
+   ```bash
+   gh run list --commit <sha> --limit 200 --json databaseId,workflowName,event,status,conclusion,createdAt --jq '[.[] | select(.event != "dynamic")]'
+   ```
+
+2. No runs → run this with `run_in_background: true`; it waits up to 2
+   minutes for the first run to appear:
+
+   ```bash
+   for _ in $(seq 12); do gh run list --commit <sha> --limit 200 --json event --jq '[.[] | select(.event != "dynamic")] | length' | grep -qv '^0$' && break; sleep 10; done
+   ```
+
+   Then repeat step 1. Still none → transition to POST_MERGE_TESTING or
+   MERGED_DONE, and say in the report that no post-merge runs were found
+   (expected when no workflow runs on main).
+
+3. **Wait in the background; don't poll with repeated tool calls.** Any run
+   not `completed` → run this with `run_in_background: true`; it waits up
+   to 60 minutes:
+
+   ```bash
+   for _ in $(seq 120); do gh run list --commit <sha> --limit 200 --json event,status --jq '[.[] | select(.event != "dynamic" and .status != "completed")] | length' | grep -qx 0 && break; sleep 30; done
+   ```
+
+   Then repeat step 1. Still running → surface to user.
+
+4. All completed → note the run count, run `sleep 120` with
+   `run_in_background: true`, then repeat step 1 and compare:
+
+   - Same count → step 5.
+   - More runs, any not `completed` → step 3.
+   - More runs, all `completed` → repeat this step.
+
+   Still finding new runs 60 minutes after `mergedAt` → surface to user.
+
+5. **Verdict.** Read each run's `conclusion`:
+
+   - `success`, `skipped`, or `neutral` → passed
+   - `cancelled`, and a later run of the same `workflowName` passed →
+     passed. A workflow with a `concurrency` group cancels its waiting run
+     when a newer one queues.
+   - `failure`, `timed_out`, `startup_failure`, `stale`, or any other
+     `cancelled` → MERGED_CI_FAILED. Name the failure from its jobs:
      `gh run view <id> --json jobs --jq '.jobs[] | select(.conclusion != "skipped") | {name, conclusion}'`
    - Anything else (`action_required`, unknown values, read errors) →
      surface to user
+
+   All passed → transition to POST_MERGE_TESTING or MERGED_DONE.
+
+   GitHub files a `workflow_run` run (one started when another workflow
+   finishes) under main's latest commit, even when another PR's CI started
+   it. A failed one whose log has nothing to do with this merge → surface
+   to user instead of MERGED_CI_FAILED.
 
 ### MERGED_CI_FAILED
 
