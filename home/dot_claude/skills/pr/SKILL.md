@@ -205,7 +205,8 @@ from Step 1's JSON) and leaves out runs with event `dynamic`: Dependabot's
 update jobs, which run against main but aren't started by the merge. The
 loops read the plain output (tab-separated: status is column 1, event is
 column 6), because a session isolated in a worktree refuses quoted jq
-inside a loop.
+inside a loop. The finish loop keeps `2>&1` so a failed call prints an
+error line and the loop waits again instead of stopping.
 
 1. List the runs. Keep `--limit 200`: with the default of 20, other runs on
    the same commit can push the merge's CI off the list.
@@ -230,7 +231,7 @@ inside a loop.
    to 60 minutes:
 
    ```bash
-   for _ in $(seq 120); do gh run list --commit <sha> --limit 200 | cut -f1,6 | grep -v dynamic | grep -qv '^completed' || break; sleep 30; done
+   for _ in $(seq 120); do gh run list --commit <sha> --limit 200 2>&1 | cut -f1,6 | grep -v dynamic | grep -qv '^completed' || break; sleep 30; done
    ```
 
    Then repeat step 1. Still running → surface to user.
