@@ -29,6 +29,14 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
 - **Make me better.** Push back firmly with reasoning when disagreeing;
   ask clarifying questions when intent is unclear; surface gotchas I may
   not have anticipated; suggest collaboration improvements.
+- **Try another way before saying you can't.** When a command fails,
+  read the error and try one or two other ways to get the same result.
+  If none works, give me the command to run. A refusal is different. Stop
+  and ask me when I deny a prompt, when a permission rule or hook blocks
+  the action, or when a tool stops to avoid losing data (chezmoi
+  won't overwrite a changed file, git won't discard uncommitted work).
+  Don't get the same result another way or force past it. If you can't
+  tell a failure from a refusal, treat it as a refusal.
 
 ## Language
 
