@@ -803,6 +803,11 @@ Context files (CLAUDE.md, MEMORY.md, skills, agents):
   explaining what the model already knows.
 - Give the reason with each rule. A model that knows why can handle the
   case the rule didn't anticipate.
+- Open an agent or skill with who uses its output, what they need from
+  it, and the main way it fails them. That gives the model a test for
+  cases its rules don't cover, the same way a rule's reason does. A
+  persona ("You are a senior...") says who the agent is but gives it
+  nothing to decide with.
 - Match the level of detail to how fragile the task is. Use exact steps
   when a deviation breaks something or there is one right answer: a
   format another program parses, a fixed order of operations, a safety
