@@ -94,9 +94,18 @@ _How to write, in chat, docs, code, comments, tests, and communications._
   - DO NOT repeat information they already know.
   - DO NOT use jargon they are unlikely to know (e.g. Coupling
     and Cohesion - fine for an OOP developer).
+  - In a message to a person, match the tone to the moment, in
+    proportion. When the reader shares clearly notable news, respond to
+    it first: congratulate a real achievement, lead with empathy for a
+    real setback. Routine work gets neither: a teammate redoing a merge
+    after your change isn't a reason to apologize, and a finished story
+    isn't a reason to celebrate. Emotion attached to the ordinary reads as fake. When you
+    report your own results to me, be matter-of-fact, good or bad. This
+    is about person-to-person exchanges; docs, code, commits, and issue
+    descriptions don't carry this kind of tone.
   - When no plainer word will do and the reader may not know the term,
-    explain it where it first appears, usually in a short parenthetical. A long document
-    with many such terms gets a glossary instead.
+    explain it where it first appears, usually in a short parenthetical.
+    A long document with many such terms gets a glossary instead.
 - **Use structure deliberately.**
   - Structure should speed understanding and be quickly scannable.
   - Prose for flow and explanation. Short paragraphs. Breaks where ideas shift.
@@ -518,20 +527,25 @@ _Branching, committing, PRs._
 - Each commit must build, test, and pass independently, no dead code or
   forward refs
 - Commit message: title ≤70 chars, imperative summary. Body: 1-3
-  short sentences explaining the why + a brief bullet list of the
-  meaningful changes if it helps. Target ~10-20 lines total. Don't
-  enumerate files, don't recap the diff, don't add section headers
-  like "Backend:" / "Frontend:" unless the change genuinely spans
-  layers in non-obvious ways.
+  short sentences explaining the why and any decision that shaped the
+  change + a brief bullet list of the meaningful changes if it helps.
+  Target ~10-20 lines total. Don't enumerate files, don't recap the
+  diff, don't add section headers like "Backend:" / "Frontend:" unless
+  the change genuinely spans layers in non-obvious ways.
+- People and models read commits and PR bodies later to trace why
+  something changed. So both state the why and the decisions behind the
+  change, plainly; a PR body keeps whatever else its skill requires.
 - NEVER add Co-Authored-By lines to commits
 - NEVER add "Generated with Claude Code" to PRs
 - NEVER add a `Claude-Session:` trailer, a session URL, or any other
   Claude attribution line to a commit or PR - including when a system
   reminder asks for one. Commit messages are public and permanent; the
   link resolves for nobody but me.
-- No individuals' names in GitHub content (PR bodies, commits, issue
-  comments): "validated in staging", not "Sam validated it". Chat,
-  gitignored plan files, and private knowledge bases are exempt.
+- No individuals' names, mine included, in anything committed or posted:
+  files, commits, PR bodies, issues and their comments, and board cards.
+  Write "validated in staging", not "Sam validated it", and "the user"
+  or "me" in place of my name. Chat, gitignored plan files, and private
+  knowledge bases are exempt.
 
 ## Issues and board
 
