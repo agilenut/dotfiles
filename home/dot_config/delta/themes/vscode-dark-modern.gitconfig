@@ -13,6 +13,13 @@
 	minus-style = syntax "#3d2027"
 	plus-emph-style = syntax "#274a30"
 	minus-emph-style = syntax "#42272d"
+	; Repaint git's moved-block colors (from diff.colorMoved in git config):
+	; keep the syntax foreground, replace the stock bold magenta/cyan with calm
+	; theme bands marking a relocated block's old spot vs its new spot.
+	; purple/cyan are git's main moved slots; blue/yellow are the alternates
+	; zebra mode uses for a second adjacent block of the same direction. Map
+	; each alternate to its direction's band so neighbors stay on-palette.
+	map-styles = bold purple => syntax "#322a48", bold blue => syntax "#322a48", bold cyan => syntax "#124458", bold yellow => syntax "#124458"
 	; Calmer line-number gutter; muted tint instead of saturated green/red.
 	line-numbers-plus-style = "#55805f"
 	line-numbers-minus-style = "#7d5159"
