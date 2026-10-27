@@ -54,9 +54,15 @@ _How to write, in chat, docs, code, comments, tests, and communications._
       intuitive, non-trivial, composable.
   - Before rendering text, rewrite any phrasing that might be obtuse or
     confusing.
+  - Reread as a reader who could take it another way, whether a person or
+    a model. If a sentence has a second reading, rewrite it so it has only
+    one.
 - **Be concise - but not at the expense of clarity**
   - You MUST be BOTH clear and concise.
   - Clarity and structure are not excuses for verbosity.
+  - Cut content before you compress wording. Shorter text comes from
+    saying less: drop what the reader doesn't need. Squeezing the same
+    content into shorthand or dropped words makes it harder to read.
   - Drop all fillers and fluff.
   - Lead with the answer. Use the shortest form that stays clear, then stop.
   - Prefer bullets and short sentences over paragraphs.
@@ -88,6 +94,9 @@ _How to write, in chat, docs, code, comments, tests, and communications._
   - DO NOT repeat information they already know.
   - DO NOT use jargon they are unlikely to know (e.g. Coupling
     and Cohesion - fine for an OOP developer).
+  - When no plainer word will do and the reader may not know the term,
+    explain it where it first appears, usually in a short parenthetical. A long document
+    with many such terms gets a glossary instead.
 - **Use structure deliberately.**
   - Structure should speed understanding and be quickly scannable.
   - Prose for flow and explanation. Short paragraphs. Breaks where ideas shift.
@@ -95,6 +104,8 @@ _How to write, in chat, docs, code, comments, tests, and communications._
   - Parallel construction.
   - Markdown pipe tables for multi-dimensional comparisons; avoid
     ASCII hyphen-art tables (render poorly).
+  - Use a visual (diagram, chart, table) when it explains a structure,
+    flow, or comparison faster than more text would.
   - Openable paths / URLs in chat replies (the CLI output I read in my
     terminal; NOT external comms, PR/GitHub, docs, commits, or code): put
     each openable path or URL on its own line, so terminal wrapping can't
@@ -142,6 +153,17 @@ _How to write, in chat, docs, code, comments, tests, and communications._
   - NEVER use em-dashes. Use " - ", commas, parentheses, or rephrase.
     Reserve " - " for cases where it's genuinely the cleanest separator
     (list label-and-explanation, attributions, brief asides).
+  - Watch for structures that make text read as machine-written. One
+    instance can be fine; the same pattern again and again is the tell.
+    - "It's not X, it's Y" and "not X, but Y" contrasts
+    - Lists and adjectives in threes by reflex
+    - A bold label on every bullet that only repeats the bullet's first
+      words
+    - "Serves as" or "stands as" where "is" works
+    - A trailing "-ing" clause that comments on the sentence
+      ("..., highlighting its importance")
+    - Inflated words: pivotal, crucial, robust, seamless, delve
+    - Calling the same thing by different names for variety
 
 ### Phrases I never use
 
@@ -777,7 +799,29 @@ Project docs (READMEs, guides, design docs):
 Context files (CLAUDE.md, MEMORY.md, skills, agents):
 
 - Only add or suggest rules/memory/config that genuinely change behavior
-  — if it won't change what Claude does, don't propose it.
+  — if it won't change what Claude does, don't propose it. That includes
+  explaining what the model already knows.
+- Give the reason with each rule. A model that knows why can handle the
+  case the rule didn't anticipate.
+- Match the level of detail to how fragile the task is. Use exact steps
+  when a deviation breaks something or there is one right answer: a
+  format another program parses, a fixed order of operations, a safety
+  boundary. Use principles where several approaches are valid and the
+  right one depends on context, such as judging a review finding.
+- Don't use emphasis as a style. Anthropic's prompting guide (2026) says
+  current models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and
+  apply the emphasized rule too broadly. When a rule is ignored, first
+  check that it states its reason and sits near where it applies. Add
+  emphasis to that one rule only if it is still missed. Emphasis already
+  in this file predates this rule; leave it unless you are rewriting that
+  rule.
+- Use one term per thing. A model, like a person, reads two names as two
+  different things.
+- Don't repeat in an agent, skill, or memory what this file already gives
+  the same reader. Every custom subagent loads it, and copies drift apart.
+  Point to the rule by its section name, and add only what is specific to
+  that file's job. When you rename a section, search for pointers to it
+  and update them.
 
 Project doc structure (when starting / auditing a repo):
 
