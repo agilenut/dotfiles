@@ -167,8 +167,64 @@ If the user pushes back on the draft, iterate. Common adjustments:
 - "Too direct" → soften with hedging verbs or question framing
 - "Too hedged" → drop the hedges, action-first
 
-After each iteration, save any new patterns or word choices the user
-teaches by suggesting an edit to the styleguide.
+### Capture rules the user teaches
+
+Run this after an iteration where the user's correction states a
+rule to follow in future drafts, not just a fix to the current one:
+
+- **Implicit**: correction states a rule - "I never use `<X>`",
+  "always say `<X>` instead of `<Y>`", "treat `<X>` as `<Y>`",
+  "`<X>` isn't in my voice". Venting ("I always forget the
+  closer") isn't a rule - skip.
+- **Explicit**: user says `remember`, `capture`, or `save this`.
+
+Otherwise skip.
+
+When triggered:
+
+1. **Pick target** by scope of the rule. When a rule could belong
+   to more than one layer, use the first that fits:
+
+   - Applies to any output by Claude, including replies to the user
+     (not just drafts as the user) → `~/.claude/CLAUDE.md`
+   - Applies when writing as the user, any destination →
+     `generic.md`
+   - Applies only to one channel → that `<destination>.md`
+
+   A correction that splits across destinations ("in PR comments I
+   never do X, in email I do") writes two edits, one per
+   destination file.
+
+2. **Pick section** inside the target by rule shape:
+   - A banned phrase → "Phrases I never use"
+   - A term the user prefers → "Word choice"
+   - A usage pattern → "Patterns"
+   - A hard constraint → "Hard rules"
+   - A destination-specific pattern → the destination's own sections
+3. **Check for duplicates**: grep the target section for the rule's
+   key phrase. If a matching or near-matching rule is already there,
+   show it and ask whether to amend the existing line or skip; don't
+   append a duplicate.
+4. **Draft the edit**: file, section, exact lines to add or change.
+5. **Ask** `apply to <file>:<section>? y / edit / retarget / n`:
+   - `y` → apply as drafted
+   - `edit` → rewrite the proposed line, then apply
+   - `retarget` → name a different voice-samples file or
+     `~/.claude/CLAUDE.md` (nothing else is in scope); re-draft
+     and re-ask
+   - `n` → drop it
+   - anything else → re-ask once, then treat as `n`
+6. **Apply**:
+   - voice-samples target (generic.md or a destination file) →
+     Edit the file. If the current branch isn't `main`, surface it
+     and ask y/n before committing. Commit with a one-line message
+     naming the rule.
+   - CLAUDE.md target → delegate to the `dotfiles` skill. It
+     handles the worktree, edit, apply, and PR.
+7. **Reload** so the next iteration this session uses the new rule.
+   A running session keeps its loaded CLAUDE.md, so a captured
+   universal rule takes effect next session instead - say so when
+   applying one.
 
 ## Out of scope
 
