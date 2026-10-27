@@ -223,8 +223,11 @@ visible.
 
 ### Close out after a PR merges
 
-This step is the single owner of issue closeout. Run it in the same
-session as the merge, for each issue the PR references:
+This step is the single owner of issue closeout. It runs from `/pr`'s
+MERGED_DONE state, in the same session as the merge, for each issue the PR
+references. Any other route (a request, `/board review`, a new session)
+runs `/pr <pr>` instead; it waits for post-merge CI and test items, then
+runs this step.
 
 1. Read the PR's `## Acceptance criteria status` table
    (`gh pr view <pr> --json body`). Check off only the ACs it marks "met
@@ -249,7 +252,9 @@ whose `stories:` include its number.
 ### Move to the last allowed column
 
 Check each issue on its own against the global last-column rule
-(CLAUDE.md `### Board`; the PR lookups are in Step 2). One that passes:
+(CLAUDE.md `### Board`; the PR lookups are in Step 2). Main CI counts as
+green only when `/pr` on the last PR has reached MERGED_DONE; if it hasn't,
+run `/pr <pr>` first. One that passes:
 
 1. Set Status to the last allowed column and put the card at the top.
 2. Last allowed column is Done and "Auto-close issue" is disabled → close
