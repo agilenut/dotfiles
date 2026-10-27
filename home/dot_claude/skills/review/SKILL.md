@@ -66,11 +66,13 @@ Do NOT auto-switch.
 
 ### Reviewer selection
 
-Args: `security`, `ux`, `ai` (any order; combinable with scope arg).
+Args: `security`, `ux`, `ai`, `language` (any order; combinable with
+scope arg).
 
-- Without `only`: named reviewers add to defaults (base always; others
-  auto-detected from the diff).
-- With `only`: run only the named reviewers; skip base and auto-detection.
+- Without `only`: named reviewers add to defaults (base and language
+  always; others auto-detected from the diff).
+- With `only`: run only the named reviewers; skip the defaults and
+  auto-detection.
 
 ## Step 2: Gather Context
 
@@ -110,7 +112,10 @@ You MUST use the Agent tool. Do NOT perform the reviews yourself.
 
 ### Auto-detection (skip if `only` was used)
 
-Base is always included. Scan the diff for these signals to add others:
+Base and language are always included. Language runs on every diff
+because nearly every change touches a comment or doc; it returns no
+findings when nothing is prose. Scan the diff for these signals to add
+others:
 
 **Security — include if diff touches any of:**
 
@@ -159,9 +164,9 @@ Base is always included. Scan the diff for these signals to add others:
 
 ### Spawn
 
-Subagent types (full strings): `base-reviewer`, `security-reviewer`,
-`ux-reviewer`, `ai-reviewer`. Spawn all selected in parallel (one message,
-multiple Agent calls).
+Subagent types (full strings): `base-reviewer`, `language-reviewer`,
+`security-reviewer`, `ux-reviewer`, `ai-reviewer`. Spawn all selected in
+parallel (one message, multiple Agent calls).
 
 Each Agent prompt receives:
 
@@ -174,6 +179,10 @@ Each Agent prompt receives:
 - Plan file PATH (not content) if intent context found one — reviewer
   reads it directly. Review-preferences are NEVER sent to reviewers; they
   live orchestrator-only.
+- `language-reviewer` only, in branch, unreviewed, and PR modes: the
+  commit messages in the diff's range (`git log <range> --format='%h%n%B'`)
+  as text to review. People and models read them later to trace why
+  something changed. Local mode has no commits yet.
 - **Mandatory write rule** (verbatim):
   `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
 
@@ -193,7 +202,8 @@ For each reviewer, in order:
    **salvage**: write that text to the path; buffer log line for Step 8:
    `<reviewer> output salvaged from text return — did not call Write tool.`
 4. Neither has structure → **re-spawn ONCE**. New prompt = original spawn
-   prompt verbatim (diff, CLAUDE.md, plan path, output path) PREPENDED with:
+   prompt verbatim (diff, CLAUDE.md, plan path, commit messages, output
+   path) PREPENDED with:
    `Your previous attempt did not write valid output to <path>. The file MUST contain a heading matching '^# .+ Review:' or '## Findings'. Your final action MUST be a Write tool call to that exact path.`
 5. Still failing after re-spawn → **hard-fail** that reviewer. Log:
    `Reviewer <name> failed to produce output after retry; findings unavailable.`
@@ -215,6 +225,12 @@ For each accepted reviewer output:
    recommendations don't share a single fix. Otherwise one.
 3. **Dedupe across reviewers**: same finding → one entry, attribute both
    `(security, base)`. Match by `same file + same root issue (paraphrase equivalence)`.
+4. **Opposite fixes**: two findings on the same text whose fixes
+   conflict (one adds detail, the other cuts it, or any other pair that
+   can't both be applied) become one entry at the higher of their two
+   severities, listing both fixes and both reviewers. In triage, pick one
+   fix or one that satisfies both, and log the reason; when unsure which
+   is right, escalate to the user. Kept apart, the clash is easy to miss.
 
 ## Step 6: Verify-First Per Finding
 
@@ -247,6 +263,10 @@ For every finding, BEFORE bucketing:
      reviewer's framing assumes a constraint that doesn't apply, or
      critiques scope the artifact isn't trying to address → `Verified:
 no — premise doesn't hold: <one-line reason>`.
+5. **Commit-message findings** cite a commit hash, not a file: verify
+   against `git log -1 --format=%B <hash>`. Never auto-fix one; fixing it
+   rewrites a commit, which needs the user's go-ahead. Bucket it for the
+   user.
 
 Missing `Claim:` / `Verified:` lines = protocol violation. Self-check
 before Step 7: scan the draft triage; any finding missing the triplet →
@@ -607,7 +627,7 @@ Frontmatter:
 ---
 branch: <branch>
 mode: <local | branch | unreviewed | pr>
-reviewers-ran: [base, security, ux, ai]
+reviewers-ran: [base, language, security, ux, ai]
 plan-file: <path or null>
 timestamp: <iso>
 ---
