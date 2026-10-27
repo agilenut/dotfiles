@@ -297,10 +297,10 @@ still uses GCM. To clear an account that was already saved, run
 `git credential-manager github logout git`.
 
 On macOS the `[credential]` helper is GCM's full path, not `manager`. GCM's
-installer runs `git-credential-manager configure`, which adds that path
-unless it's already set and rewrites the section in git's own layout. With
-`manager` alone, or any other layout, the file drifts from the dotfiles
-after every GCM install.
+installer runs `git-credential-manager configure`, which rewrites the
+section in git's own layout and adds that path unless it's already set.
+With `manager` alone, or any other layout, the file drifts from the
+dotfiles after every GCM install.
 
 Do NOT point TPM's plugin clones at plain URLs to fix the picker; TPM uses
 `git::@` again on every plugin install.

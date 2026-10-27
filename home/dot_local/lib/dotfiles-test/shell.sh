@@ -202,6 +202,18 @@ test_config_files() {
     else
       fail "credential helper for git@github.com: '$tpm_helper' (section line ${tpm_line:-none}, after [credential] at ${base_line:-none}), for github.com: '$own_helper'"
     fi
+
+    # GCM's macOS installer rewrites [credential] as git writes it; any other
+    # layout, down to the trailing space, shows up as drift after each upgrade.
+    if [[ "$(uname)" == "Darwin" && -n "$base_line" ]]; then
+      local cred_lines
+      cred_lines=$(sed -n "$((base_line + 1)),$((base_line + 2))p" "$git_cfg")
+      if [[ "$cred_lines" == $'\thelper = \n\thelper = /usr/local/share/gcm-core/git-credential-manager' ]]; then
+        pass "[credential] is in the layout GCM's installer writes"
+      else
+        fail "[credential] layout differs from GCM's: $(printf '%q' "$cred_lines")"
+      fi
+    fi
   else
     fail "git config not found"
   fi
