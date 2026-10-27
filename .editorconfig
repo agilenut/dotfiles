@@ -23,6 +23,10 @@ space_redirects = false
 keep_padding = false
 function_next_line = false
 
+# Kept in the layout GCM's installer writes, including `helper = `
+[home/dot_config/git/config.tmpl]
+trim_trailing_whitespace = false
+
 # Kept in the format Karabiner writes (see .prettierignore)
 [home/dot_config/private_karabiner/private_karabiner.json]
 indent_size = 4
