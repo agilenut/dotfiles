@@ -39,9 +39,11 @@ Do not proceed without the styleguide.
 The styleguide is split across files in `~/repos/voice-samples/styleguide/`:
 
 - `generic.md` - Hard rules, Context drivers, Patterns, Word choice,
-  Personas. This skill applies this file only.
-- `<destination>.md` (pr-comment.md, email.md, gh-issue.md, imessage.md)
-  - destination-specific patterns loaded by destination skills.
+  Personas. Always applied.
+- `<destination>.md` (pr-comment.md, email.md, gh-issue.md,
+  imessage.md) - destination-specific patterns. A destination skill
+  loads its own file. When a destination has a file but no skill
+  (currently email), this skill loads that file in Step 1.
 
 ## Step 1: Identify input and destination
 
@@ -53,21 +55,23 @@ Parse the argument:
 
 Identify the destination if known (PR comment, email, GH issue,
 casual message). If unclear and it matters for the output, ask. If
-not stated and not crucial, default to a neutral peer tone and
-ask after producing the draft.
+not stated and not crucial, ask after producing the draft.
+
+If the destination is email, read
+`~/repos/voice-samples/styleguide/email.md` now.
+
+Identify who the reader is to the user (client, teammate, friend).
+Look the reader up in the user's Basic Memory knowledge base (client
+profiles list client contacts), or infer the relationship from the
+thread. If it's still unknown and would change the draft, ask before
+drafting.
 
 ## Step 2: Evaluate context drivers
 
-From the styleguide's Context Drivers section, work out:
-
-- Current-state issue or future risk on working code?
-- Is the fix the same as the diagnosis?
-- How well does the user know this area? How well does the audience?
-- Is this clear-cut or a judgment call?
-- Stakes: blocker / nice-to-have / FYI?
-- Localized fix or distributed?
-
-These choices drive which patterns to use in Step 3.
+Work through every question in `generic.md` Context drivers. For a
+reply, the first two matter most: who the reader is to the user,
+and what they asked. These answers drive which patterns to use in
+Step 3.
 
 ## Step 3: Apply voice rules
 
@@ -76,6 +80,8 @@ Load and apply rules in layers:
 - **Universal output rules** - `~/.claude/CLAUDE.md` Language section
   (em-dashes, banned phrases from "Phrases I never use", concision,
   clarity, no "Suggesting..." gerund-as-subject). Always in context.
+  Where `generic.md` lists a phrase as the user's own (for example
+  "To be clear,"), the user may use it, even if CLAUDE.md bans it.
 - **Generic voice hard rules** - `generic.md` Hard rules section
   (currently: don't construct signatures).
 - **Generic voice patterns** - `generic.md` Patterns section. Pick
@@ -86,6 +92,8 @@ Load and apply rules in layers:
   argument/persuasion style, etc.).
 - **Word choice** - `generic.md` Word choice section. Apply user-
   specific translations and watch context-dependent terms.
+- **Destination patterns** - the destination file loaded in Step 1
+  (openers, closers, per-type variants).
 
 ## Step 4: Draft
 
@@ -98,10 +106,22 @@ Review the draft. For each sentence:
 
 - Does it carry real meaning? If not, cut.
 - Is there a tighter version? Apply it.
-- Anti-padding: cut "Hope this helps" / "Let me know if you have
-  questions" / similar tail filler.
+- Anti-padding: cut reflexive tail filler ("Let me know if you have
+  questions").
 - Multiple paragraphs that could be one? Combine, but don't drop
   substance.
+- When replying to a question or request: does it cover something
+  the reader didn't ask about (how something works, background, a
+  side finding)? Cut it, unless it corrects a mistake in their work.
+- Does it recite the reader's own results back as evidence for an
+  answer? Cut it, and state the judgment behind the answer instead.
+  Quoting their code or text to point at something stays, and so
+  does correcting a mistake in their work.
+- Does it spell out a conclusion the reader can draw from the facts?
+  Cut it, unless the reader can't draw it or the recommendation is
+  the point (`generic.md` "State the evidence").
+- Does a paragraph praise parts that are fine and don't stand out?
+  Cut it. Keep approval when it is the answer ("Looks good.").
 
 **Don't strip out concrete specifics** (file names, line numbers,
 exact phrasings, fix syntax, quantified impact) - those earn their
@@ -118,6 +138,11 @@ Scan the draft against the rules loaded in Step 3:
 - Context-dependent terms used only in appropriate contexts (per
   `generic.md` Word choice)
 - Signatures not constructed (unless destination can't auto-add)
+- Notes to a client on their own documents or preparation: framed as
+  notes, not fixes you assign; no deadlines or plans for their work
+- None of the reader's own results recited back as evidence
+- No paragraph praising parts that need no change and don't stand out
+- A "Good luck" closer names the event when it's known
 
 If any violation, fix and re-validate.
 
@@ -149,6 +174,8 @@ teaches by suggesting an edit to the styleguide.
 
 - This skill does NOT handle destination-specific formatting (PR body
   headers, email signatures, etc.). Those live in destination-specific
-  skills (`pr-comment`, etc.) that compose this one.
+  skills (`pr-comment`, etc.) that compose this one. Email is the
+  exception until an `email-draft` skill exists: this skill loads
+  `email.md` itself.
 - This skill does NOT do extraction or analysis of voice samples.
   That's a separate one-time pipeline in `~/repos/voice-samples/scripts/`.
