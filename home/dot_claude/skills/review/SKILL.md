@@ -163,6 +163,8 @@ others:
   (`skills/**/SKILL.md`), and other files a skill loads from its folder
 - Agent instruction files: `CLAUDE.md` (any folder, including `.claude/`
   and `dot_claude/` sources) and `AGENTS.md`
+- Files a skill or agent reads at run time and acts on, outside its own
+  folder: `review-preferences.md`, memory files (`memory/*.md`)
 - Runbooks: files under `docs/runbooks/`
 - Prompt templates: `.yaml`/`.yml` with keys like `prompts:`, `system:`,
   `temperature:`, `max_tokens:`, `messages:`, `model:`
@@ -188,14 +190,20 @@ Each Agent prompt receives:
 - Full diff
 - CLAUDE.md contents
 - Plan file PATH (not content) if intent context found one — reviewer
-  reads it directly. Review-preferences are NEVER sent to reviewers; they
-  live orchestrator-only.
+  reads it directly. Review-preferences are NEVER sent to reviewers as
+  guidance; they live orchestrator-only. A diff that changes one still
+  goes to reviewers like any other file.
 - `language-reviewer` only: commit messages as text to review. Local
   mode passes the drafted message file. Branch, unreviewed, and PR modes
   pass the messages in the diff's range
   (`git log <range> --format='commit %h%n%B'`, with `main..HEAD` in
   branch mode, `<sha>..HEAD` in unreviewed mode, and
   `<baseRefName>..HEAD` in PR mode).
+- `ai-reviewer` only: this session's model ID, and
+  `CLAUDE_CODE_SUBAGENT_MODEL` if it is set
+  (`echo "$CLAUDE_CODE_SUBAGENT_MODEL"`). Claude Code files (agents,
+  skills, instruction files, and files they read at run time) usually run
+  on one of those models, and the diff doesn't say which.
 - **Mandatory write rule** (verbatim):
   `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
 
