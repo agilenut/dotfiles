@@ -124,6 +124,9 @@ frameworks. If yes, include `ux-reviewer`.
 Subagent types (full strings):
 
 - `plan-reviewer` — always
+- `language-reviewer` — always. Later sessions carry out the plan, and
+  the user often approves it from a summary, so a hard-to-read plan gets
+  carried out or approved on a misreading.
 - `ux-reviewer` — if plan involves UI
 
 Spawn in parallel. Each Agent prompt receives:
@@ -140,7 +143,7 @@ Spawn in parallel. Each Agent prompt receives:
 - Project root path (for codebase exploration)
 - Output path:
   `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>[-pr<N>|-outline]-<type>.md`
-  where `<type>` is `plan` or `ux`. Run `date +%Y-%m-%d-%H%M%S` for
+  where `<type>` is `plan`, `language`, or `ux`. Run `date +%Y-%m-%d-%H%M%S` for
   timestamp — never hardcode.
 - **Mandatory write rule** (verbatim):
   `MANDATORY: Your final action MUST be a Write tool call writing your findings to the output path above. Text-only return will be rejected — file MUST contain a heading matching '^# .+ Review:' or '## Findings'.`
@@ -191,6 +194,13 @@ For each accepted reviewer output:
 3. **Dedupe across reviewers**: same finding → one entry, attribute both
    `(plan, ux)`. Match by
    `same plan section + same root issue (paraphrase equivalence)`.
+4. **Opposite fixes**: two findings on the same plan text whose fixes
+   conflict (one adds detail, the other cuts it, or any other pair that
+   can't both be applied) become one entry at the higher of their two
+   severities, listing both fixes and both reviewers. In triage, pick one
+   of the two fixes, or write a new one that satisfies both, and log the
+   reason; when unsure which is right, escalate to the user. Kept apart,
+   the clash is easy to miss.
 
 ## Step 6: Verify-First Per Finding
 
@@ -574,7 +584,7 @@ Frontmatter:
 plan: <plan-name>
 plan-path: <absolute-path-to-plan>
 snapshot-copy: <path-to-pre-fix-copy or null> # parallel to /review's snapshot-sha
-reviewers-ran: [plan, ux]
+reviewers-ran: [plan, language, ux]
 scope: <outline | pr-N | full>
 issue: <issue-number or null>
 timestamp: <iso>
