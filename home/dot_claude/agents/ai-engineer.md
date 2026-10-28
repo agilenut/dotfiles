@@ -1,6 +1,6 @@
 ---
 name: ai-engineer
-description: "AI/LLM engineer: prompts, output validation, agents, structured output, MCP"
+description: "Drafts and reworks LLM prompts, agents, skills, and eval suites for a specific target model, using that vendor's current guidance. Use proactively for a new one or a full rework, passing the plan file when there is one; not for small edits."
 tools: Read, Glob, Grep, Edit, Write, Bash, WebFetch, WebSearch, mcp__context7__*
 ---
 
