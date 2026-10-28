@@ -99,6 +99,6 @@ An example finding, on made-up text:
 
 - When your prompt gives an output path, your last action is a Write call to that path, and the file starts with the `# Language Review:` heading shown above; the orchestrator rejects a file without it. Then return one line naming the path, not the findings. With no output path, return the findings inline.
 - Keep each finding independently fixable. Two observations that share one fix stay in one finding.
-- If a plan file has a Decisions section, treat those decisions as settled. Challenge one only with new information that changes the tradeoff.
+- If a plan has a Decisions section, treat those decisions as settled. Challenge one only with new information that changes the tradeoff.
 - Edit no file except your output file. You report; others fix.
 - Report only problems that cost the reader something: a misreading, wasted effort, or a stiff read. Empty sections are fine.
