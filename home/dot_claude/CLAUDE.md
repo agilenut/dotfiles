@@ -40,7 +40,8 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
 
 ## Language
 
-_How to write, in chat, docs, code, comments, tests, and communications._
+_How to write, in chat, docs, code, comments, tests, prompts, and
+communications._
 
 - **Clarity is king**
   - Your primary goal is clarity and readability.
@@ -180,8 +181,8 @@ _How to write, in chat, docs, code, comments, tests, and communications._
 ### Phrases I never use
 
 Scan everything you write against this list - chat, code, comments,
-tests, commit messages, docs, communications. Each row is a phrase to
-drop or translate.
+tests, commit messages, docs, prompts, communications. Each row is a
+phrase to drop or translate.
 
 | Don't use                                                 | Use instead                                             |
 | --------------------------------------------------------- | ------------------------------------------------------- |
@@ -454,6 +455,49 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
 
   A standing override is debt; don't add one just because a sibling
   override exists.
+
+## Prompts
+
+_How to write instructions a model follows: product prompts, CLAUDE.md,
+skills, agents, and memory._
+
+- Open a product prompt, agent, or skill with its goal: who uses its
+  output, what they need from it, and the main way it fails them. The goal
+  gives the model a test for cases its rules don't cover, the same way a
+  rule's reason does. A persona ("You are a senior...") says who the model
+  is but gives it nothing to decide with.
+- Before adding a mechanical rule (one that names a specific case and
+  what to do in it), check whether the goal is stated clearly enough for
+  the model to judge that case itself. If it isn't, fix the goal first and
+  rerun the case. Add the rule only if the case still fails. A prompt
+  built from many mechanical rules usually lacks a clear goal, and its
+  rules start to contradict each other.
+- Add a rule only if the model would act differently without it. Don't
+  explain what the model already knows.
+- Give the reason with each rule. A model that knows why can handle the
+  case the rule didn't anticipate.
+- Match the level of detail to how fragile the task is. Use exact steps
+  when a deviation breaks something or there is one right answer: a
+  format another program parses, a fixed order of operations, a safety
+  boundary. Use principles where several approaches are valid and the
+  right one depends on context, such as judging a review finding or
+  writing a reply that should sound natural.
+- Don't use emphasis as a style. Anthropic's prompting guide (2026) says
+  models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and apply
+  the emphasized rule too broadly. When a rule is ignored, first
+  check that it states its reason and sits near where it applies. Add
+  emphasis to that one rule only if it is still missed. Emphasis already
+  in this file predates this rule; leave it unless you are rewriting that
+  rule.
+- Use one term per thing. A model, like a person, reads two names as two
+  different things.
+- Don't repeat what the same reader already gets from another source
+  loaded with the prompt, such as a shared system prompt, a file injected
+  into the prompt or read at run time, or (for agents and skills) this
+  file. Copies drift apart. Every custom subagent loads this file, so an
+  agent or skill points to a rule here by its section name and adds only
+  what is specific to its job. When you rename a section, search for
+  pointers to it and update them.
 
 ## Errors
 
@@ -770,15 +814,14 @@ _TDD, AAA, build/test before reporting completion._
 
 ## Documentation
 
-_How to write prose: principles for READMEs, project docs, and context
-files (CLAUDE.md, MEMORY.md, skills, agents)._
+_Rules for all prose, including prompt files, then rules for project
+docs._
 
 Universal:
 
-- **Ask first, write second.** Before adding any content (new section,
-  new bullet, new paragraph), ask: does the reader need this? Is this
-  the right context for it? If either is unclear, don't add it. Default
-  toward restraint.
+- Before adding content (a section, a bullet, a paragraph), check that
+  the reader needs it and that this is the right place for it. When
+  unsure, leave it out.
 - Capture only meaningful signal; no fluff, no restatement, no "as
   discussed above"
 - Use specific identifiers (class / function / file / table / command
@@ -788,7 +831,9 @@ Universal:
 - Structure (bullets, headings, spacing) matters more than character
   count
 - Lists for discrete items; prose for flowing ideas
-- One-line italic TL;DR after each top-level section heading
+- In a long doc people skim, add a one-line italic summary under a
+  top-level heading only when it tells the reader something the heading
+  doesn't
 - Wrap prose paragraphs at ~80 chars; leave one-line bullets, tables,
   and code blocks alone
 - Cross-references add cognitive load — avoid forward/backward refs
@@ -813,38 +858,6 @@ Project docs (READMEs, guides, design docs):
   correction that erases the fact something changed — when correcting in
   place, say in the entry what it previously claimed and why that was
   wrong.
-
-Context files (CLAUDE.md, MEMORY.md, skills, agents):
-
-- Only add or suggest rules/memory/config that genuinely change
-  behavior. If it won't change what Claude does, don't propose it, and
-  don't explain what the model already knows.
-- Give the reason with each rule. A model that knows why can handle the
-  case the rule didn't anticipate.
-- Open an agent or skill with who uses its output, what they need from
-  it, and the main way it fails them. That gives the model a test for
-  cases its rules don't cover, the same way a rule's reason does. A
-  persona ("You are a senior...") says who the agent is but gives it
-  nothing to decide with.
-- Match the level of detail to how fragile the task is. Use exact steps
-  when a deviation breaks something or there is one right answer: a
-  format another program parses, a fixed order of operations, a safety
-  boundary. Use principles where several approaches are valid and the
-  right one depends on context, such as judging a review finding.
-- Don't use emphasis as a style. Anthropic's prompting guide (2026) says
-  models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and apply
-  the emphasized rule too broadly. When a rule is ignored, first
-  check that it states its reason and sits near where it applies. Add
-  emphasis to that one rule only if it is still missed. Emphasis already
-  in this file predates this rule; leave it unless you are rewriting that
-  rule.
-- Use one term per thing. A model, like a person, reads two names as two
-  different things.
-- Don't repeat in an agent, skill, or memory what this file already gives
-  the same reader. Every custom subagent loads it, and copies drift apart.
-  Point to the rule by its section name, and add only what is specific to
-  that file's job. When you rename a section, search for pointers to it
-  and update them.
 
 Project doc structure (when starting / auditing a repo):
 
