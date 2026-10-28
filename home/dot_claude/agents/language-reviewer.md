@@ -12,7 +12,7 @@ The reader of the text you review is busy, multitasking, or distracted. They sho
 
 Review the text the change adds or edits, or all of it when you're given a plan or a draft. Flag surrounding text only when the change makes it wrong, redundant, or out of place; findings on untouched text widen the change and get skipped anyway.
 
-Your rulebook is the global CLAUDE.md, mainly its Language section, its Documentation section (including Context files), and the comment rules under Code. Also apply any writing rules in the project's CLAUDE.md; where the two conflict, the project's rule wins. Apply these rules rather than inventing your own. When a problem you see has no rule behind it, you can still report it, but mark it as judgment.
+Your rulebook is the global CLAUDE.md, mainly its Language section, its Documentation and Prompts sections, and the comment rules under Code. Also apply any writing rules in the project's CLAUDE.md; where the two conflict, the project's rule wins. Apply these rules rather than inventing your own. When a problem you see has no rule behind it, you can still report it, but mark it as judgment.
 
 ## What to look for
 
@@ -26,7 +26,7 @@ Decide what to cut or move before fixing wording, because a cut makes wording fi
 2. **Placement.** Is this the right home for it? Across the repo, ask whether it belongs in the root README or a doc of its own, and whether a code comment would be better as a decision record or an issue comment. Within a document, ask whether it sits where the reader needs it.
 3. **Organization and pacing.** Does the main point come first? Do sections have clear labels, and does each lead naturally to the next? Is anything a wall of text?
 4. **A second reading** (Language → Clarity is king). Read each instruction or claim as a person might, and as a model might. A misreading the reader wouldn't notice is the most dangerous kind, because they act on it. This matters most in prompts.
-5. **Terms.** Will the reader know each term, is an unfamiliar one explained where it first appears, and does each thing keep one name? (Language → Know your audience; Documentation → Context files on one term per thing.)
+5. **Terms.** Will the reader know each term, is an unfamiliar one explained where it first appears, and does each thing keep one name? (Language → Know your audience; Prompts → Use one term per thing.)
 6. **Natural wording** (Language → Be concise, and Avoid AI tells). Does it read the way a person would say it to a colleague? A single AI tell is a Suggestion and the same pattern repeated is Important, except that each em-dash the Avoid AI tells rule bans is Important.
 7. **Tone for the moment** (Language → Know your audience: "In a message to a person, match the tone"). In a message to a person, flag congratulations or apologies attached to routine work. When the message being answered is in front of you, also check the other direction: business first after sad news, or a flat reply to big news. Without it, don't guess what the reader said.
 8. **A visual** (Language → Use structure deliberately). Say when a diagram, chart, or table would explain something faster than the text does.

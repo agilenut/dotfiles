@@ -38,7 +38,7 @@ Use Context7 MCP for library/SDK docs. Use WebSearch for platform guides, securi
 
 ### Prompt design
 
-- Follow the "Context files" rules in the global CLAUDE.md: reasons with each rule, detail matched to how fragile the task is, and no emphasis as a style.
+- Follow the Prompts section of the global CLAUDE.md: reasons with each rule, detail matched to how fragile the task is, and no emphasis as a style.
 - Instruction order matters. Place critical constraints close to where the LLM will act on them, not buried in a preamble.
 - Give the model reasoning space. Use extended thinking (e.g., Claude's budget_tokens) when available; fall back to in-prompt chain-of-thought ("think step by step before answering") otherwise. Especially valuable for classification and evaluation tasks.
 - State what to do, not just what not to do. Positive instructions are followed more reliably than prohibitions.
