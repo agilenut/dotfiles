@@ -25,6 +25,17 @@ Use Context7 for library and SDK docs, and WebSearch for platform guides and sec
 - Identify the target model before drafting: a model ID in the API call or config. A Claude Code agent runs on the model its caller passes, else its `model:` key, else `CLAUDE_CODE_SUBAGENT_MODEL`, else the session's model. For a product prompt where nothing names the model and the choice would change the draft, stop and ask your caller which model it targets. Then read that vendor's current prompting guide (Current guidance). Where it disagrees with a generic tip in this file, follow the guide: models change faster than tips do.
 - Draft goal-first, following the Prompts section of the global CLAUDE.md. When it and the vendor guide disagree, the Prompts section decides how the prompt is written (goal, rules, emphasis, terms) and the guide decides what the model can do (reasoning, structured output, caching, message roles). List each conflict that changed the draft under its own heading at the end of your report to your caller: what each side said and which you followed. The developer uses these reports to decide whether the Prompts section needs updating for newer models.
 - Use the target model's built-in reasoning (such as Claude's extended thinking) where it has one; ask for step-by-step reasoning in the prompt only for a model that doesn't. Reasoning matters most for classification and evaluation tasks.
+- For a prompt that runs many times, draft for cost and latency as the Prompts section describes. The developer owns the model choice, so report a model or reasoning effort that doesn't fit rather than changing it: tell your caller which model or effort you'd use and why. If the target can't meet the goal however the prompt is written, stop tuning first, since an eval cycle spent on a prompt that can't pass is wasted. If it's larger than the task needs, keep working and include the recommendation in your report.
+- Measure before and after any change you make for speed or cost. Run the eval suite, with repeated calls that include warm-cache calls, since reasoning tokens vary between runs and the first call has nothing cached. Report the mean per call for each of these, because a saving in one often moves cost to another, most often into lost accuracy:
+
+  - accuracy (eval pass rate, or the property checks the suite uses)
+  - completion tokens, including reasoning
+  - prompt tokens by type (uncached, cache reads, and cache writes where the provider reports them)
+  - cost per call, computed from the measured tokens with each type at its own current price
+  - wall-clock latency (time to first token and total)
+
+  Take the usage fields and prices from the vendor's current docs. If you can't run the prompt, say the numbers weren't measured rather than presenting estimates as measurements.
+
 - Keep eval cases out of few-shot examples; otherwise the eval rewards copied answers instead of measuring the prompt.
 - Use fictional placeholder names in examples (`acme`, `widgets`, `clientA`), never real client, project, or repo names. Real names leak private details in committed prompts, and the model may use example values as real config.
 

@@ -482,6 +482,20 @@ skills, agents, and memory._
   boundary. Use principles where several approaches are valid and the
   right one depends on context, such as judging a review finding or
   writing a reply that should sound natural.
+- For a prompt that runs many times, weigh cost and latency along with
+  accuracy, since both are paid on every call.
+  - Use the smallest model and reasoning effort that can meet the goal.
+    Below that, no prompt change helps; each step above it costs more on
+    every call.
+  - Put the content that changes least first, so the provider can cache
+    the prefix and later calls skip reprocessing it. Check the provider's
+    caching rules too, since some need an explicit opt-in and a minimum
+    prefix length.
+  - Before cutting output or reasoning effort to save cost or time,
+    measure accuracy and completion tokens (including reasoning) with and
+    without the cut. The model may use the output it writes to work
+    through its answer, so cutting output can raise reasoning tokens and
+    cancel the saving.
 - Don't use emphasis as a style. Anthropic's prompting guide (2026) says
   models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and apply
   the emphasized rule too broadly. When a rule is ignored, first
