@@ -490,12 +490,26 @@ skills, agents, and memory._
   - Put the content that changes least first, so the provider can cache
     the prefix and later calls skip reprocessing it. Check the provider's
     caching rules too, since some need an explicit opt-in and a minimum
-    prefix length.
+    prefix length. Opt in only when calls repeat within the cache
+    lifetime: a cache write can cost more than an uncached call, so a
+    prompt that runs a few times a day can pay more with caching on.
   - Before cutting output or reasoning effort to save cost or time,
     measure accuracy and completion tokens (including reasoning) with and
     without the cut. The model may use the output it writes to work
     through its answer, so cutting output can raise reasoning tokens and
     cancel the saving.
+- Find the model that runs a prompt before deciding anything that depends
+  on what it can do: the model ID in the API call, config, or command, or
+  for a Claude Code agent or skill its `model:` key, else the session's
+  model. A model named only in a comment, or an Azure deployment name, is
+  a guess, since deployment names don't have to match the model.
+- When this section and the vendor's current guidance disagree, this
+  section decides how a prompt is written (goal, rules, emphasis, terms)
+  and the vendor guidance decides what the model can do (reasoning,
+  structured output, caching, message roles). Tell me when this section
+  and the vendor's guidance disagree in a way that changes a prompt or a
+  review finding, naming the rule here and the guidance, so I can decide
+  whether this section needs updating for newer models.
 - Don't use emphasis as a style. Anthropic's prompting guide (2026) says
   models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and apply
   the emphasized rule too broadly. When a rule is ignored, first
