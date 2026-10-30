@@ -122,6 +122,7 @@ main() {
   # Worktree hook tests
   test_worktree_lib
   test_worktree_e2e
+  test_worktree_teardown
 
   # Claude tmux wrapper tests (restore + refresh + pane title guard)
   test_claude_restore

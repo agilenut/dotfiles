@@ -30,4 +30,8 @@ if ! is_worktree "$WORKTREE_PATH"; then
   exit 0
 fi
 
-teardown_worktree "$WORKTREE_PATH"
+# ExitWorktree confirms before discarding changes, so the hook removes with
+# --force. A failure is reported but never fails the hook.
+if ! teardown_worktree "$WORKTREE_PATH" --force; then
+  echo "WARNING: cleanup of $WORKTREE_PATH did not finish; see the error above" >&2
+fi
