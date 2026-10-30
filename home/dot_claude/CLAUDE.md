@@ -749,7 +749,8 @@ _Entering, exiting, where they land._
 
 - `ToolSearch select:EnterWorktree` then call `EnterWorktree` — harness
   updates cwd; don't `cd` or `git -C` to navigate
-- `ExitWorktree` triggers cleanup (docker compose down + worktree remove)
+- `ExitWorktree` acts only on a worktree this session entered, and its
+  remove action often refuses. To remove a worktree, use `/wrap`
 - Worktrees land at `<parent>/<repo>--<branch-slug>` (sibling).
   Auto-managed by `~/.claude/hooks/{create,remove}-worktree.sh`
 - **Isolated sessions.** After `EnterWorktree`, the harness refuses writes
