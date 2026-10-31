@@ -6,12 +6,20 @@
 # and turns off more steps on its command line.
 
 [misc]
-  # Each disabled step is replaced:
+  # Replaced by a custom command:
   #   chezmoi    - `chezmoi update` pulls and applies unattended; the "Dotfiles
   #                drift" command reports drift instead
   #   containers - pulls every local tag, including locally built ones; the
   #                "Compose images" command (docker-pull-compose) instead
-  disable = [ "chezmoi", "containers" ]
+  # Skipped with nothing in its place:
+  #   github_cli_skills - the skills it finds are deployed by chezmoi, not
+  #                       installed from GitHub, so `gh skill update` warns
+  #                       that each has no GitHub source
+  #   pnpm              - updates global pnpm packages only, and refuses to
+  #                       run until pnpm's global bin directory is on PATH;
+  #                       global CLIs go in the mise config as npm: tools
+  #                       instead
+  disable = [ "chezmoi", "containers", "github_cli_skills", "pnpm" ]
 
   # Run custom commands after the package managers, so drift reflects any
   # config a tool rewrote during its upgrade.

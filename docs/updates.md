@@ -12,7 +12,8 @@ password or what you'd want to watch._
 `~/.config/topgrade.toml`: Homebrew formulae and casks, the App Store, mise,
 uv tools, npm, .NET tools, VS Code extensions, Claude Code, compose images,
 and macOS updates. topgrade runs every step it finds a tool for; the config
-turns off two it shouldn't run and adds the drift and image commands below.
+turns off the steps it shouldn't run and replaces two of them with the drift
+and image commands below.
 
 The `dotfiles.topgrade` launchd job runs `topgrade-daily` once a day from
 05:00 (on wake if the Mac was asleep). It skips the steps that can ask for a
