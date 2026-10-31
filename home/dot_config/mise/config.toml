@@ -6,7 +6,10 @@
   # A release line, not a fixed version, so `mise upgrade` picks up patches.
   # Repos that need a specific version pin it in their own .nvmrc.
   node = "lts"
+  # Node 25+ no longer ships corepack, so mise provides pnpm instead.
+  pnpm = "latest"
 
 [settings]
-  # Honor .nvmrc / .node-version so each repo runs the Node its CI uses.
-  idiomatic_version_file_enable_tools = [ "node" ]
+  # Honor .nvmrc / .node-version so each repo runs the Node its CI uses, and
+  # package.json's packageManager so it runs the pnpm or yarn it pins.
+  idiomatic_version_file_enable_tools = [ "node", "pnpm", "yarn" ]

@@ -42,4 +42,16 @@ test_mise_config() {
   else
     fail "mise ignores .nvmrc (settings.idiomatic_version_file_enable_tools lacks node)"
   fi
+  # Node 25+ no longer ships corepack, so pnpm and yarn come from mise.
+  if [[ "$idiomatic" == *pnpm* && "$idiomatic" == *yarn* ]]; then
+    pass "mise reads package.json packageManager for pnpm and yarn"
+  else
+    fail "mise ignores packageManager (settings.idiomatic_version_file_enable_tools lacks pnpm or yarn)"
+  fi
+
+  if [[ -n "$(mise config get -f "$config" tools.pnpm 2>/dev/null || true)" ]]; then
+    pass "global pnpm is set"
+  else
+    fail "global pnpm is unset (pnpm is missing outside repos that pin it)"
+  fi
 }

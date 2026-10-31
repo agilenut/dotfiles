@@ -450,10 +450,10 @@ test_topgrade_config() {
   # every local image tag.
   local dry
   dry="$(topgrade --dry-run --no-self-update --notify-end never --config "$config" 2>&1 </dev/null || true)"
-  if grep -qE 'chezmoi update|docker pull' <<<"$dry"; then
+  if grep -qE 'chezmoi update|docker pull|pnpm update -g|gh skill update' <<<"$dry"; then
     fail "dry run would run a disabled step (config ignored?)"
   else
-    pass "dry run runs neither chezmoi update nor docker pull"
+    pass "dry run runs no disabled step (chezmoi, containers, pnpm, gh skills)"
   fi
   if grep -q 'dotfiles-drift' <<<"$dry" && grep -q 'docker-pull-compose' <<<"$dry"; then
     pass "dry run includes the drift and compose-pull commands"
