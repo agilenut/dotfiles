@@ -126,6 +126,19 @@ case "$1" in
   *) exec /bin/date "$@" ;;
 esac
 STUB
+  # pmset stub: `-g systemstate` reports $STUB_CAPABILITIES, a full wake by
+  # default, or fails with no output with STUB_PMSET_FAIL.
+  cat >"$stubdir/bin/pmset" <<'STUB'
+#!/bin/sh
+[ -n "$STUB_PMSET_FAIL" ] && exit 1
+echo "Current System Capabilities are: ${STUB_CAPABILITIES-CPU Graphics Audio Network} "
+echo "Current Power State: 4"
+STUB
+  # caffeinate stub: logs its arguments and exits, so tests never hold off sleep.
+  cat >"$stubdir/bin/caffeinate" <<'STUB'
+#!/bin/sh
+printf 'caffeinate %s\n' "$*" >>"$CALL_LOG"
+STUB
   # osascript stub: logs the title, message, and sound the script passes last.
   cat >"$stubdir/bin/osascript" <<'STUB'
 #!/bin/sh
@@ -166,6 +179,8 @@ STUB
       ${STUB_OUTDATED+STUB_OUTDATED="$STUB_OUTDATED"} ${STUB_BREW_FAIL+STUB_BREW_FAIL="$STUB_BREW_FAIL"} \
       ${TOPGRADE_DAILY_STOP_GRACE+TOPGRADE_DAILY_STOP_GRACE="$TOPGRADE_DAILY_STOP_GRACE"} \
       ${STUB_DRIFT_AFTER+STUB_DRIFT_AFTER="$STUB_DRIFT_AFTER"} \
+      ${STUB_CAPABILITIES+STUB_CAPABILITIES="$STUB_CAPABILITIES"} \
+      ${STUB_PMSET_FAIL+STUB_PMSET_FAIL="$STUB_PMSET_FAIL"} \
       "$TOPGRADE_DAILY" 2>&1
   }
   ran_topgrade() { grep -q '^gtimeout ' "$calls"; }
@@ -194,6 +209,54 @@ STUB
     pass "before 05:00: waits for a later hourly fire"
   else
     fail "ran before 05:00 (rc=$rc)"
+  fi
+
+  reset_run
+  rc=0
+  out=$(STUB_CAPABILITIES="CPU Network" run_daily) || rc=$?
+  if [ "$rc" -eq 0 ] && ! ran_topgrade && [ ! -e "$state/last-day" ] \
+    && [[ "$out" == *"dark wake (CPU Network)"* ]] \
+    && ! ls "$logs"/topgrade-daily-*.log >/dev/null 2>&1 && [ ! -e "$logs/topgrade.lock" ]; then
+    pass "dark wake (Mac asleep): waits for a full wake, with no log or lock left"
+  else
+    fail "ran during a dark wake (rc=$rc, out: $out)"
+  fi
+
+  reset_run
+  rc=0
+  out=$(STUB_OUTPUT="$stubdir/out-ok" run_daily) || rc=$?
+  if grep -q 'scheduled topgrade (wake: CPU Graphics Audio Network) ===' "$logs"/topgrade-daily-*.log; then
+    pass "the run's log header records the wake state"
+  else
+    fail "log header lacks the wake state: $(grep -h '^===' "$logs"/topgrade-daily-*.log 2>/dev/null | head -1)"
+  fi
+  # caffeinate exits with the wrapper (-w <its PID>); the cap is topgrade's
+  # timeout plus 30 minutes.
+  local timeout_seconds
+  timeout_seconds=$(sed -n 's/^TIMEOUT_SECONDS=//p' "$TOPGRADE_DAILY")
+  if grep -Eq "^caffeinate -i -t $((timeout_seconds + 1800)) -w [0-9]+\$" "$calls"; then
+    pass "holds off idle sleep for the run, capped past topgrade's timeout"
+  else
+    fail "caffeinate not started as expected (calls: $(tr '\n' '|' <"$calls"))"
+  fi
+
+  reset_run
+  rc=0
+  out=$(STUB_CAPABILITIES="" STUB_OUTPUT="$stubdir/out-ok" run_daily) || rc=$?
+  if ran_topgrade && grep -q 'scheduled topgrade (wake: pmset reported nothing) ===' "$logs"/topgrade-daily-*.log; then
+    pass "pmset reports nothing: runs anyway and says so in the log"
+  else
+    fail "skipped when pmset reported nothing (rc=$rc, out: $out)"
+  fi
+
+  reset_run
+  rc=0
+  out=$(STUB_PMSET_FAIL=1 STUB_OUTPUT="$stubdir/out-ok" run_daily) || rc=$?
+  if [ "$rc" -eq 0 ] && ran_topgrade \
+    && grep -q 'scheduled topgrade (wake: pmset reported nothing) ===' "$logs"/topgrade-daily-*.log; then
+    pass "pmset fails: runs anyway and says so in the log"
+  else
+    fail "a failing pmset stopped the run (rc=$rc, out: $out)"
   fi
 
   # The test runner is a live owner for held locks.

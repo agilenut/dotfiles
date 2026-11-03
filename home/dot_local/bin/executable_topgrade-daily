@@ -3,8 +3,8 @@
 # =============================================================================
 # Scheduled, unattended topgrade run. launchd (dotfiles.topgrade) starts it at
 # 05:00, or on wake if the Mac slept through 05:00, and every hour after, so a
-# fire skipped for a held lock or a killed run is retried. It runs once per
-# day, on the first fire from 05:00.
+# fire skipped for a held lock, a killed run, or a sleeping Mac is retried. It
+# runs once per day, on the first fire from 05:00 while the Mac is fully awake.
 #
 # zsh rather than bash because zsh reads ~/.zshenv for every script, so this
 # run sees the same XDG, npm, dotnet, Go, and mise settings as a terminal and
@@ -45,6 +45,15 @@ LOG_DAYS=30
 today=$(date +%Y-%m-%d)
 [[ "$(cat "$STATE_DIR/last-day" 2>/dev/null)" != "$today" ]] || exit 0
 (($(date +%H) >= RUN_HOUR)) || exit 0
+# A sleeping Mac (lid closed, or idle) wakes for a few seconds about every
+# 17 minutes, without graphics (a dark wake). A run started then advances only
+# during those wakes, so steps time out and downloads drop. When pmset reports
+# nothing, the run goes ahead: an unreadable state shouldn't stop every run.
+capabilities=$(pmset -g systemstate | sed -n 's/^Current System Capabilities are: *//p' | sed 's/ *$//') || true
+if [[ -n "$capabilities" && "$capabilities" != *Graphics* ]]; then
+  print -u2 "$(date): dark wake ($capabilities); retrying next hour"
+  exit 0
+fi
 mkdir -p "$STATE_DIR" "$LOG_DIR"
 if ! lock_acquire "$LOCK_DIR"; then
   print -u2 "$(date): another update (pid $(cat "$LOCK_DIR/pid" 2>/dev/null)) holds the lock; retrying next hour"
@@ -100,7 +109,7 @@ finish_failed() {
   exit 1
 }
 
-print "=== $(date) - scheduled topgrade ===" >>"$log"
+print "=== $(date) - scheduled topgrade (wake: ${capabilities:-pmset reported nothing}) ===" >>"$log"
 
 # topgrade treats a missing or invalid config as no config, which would bring
 # back `chezmoi update` and pulls of every local image. The custom commands
@@ -120,6 +129,12 @@ fi
 drift_before=$(cat "$STATE_DIR/drift" 2>/dev/null || true)
 claude_before=$(claude --version 2>/dev/null || true)
 start_line=$(($(wc -l <"$log") + 1))
+
+# Hold off idle sleep until this script exits, so a run started on a full wake
+# isn't broken up by dark wakes. The cap keeps a hung run from holding the Mac
+# awake; its 30 minutes past topgrade's timeout cover the later steps, which
+# have no timeout of their own. Closing the lid still sleeps the Mac.
+caffeinate -i -t $((TIMEOUT_SECONDS + 1800)) -w $$ &
 
 # system, mas, and brew_cask need sudo (macOS updates, App Store updates, and
 # casks with a background service or pkg installer), and an unanswered
