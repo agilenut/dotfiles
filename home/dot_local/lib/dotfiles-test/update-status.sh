@@ -105,7 +105,7 @@ STUB
   fi
   out=$(us_status) || true
   if grep -Fq "$tilde/.config/karabiner/karabiner.json" <<<"$out" && grep -Fq 'chezmoi re-add' <<<"$out" \
-    && grep -Fq 'shop-db-1 (shop)' <<<"$out" && grep -Fq 'docker compose up -d' <<<"$out" \
+    && grep -Fq 'shop-db-1 (shop)' <<<"$out" && grep -Fq '`update-containers`' <<<"$out" \
     && grep -Fq 'visual-studio-code, warp' <<<"$out" && grep -Fq 'Run `dotfiles-drift` to recheck' <<<"$out"; then
     pass "details list each item with what to run"
   else

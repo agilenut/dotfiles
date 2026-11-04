@@ -34,6 +34,7 @@ source "$LIB_DIR/launchd.sh"
 source "$LIB_DIR/topgrade-daily.sh"
 source "$LIB_DIR/lock.sh"
 source "$LIB_DIR/update-status.sh"
+source "$LIB_DIR/update-containers.sh"
 source "$LIB_DIR/manual.sh"
 
 # Source macOS-specific tests on Darwin
@@ -160,6 +161,7 @@ main() {
   test_dotfiles_lock
   test_topgrade_daily
   test_update_status
+  test_update_containers
 
   # macOS-specific tests
   if [[ "$(uname)" == "Darwin" ]]; then

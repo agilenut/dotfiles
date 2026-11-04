@@ -25,14 +25,33 @@
 # worktree), and then used image-only by a project.
 #
 # A pulled image takes effect once its container is recreated
-# (`docker compose up -d` in that project). Running containers still on an
-# older image are reported and written to
-# $XDG_STATE_HOME/topgrade/stale-containers
+# (`update-containers`). Running containers still on an older image are
+# reported and written to $XDG_STATE_HOME/topgrade/stale-containers
 # (<container><TAB><image><TAB><compose project>), which the update status
-# reads. The file is replaced whenever the check succeeds, even if a pull
+# reads. A container on an image a project builds is left out: that image is
+# never pulled, so a newer one is a local rebuild for that project to pick
+# up. The file is replaced whenever the check succeeds, even if a pull
 # failed; if listing the running containers fails, it's left as it was.
 
 set -euo pipefail
+
+# jq `repo`: reduce an image reference to its repository, spelled one way.
+# `u/backend:dev`, `u/backend:1.2` and `docker.io/u/backend@sha256:...` are
+# all `u/backend`, and `docker.io/library/redis` is `redis`.
+DOCKER_PULL_COMPOSE_REPO='
+  def repo:
+    sub("@.*$"; "")
+    | sub(":[^/]+$"; "")
+    | sub("^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)/"; "")
+    | sub("^library/"; "");'
+
+# jq `built`: given the projects array that docker_pull_compose_select
+# reads, list the repositories any project builds. A build service without
+# `image:` produces `<project>-<service>`.
+DOCKER_PULL_COMPOSE_BUILT='
+  def built:
+    [ .[] | {name, svc: (.services | to_entries[] | select(.value.build != null))}
+      | (.svc.value.image // "\(.name)-\(.svc.key)") | repo ];'
 
 # Read `docker compose ls --all --format json` on stdin and print one row per
 # project:
@@ -68,20 +87,11 @@ docker_pull_compose_plan() {
 # and print the image-only services safe to pull, one row per project:
 #   pull<TAB><name><TAB><files><TAB><space-separated services>
 #   none<TAB><name>
-# A build service without `image:` produces `<project>-<service>`. Images
-# are compared by repository alone, in one spelling: building `u/backend:dev`
-# blocks `u/backend:1.2` and `docker.io/u/backend@sha256:...`, and
-# `docker.io/library/redis` matches `redis`.
+# Images are compared by repository alone, so building `u/backend:dev`
+# blocks pulling `u/backend:1.2`.
 docker_pull_compose_select() {
-  jq -r '
-    def repo:
-      sub("@.*$"; "")
-      | sub(":[^/]+$"; "")
-      | sub("^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)/"; "")
-      | sub("^library/"; "");
-    [ .[] | .name as $p | .services | to_entries[]
-      | select(.value.build != null)
-      | (.value.image // "\($p)-\(.key)") | repo ] as $built
+  jq -r "$DOCKER_PULL_COMPOSE_REPO $DOCKER_PULL_COMPOSE_BUILT"'
+    built as $built
     | .[]
     | .name as $p
     | [ .services | to_entries[]
@@ -128,6 +138,16 @@ docker_pull_compose_stale() {
     [[ "$current" != "$image_id" ]] || continue
     printf '%s\t%s\t%s\n' "${name#/}" "$image" "$project"
   done
+}
+
+# Read docker_pull_compose_stale's rows on stdin and drop each row whose
+# image is built by a project in $1 (the projects array that
+# docker_pull_compose_select reads).
+docker_pull_compose_drop_built() {
+  jq -Rr --argjson projects "$1" "$DOCKER_PULL_COMPOSE_REPO $DOCKER_PULL_COMPOSE_BUILT"'
+    ($projects | built) as $built
+    | select(. != "")
+    | select(split("\t")[1] | repo as $i | any($built[]; . == $i) | not)'
 }
 
 # Replace the stale-container state file with stdin. Written through a temp
@@ -205,7 +225,10 @@ docker_pull_compose_main() {
   done <<<"$selected"
 
   local stale container image
-  if stale="$(docker_pull_compose_stale)"; then
+  # A project whose config couldn't be read isn't in $projects, so a
+  # container on an image it builds is still listed.
+  if stale="$(docker_pull_compose_stale)" \
+    && stale="$(docker_pull_compose_drop_built "$projects" <<<"$stale")"; then
     printf '%s' "${stale:+$stale$'\n'}" | docker_pull_compose_write_state
     while IFS=$'\t' read -r container image _; do
       [[ -n "$container" ]] || continue
