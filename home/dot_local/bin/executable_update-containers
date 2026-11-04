@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+# -*-mode:sh-*- vim:ft=shell-script
+# shellcheck shell=bash
+
+# update-containers
+# =============================================================================
+# Recreate the containers update-status lists as running an older image, so
+# each starts on the image its tag now points to. Each is recreated in its
+# own compose project, using the project name, config files, folder, and
+# service that compose recorded on the container: plain
+# `docker compose up -d` in the folder can name a different project and
+# leave these untouched.
+#
+# Compose reads the project's `.env` as usual, but not an `--env-file` or
+# variables a script exported when it started the project, so a project
+# started that way is better recreated by that script.
+#
+# Usage:
+#   update-containers        show the commands, ask, then run them
+#   update-containers --yes  run them without asking
+
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/update-status"
+
+# Read "<container><TAB><project>" lines on stdin and print one row per
+# compose project, sorted by project:
+#   <project><TAB><working dir><TAB><comma-separated config files><TAB><services>
+# A container missing any of those compose labels is reported on stderr and
+# left out. `read` collapses consecutive tabs, so an empty label shifts the
+# ones after it and leaves the last field empty.
+update_containers_plan() {
+  local name row project dir files service
+  while IFS=$'\t' read -r name _; do
+    [ -n "$name" ] || continue
+    row=$(docker container inspect --format \
+      '{{index .Config.Labels "com.docker.compose.project"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.project.working_dir"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.project.config_files"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.service"}}' \
+      "$name" 2>/dev/null) || continue
+    IFS=$'\t' read -r project dir files service <<<"$row"
+    if [ -z "$service" ]; then
+      echo "skip    $name (not started by compose; recreate it by hand)" >&2
+      continue
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$project" "$dir" "$files" "$service"
+  done | sort -t $'\t' -k1,1 -k4,4 | update_containers_group
+}
+
+# Join sorted "<project><TAB><dir><TAB><files><TAB><service>" rows into one
+# row per project, its services space-separated.
+update_containers_group() {
+  local project dir files service last="" last_dir="" last_files="" services=""
+  while IFS=$'\t' read -r project dir files service; do
+    if [ "$project" != "$last" ] && [ -n "$last" ]; then
+      printf '%s\t%s\t%s\t%s\n' "$last" "$last_dir" "$last_files" "$services"
+      services=""
+    fi
+    last="$project" last_dir="$dir" last_files="$files"
+    services="${services:+$services }$service"
+  done
+  [ -z "$last" ] || printf '%s\t%s\t%s\t%s\n' "$last" "$last_dir" "$last_files" "$services"
+}
+
+# Print the compose command for one plan row's fields, one argument per
+# line. `--no-deps` leaves the listed services' dependencies running as they
+# are, and `--no-build` keeps compose from rebuilding anything.
+update_containers_command() {
+  local project="$1" dir="$2" files="$3" services="$4" file service
+  local -a parts svcs
+  printf '%s\n' docker compose -p "$project" --project-directory "$dir"
+  IFS=',' read -r -a parts <<<"$files"
+  for file in "${parts[@]}"; do
+    printf '%s\n' -f "$file"
+  done
+  printf '%s\n' up -d --no-deps --no-build
+  read -r -a svcs <<<"$services"
+  for service in "${svcs[@]}"; do
+    printf '%s\n' "$service"
+  done
+}
+
+update_containers_main() {
+  local yes=0
+  case "${1:-}" in
+    "") ;;
+    --yes | -y) yes=1 ;;
+    *)
+      echo "Usage: update-containers [--yes]" >&2
+      return 2
+      ;;
+  esac
+
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker isn't running." >&2
+    return 1
+  fi
+
+  local plan
+  plan=$(update_status_stale_containers | update_containers_plan)
+  if [ -z "$plan" ]; then
+    echo "No containers to recreate."
+    return 0
+  fi
+
+  local project dir files services file missing arg ready="" failed=0
+  local -a cmd parts
+  while IFS=$'\t' read -r project dir files services; do
+    missing=""
+    IFS=',' read -r -a parts <<<"$files"
+    for file in "${parts[@]}"; do
+      [ -f "$file" ] || {
+        missing="$file"
+        break
+      }
+    done
+    if [ -n "$missing" ]; then
+      echo "skip    $project (config file gone: $missing)" >&2
+      failed=$((failed + 1))
+      continue
+    fi
+    cmd=()
+    while IFS= read -r arg; do cmd+=("$arg"); done < <(update_containers_command "$project" "$dir" "$files" "$services")
+    printf '%q ' "${cmd[@]}"
+    echo
+    ready+="$project"$'\t'"$dir"$'\t'"$files"$'\t'"$services"$'\n'
+  done <<<"$plan"
+  [ -n "$ready" ] || return 1
+
+  if [ "$yes" -eq 0 ]; then
+    if [ ! -t 0 ]; then
+      echo "No terminal to ask on; rerun with --yes to recreate." >&2
+      return 1
+    fi
+    local answer
+    read -r -p "Recreate these? This restarts each service. [y/N] " answer
+    case "$answer" in
+      y | Y | yes) ;;
+      *) return 0 ;;
+    esac
+  fi
+
+  while IFS=$'\t' read -r project dir files services; do
+    [ -n "$project" ] || continue
+    cmd=()
+    while IFS= read -r arg; do cmd+=("$arg"); done < <(update_containers_command "$project" "$dir" "$files" "$services")
+    if "${cmd[@]}" </dev/null; then
+      echo "recreated  $project ($services)"
+    else
+      echo "FAILED     $project"
+      failed=$((failed + 1))
+    fi
+  done <<<"$ready"
+
+  [ "$failed" -eq 0 ]
+}
+
+# Run only when executed directly; sourcing (tests) just defines the functions.
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+  update_containers_main "$@"
+fi

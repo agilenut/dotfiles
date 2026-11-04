@@ -284,17 +284,21 @@ test_docker_pull_compose() {
   local log rc out state
   log="$stubdir/calls"
   state="$stubdir/state/topgrade/stale-containers"
-  printf '%s\n' c1 c2 c3 c4 c5 >"$stubdir/ps"
+  printf '%s\n' c1 c2 c3 c4 c5 c6 c7 >"$stubdir/ps"
   # db and tool run an older image than their tag now points to; cache is
   # current; scratch's tag was removed, so there's nothing to compare; c5
-  # stopped between `ps` and `inspect`.
+  # stopped between `ps` and `inspect`. e2e and jobs run an older build of
+  # an image the api project builds (jobs under compose's `api-jobs` name),
+  # so each is a local rebuild, not a pulled update.
   printf '%s\t/%s\t%s\t%s\t%s\n' \
     c1 shop-db-1 postgres:18 sha256:old shop \
     c2 shop-cache-1 redis:8 sha256:same shop \
     c3 scratch alpine:3 sha256:x '' \
-    c4 tool tool:1 sha256:t1 '' >"$stubdir/inspect"
+    c4 tool tool:1 sha256:t1 '' \
+    c6 e2e-api-1 docker.io/u/backend:latest sha256:b1 e2e \
+    c7 api-jobs-1 api-jobs:latest sha256:j1 api >"$stubdir/inspect"
   printf '%s\n' 'postgres:18 sha256:new' 'redis:8 sha256:same' 'tool:1 sha256:t2' \
-    >"$stubdir/images"
+    'docker.io/u/backend:latest sha256:b2' 'api-jobs:latest sha256:j2' >"$stubdir/images"
   jq -n --arg d "$stubdir" '[
     {Name: "api", Status: "running(1)",
      ConfigFiles: "\($d)/api/compose.yml,\($d)/api/compose.override.yml"},
@@ -303,6 +307,7 @@ test_docker_pull_compose() {
   jq -n '{services: {
     api: {build: {context: "."}, image: "u/backend"},
     worker: {image: "u/backend"},
+    jobs: {build: {context: "."}},
     db: {image: "postgres:18"}}}' >"$stubdir/config.json"
   cat >"$stubdir/docker" <<'DOCKERSTUB'
 #!/bin/sh
@@ -354,7 +359,7 @@ DOCKERSTUB
     fail "pull not issued as expected (rc=$rc, log: $(tr '\n' '|' <"$log"))"
   fi
   if [ "$(cat "$state" 2>/dev/null)" = "$(printf '%s\t%s\t%s\n' shop-db-1 postgres:18 shop tool tool:1 '')" ]; then
-    pass "running containers on an older image than their tag are written to the state file"
+    pass "running containers on a pulled image older than their tag's are written to the state file; ones on a built image are left out"
   else
     fail "stale-container state wrong: '$(tr '\n\t' '|,' <"$state" 2>/dev/null)'"
   fi
@@ -392,13 +397,14 @@ DOCKERSTUB
   fi
 
   # An unreadable config hides that project's built images, so any pull could
-  # replace one of them. The container check still runs.
+  # replace one of them. The container check still runs, and with no
+  # project's built images known, the containers on them stay listed.
   : >"$log"
   rc=0
   out=$(CONFIG_FAIL=1 run_pull) || rc=$?
   if [ "$rc" -ne 0 ] && ! grep -q ' pull ' "$log" \
     && grep -q '^skip    all image pulls' <<<"$out" \
-    && [ "$(wc -l <"$state" | tr -d ' ')" = 2 ]; then
+    && [ "$(cut -f1 "$state" | tr '\n' ' ')" = "shop-db-1 tool e2e-api-1 api-jobs-1 " ]; then
     pass "an unreadable compose config skips every pull, fails the step, and still checks containers"
   else
     fail "unreadable config run wrong (rc=$rc, log: $(tr '\n' '|' <"$log")): $(tr '\n' '|' <<<"$out")"

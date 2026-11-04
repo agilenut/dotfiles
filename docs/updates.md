@@ -62,5 +62,17 @@ whose containers are gone (`docker compose down`) or whose compose file is
 gone (a removed worktree). Another project that uses one of those images
 gets it pulled from the registry.
 
+A pulled image reaches a running container only when the container is
+recreated. The status lists running containers still on an older pulled
+image. One on an older build of an image a project builds is left out, since
+that project's own build picks it up.
+
+`update-containers` shows the compose command for each listed project,
+asks, and runs them. It uses the project name and config files recorded on
+the container, because plain `docker compose up -d` in the folder can
+target a different project. A project started with an `--env-file`, or by a
+script that exports variables, loses them here, so recreate it the way it
+was started.
+
 Pinned tags and Dockerfile base images belong to each repo and aren't
 changed here.

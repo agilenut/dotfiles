@@ -42,13 +42,14 @@ update_status_list() {
   printf '%s' "$out"
 }
 
-# Containers still on an older image, as "<container> (<project>)", joined
-# with ", ". The list is written once a day, so each one is checked again
+# Listed containers still on an older image, one "<container><TAB><project>"
+# line each. The list is written once a day, so each one is checked again
 # the way docker-pull-compose finds them: a container that now runs its own
 # tag's current image, is stopped or removed, or whose tag is gone, is left
 # out. When Docker isn't running, the container stays listed.
-update_status_containers() {
-  local name project row tag running image_id current out=""
+update_status_stale_containers() {
+  local name project row tag running image_id current
+  [ -f "$STATE_DIR/stale-containers" ] || return 0
   while IFS=$'\t' read -r name _ project; do
     [ -n "$name" ] || continue
     if row=$(docker container inspect \
@@ -61,8 +62,17 @@ update_status_containers() {
       # Docker answers, so the container is gone.
       continue
     fi
-    out="${out:+$out, }$name${project:+ ($project)}"
+    printf '%s\t%s\n' "$name" "$project"
   done <"$STATE_DIR/stale-containers"
+}
+
+# Containers still on an older image, as "<container> (<project>)", joined
+# with ", ".
+update_status_containers() {
+  local name project out=""
+  while IFS=$'\t' read -r name project; do
+    out="${out:+$out, }$name${project:+ ($project)}"
+  done < <(update_status_stale_containers)
   printf '%s' "$out"
 }
 
@@ -102,7 +112,7 @@ update_status_main() {
     containers=$(update_status_containers)
   fi
   if [ -n "$containers" ]; then
-    lines+=("Containers on an older image: $containers. Recreate them with \`docker compose up -d\` in each project.")
+    lines+=("Containers on an older image: $containers. Recreate them with \`update-containers\`.")
   fi
   if [ "$(update_status_count outdated-casks)" -gt 0 ]; then
     lines+=("Casks waiting for \`update\`: $(update_status_list outdated-casks).")
