@@ -137,7 +137,7 @@ an open PR with no checks as CI_RUNNING.
    checks are listed, so the loop first waits up to 3 minutes for them:
 
    ```bash
-   for _ in $(seq 36); do gh pr checks <number> --json name --jq length | grep -qv '^0$' && break; sleep 5; done; gh pr checks <number> --watch
+   for _ in $(seq 36); do n=$(gh pr checks <number> --json name --jq length); [ -n "$n" ] && [ "$n" != 0 ] && break; sleep 5; done; gh pr checks <number> --watch
    ```
 
 2. **Read the verdict, not the exit code.** On notification, run
@@ -218,7 +218,10 @@ update jobs, which run against main but aren't started by the merge. The
 loops read the plain output (tab-separated: status is column 1, event is
 column 6), because a session isolated in a worktree refuses quoted jq
 inside a loop. The finish loop keeps `2>&1` so a failed call prints an
-error line and the loop waits again instead of stopping.
+error line and the loop waits again instead of stopping. The loops count
+lines with `grep -cv` rather than test with `grep -qv`: Claude Code's shell
+runs `grep` as its built-in ugrep, where `grep -qv PATTERN` fails whenever
+any line matches PATTERN, instead of succeeding when some line doesn't.
 
 1. List the runs. Keep `--limit 200`: with the default of 20, other runs on
    the same commit can push the merge's CI off the list.
@@ -231,7 +234,7 @@ error line and the loop waits again instead of stopping.
    minutes for the first run to appear:
 
    ```bash
-   for _ in $(seq 12); do gh run list --commit <sha> --limit 200 | cut -f6 | grep -qvx dynamic && break; sleep 10; done
+   for _ in $(seq 12); do n=$(gh run list --commit <sha> --limit 200 | cut -f6 | grep -cvx dynamic); [ "$n" != 0 ] && break; sleep 10; done
    ```
 
    Then repeat step 1. Still none → transition to POST_MERGE_TESTING or
@@ -243,7 +246,7 @@ error line and the loop waits again instead of stopping.
    to 60 minutes:
 
    ```bash
-   for _ in $(seq 120); do gh run list --commit <sha> --limit 200 2>&1 | cut -f1,6 | grep -v dynamic | grep -qv '^completed' || break; sleep 30; done
+   for _ in $(seq 120); do n=$(gh run list --commit <sha> --limit 200 2>&1 | cut -f1,6 | grep -v dynamic | grep -cv '^completed'); [ "$n" = 0 ] && break; sleep 30; done
    ```
 
    Then repeat step 1. Still running → surface to user.
