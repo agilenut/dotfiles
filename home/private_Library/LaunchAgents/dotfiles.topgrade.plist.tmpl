@@ -18,9 +18,9 @@
         <integer>0</integer>
     </dict>
 
-    <!-- A Mac asleep at 05:00 runs the calendar fire on wake. The hourly fire
-         retries a day that was skipped (a held lock) or stopped (a reload);
-         the wrapper runs once per day, so the other fires exit at once. -->
+    <!-- The hourly fire retries a day that was skipped (a held lock, a
+         sleeping Mac) or stopped (a reload); the wrapper runs once per day,
+         so the other fires exit at once. -->
     <key>StartInterval</key>
     <integer>3600</integer>
 

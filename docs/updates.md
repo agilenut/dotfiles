@@ -16,8 +16,11 @@ turns off the steps it shouldn't run and replaces two of them with the drift
 and image commands below.
 
 The `dotfiles.topgrade` launchd job runs `topgrade-daily` once a day from
-05:00 (on wake if the Mac was asleep). It skips the steps that can ask for a
-password (macOS updates, the App Store, casks other than Claude Code) and
+05:00, on the first hourly check while the Mac is fully awake. While the Mac
+sleeps (lid closed, or idle), it waits for someone to wake it: a sleeping Mac
+wakes itself only for a few seconds at a time, too briefly for a run. During
+a run, the Mac won't idle-sleep, for up to 2.5 hours. It skips the steps that
+can ask for a password (macOS updates, the App Store, casks other than Claude Code) and
 the plugin updates for zsh, tmux, and nvim, which `update` runs with the
 output in view.
 
