@@ -196,6 +196,9 @@ _Knowledge repos, not code projects - lighter rules apply here._
 - Commit directly to `main`. No branches, PRs, CI, or build/test.
 - Auto-commit at natural checkpoints with clear messages; routine edits don't
   need to be asked first.
-- Review gate = the git diff: for bulk Claude-generated changes (reflect,
-  defrag), surface the diff before committing.
+- **Lighter means no branch, no PR and no CI - not no review.** The global Git
+  rules still decide when `/review` runs, and a note someone acts on or a file
+  an agent follows as steps counts there as behavior rather than docs.
+- For bulk Claude-generated changes (reflect, defrag), the git diff is the gate:
+  surface it before committing.
 - Local-only by default - never push unless a repo is explicitly set up to sync.
