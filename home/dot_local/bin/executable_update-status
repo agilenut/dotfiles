@@ -6,7 +6,8 @@
 # =============================================================================
 # What the scheduled update (topgrade-daily) and its custom commands left for
 # you to act on, read from their state files in $XDG_STATE_HOME/topgrade/. It
-# only reads files, so the tmux status bar can run it on every refresh.
+# runs on every tmux status-bar refresh, so it only reads files, except for
+# up to two quick `docker` calls per listed stale container.
 #
 # Usage:
 #   update-status          one line per item, with what to run
@@ -41,11 +42,25 @@ update_status_list() {
   printf '%s' "$out"
 }
 
-# Stale containers as "<container> (<project>)", joined with ", ".
+# Containers still on an older image, as "<container> (<project>)", joined
+# with ", ". The list is written once a day, so each one is checked again
+# the way docker-pull-compose finds them: a container that now runs its own
+# tag's current image, is stopped or removed, or whose tag is gone, is left
+# out. When Docker isn't running, the container stays listed.
 update_status_containers() {
-  local name image project out=""
-  while IFS=$'\t' read -r name image project; do
+  local name project row tag running image_id current out=""
+  while IFS=$'\t' read -r name _ project; do
     [ -n "$name" ] || continue
+    if row=$(docker container inspect \
+      --format '{{.Config.Image}}{{"\t"}}{{.State.Running}}{{"\t"}}{{.Image}}' "$name" 2>/dev/null); then
+      IFS=$'\t' read -r tag running image_id <<<"$row"
+      [ "$running" = true ] || continue
+      current=$(docker image inspect --format '{{.Id}}' "$tag" 2>/dev/null) || continue
+      [ "$image_id" != "$current" ] || continue
+    elif docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
+      # Docker answers, so the container is gone.
+      continue
+    fi
     out="${out:+$out, }$name${project:+ ($project)}"
   done <"$STATE_DIR/stale-containers"
   printf '%s' "$out"
@@ -63,7 +78,7 @@ update_status_days_since() {
 update_status_main() {
   local mode="${1:-}"
   local -a lines=()
-  local red=0 last log
+  local red=0 last log containers=""
 
   last=$(cat "$STATE_DIR/last-day" 2>/dev/null || true)
   log=$(cat "$STATE_DIR/last-log" 2>/dev/null || true)
@@ -84,7 +99,10 @@ update_status_main() {
     lines+=("Dotfiles drift: $(update_status_list drift '~/'). Keep this machine's version with \`chezmoi re-add <file>\`, or restore the dotfiles version with \`chezmoi apply <file>\`. Run \`dotfiles-drift\` to recheck.")
   fi
   if [ "$(update_status_count stale-containers)" -gt 0 ]; then
-    lines+=("Containers on an older image: $(update_status_containers). Recreate them with \`docker compose up -d\` in each project; the list refreshes on the next update.")
+    containers=$(update_status_containers)
+  fi
+  if [ -n "$containers" ]; then
+    lines+=("Containers on an older image: $containers. Recreate them with \`docker compose up -d\` in each project.")
   fi
   if [ "$(update_status_count outdated-casks)" -gt 0 ]; then
     lines+=("Casks waiting for \`update\`: $(update_status_list outdated-casks).")
