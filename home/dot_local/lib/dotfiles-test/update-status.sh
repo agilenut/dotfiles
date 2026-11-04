@@ -33,7 +33,32 @@ test_update_status() {
     : >"$state/outdated-casks"
     : >"$state/new-steps"
   }
-  us_status() { XDG_STATE_HOME="$tmp/state" "$UPDATE_STATUS" "$@" 2>&1; }
+  # A docker stub answering `container inspect`, `image inspect` and
+  # `version` from files in $tmp/docker: container-<name> holds the
+  # container's tag, running state and image ID (tab-separated), and
+  # image-<tag> (with / and : replaced by _) holds the ID the tag points to.
+  # With no $tmp/docker it fails every call, as when Docker isn't running,
+  # so tests that don't create it see every listed container stay listed.
+  mkdir -p "$tmp/stub-bin"
+  cat >"$tmp/stub-bin/docker" <<'STUB'
+#!/usr/bin/env bash
+dir="$STUB_DOCKER_DIR"
+[ -d "$dir" ] || exit 1
+target="${!#}"
+case "$1" in
+  container) file="$dir/container-$target" ;;
+  image) file="$dir/image-$(tr '/:' '__' <<<"$target")" ;;
+  version) exit 0 ;;
+  *) exit 1 ;;
+esac
+[ -f "$file" ] || exit 1
+cat "$file"
+STUB
+  chmod +x "$tmp/stub-bin/docker"
+  us_status() {
+    PATH="$tmp/stub-bin:$PATH" STUB_DOCKER_DIR="$tmp/docker" XDG_STATE_HOME="$tmp/state" \
+      "$UPDATE_STATUS" "$@" 2>&1
+  }
 
   rm -rf "$tmp/state"
   out=$(us_status --tmux) || true
@@ -133,6 +158,50 @@ test_update_status() {
     pass "a container outside any compose project is listed by name alone"
   else
     fail "project-less container wrong: $(tr '\n' '|' <<<"$out")"
+  fi
+
+  # The list is written once a day, so each entry is checked again against
+  # the container's own tag, and only a running container on an older image
+  # stays listed.
+  us_container() { printf '%s\t%s\t%s\n' "$2" "$3" "$4" >"$tmp/docker/container-$1"; }
+  us_fresh_state
+  mkdir -p "$tmp/docker"
+  printf '%s\t%s\t%s\n' \
+    shop-cache-1 redis:7 shop \
+    shop-db-1 postgres:18 shop \
+    shop-api-1 shop/api:1 shop \
+    shop-web-1 nginx:1 shop \
+    shop-job-1 shop/worker:1 shop \
+    old-1 alpine:3 '' >"$state/stale-containers"
+  echo sha256:redis-new >"$tmp/docker/image-redis_7"
+  us_container shop-cache-1 redis:7 true sha256:redis-old
+  echo sha256:pg-new >"$tmp/docker/image-postgres_18"
+  us_container shop-db-1 postgres:18 true sha256:pg-new
+  echo sha256:api-1 >"$tmp/docker/image-shop_api_1"
+  echo sha256:api-2 >"$tmp/docker/image-shop_api_2"
+  us_container shop-api-1 shop/api:2 true sha256:api-2
+  us_container shop-web-1 nginx:1 true sha256:nginx-old
+  echo sha256:worker-new >"$tmp/docker/image-shop_worker_1"
+  us_container shop-job-1 shop/worker:1 false sha256:worker-old
+  out=$(us_status) || true
+  if grep -Fq 'Containers on an older image: shop-cache-1 (shop). ' <<<"$out"; then
+    pass "only a running container on an older image stays listed (recreated, moved to a new tag, tag gone, stopped, and removed drop off)"
+  else
+    fail "stale list not rechecked: $(tr '\n' '|' <<<"$out")"
+  fi
+  us_container shop-cache-1 redis:7 true sha256:redis-new
+  out=$(us_status --tmux) || true
+  if [ -z "$out" ] && us_status | grep -q 'All clear'; then
+    pass "once no listed container is still on an older image, no marker"
+  else
+    fail "marker should be empty once nothing is stale: '$out'"
+  fi
+  rm -rf "$tmp/docker"
+  out=$(us_status) || true
+  if grep -Fq 'Containers on an older image: shop-cache-1 (shop), shop-db-1 (shop), shop-api-1 (shop), shop-web-1 (shop), shop-job-1 (shop), old-1. ' <<<"$out"; then
+    pass "with Docker down, every listed container stays listed"
+  else
+    fail "Docker-down stale list wrong: $(tr '\n' '|' <<<"$out")"
   fi
 
   us_fresh_state
