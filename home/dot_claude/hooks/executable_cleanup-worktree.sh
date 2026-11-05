@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Usage: cleanup-worktree.sh [--force] <worktree-path>
-# Example: ~/.claude/hooks/cleanup-worktree.sh ../viva-hub--main
+# Example: ~/.claude/hooks/cleanup-worktree.sh ../acme--main
 # Without --force, a worktree with uncommitted or untracked changes is kept
 # and the script exits non-zero.
 

@@ -329,13 +329,13 @@ test_worktree_teardown() {
 echo "$* [cwd=$PWD]" >>"$FAKE_DOCKER_LOG"
 case "$1" in
   info) [ "${FAKE_DOCKER_DAEMON:-up}" = up ] || exit 1 ;;
-  volume | image)
+  volume | images)
     # FAKE_DOCKER_LEFTOVERS_FOR limits the reply to one project's label.
     filter="${*: -1}"
     if [ -z "${FAKE_DOCKER_LEFTOVERS_FOR:-}" ] \
       || [ "$filter" = "label=com.docker.compose.project=$FAKE_DOCKER_LEFTOVERS_FOR" ]; then
       [ "$1" = volume ] && echo "${FAKE_DOCKER_VOLUMES:-}"
-      [ "$1" = image ] && echo "${FAKE_DOCKER_IMAGES:-}"
+      [ "$1" = images ] && echo "${FAKE_DOCKER_IMAGES:-}"
     fi
     exit "${FAKE_DOCKER_LS_RC:-0}"
     ;;
@@ -461,7 +461,7 @@ FAKE
   FAKE_DOCKER_PS="" FAKE_DOCKER_IMAGES=sha256abc run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
-    && grep -q -- "image ls -q --filter label=com.docker.compose.project=wt-orphimg " "$log" \
+    && grep -q -- "images -q --filter label=com.docker.compose.project=wt-orphimg " "$log" \
     && grep -q -- "compose -p wt-orphimg down -v --rmi local --remove-orphans" "$log"; then
     pass "cleanup-worktree.sh tears down a project that has only leftover images"
   else
@@ -562,15 +562,16 @@ FAKE
     fail "relative path (rc=$rc stderr='$out')"
   fi
 
-  # ---- docker down fails: worktree removed, error names the project ----
+  # ---- docker down fails: worktree removed, -e2e still tried, errors name both ----
   # Arrange
   make_wt downfail
   # Act
   FAKE_DOCKER_PS=abc123 FAKE_DOCKER_DOWN_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -ne 0 ] && [ ! -d "$wt" ] \
-    && [[ "$out" == *"down failed for project wt-downfail"* ]]; then
-    pass "cleanup-worktree.sh exits non-zero and names the project when docker compose down fails"
+    && [[ "$out" == *"down failed for project wt-downfail;"* ]] \
+    && [[ "$out" == *"down failed for project wt-downfail-e2e;"* ]]; then
+    pass "cleanup-worktree.sh exits non-zero and names each project when docker compose down fails"
   else
     fail "docker down failure (rc=$rc stderr='$out')"
   fi
