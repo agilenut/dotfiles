@@ -241,13 +241,38 @@ runs this step.
    was.
 4. No planned PRs left → run the last-column check. If the issue has a
    parent, check the parent next (Epics).
+5. If an active plan governs the issue (found as in "To find an issue's
+   plan" below), check the whole plan, not only this issue, since a
+   multi-PR plan usually has one issue per PR. A planned PR counts as
+   finished when it merged, or was closed or dropped with the reason noted
+   in the plan. Check each `### PR N` heading's branch with
+   `gh pr list --head <branch> --state all`; a single-PR plan's one PR is
+   the one that just merged.
+   - PRs left in the plan → leave it `active`.
+   - No PRs left, but the plan's Open items aren't resolved (each joined a
+     planned PR, has an issue the user agreed to, or was dropped with the
+     user's OK, the test `/pr` applies before the last merge) → leave it
+     `active` and tell the user which items keep it open.
+   - No PRs left and Open items resolved → write its `## Done` section
+     first (the `plan` skill's Step 8 says what goes in it), then set
+     `status: done` with a one-line reason in place of the template's
+     comment. Status goes last, so a run that stops partway leaves the
+     plan `active` and the re-entered closeout finishes it. No other step
+     runs at merge time, so without this a finished plan stays `active`.
+     In an isolated worktree, edit the worktree's copy (global CLAUDE.md
+     `## Worktree`).
 
 Re-entered (the session that merged ended partway): skip only the parts
-already done (checked ACs, the closeout comment) and still run steps 3
-and 4.
+already done (checked ACs, the closeout comment) and still run steps 3,
+4 and 5.
 
 To find an issue's plan: plan files (plans directory per CLAUDE.md)
-whose `stories:` include its number.
+whose `stories:` include its number. Use the `active` one (a missing
+`status:` means active); more than one active → ask which governs, as
+the `plan` skill's Step 1 does. Follow a `superseded` plan to the plan
+its `## Superseded` section names, and treat that plan as a match even
+if its `stories:` lacks the issue, counting each plan once. Don't
+treat a `done`, `abandoned` or `parked` plan as the issue's current plan.
 
 ### Move to the last allowed column
 

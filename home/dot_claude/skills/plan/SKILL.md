@@ -20,6 +20,19 @@ Reach shared understanding via interactive dialogue, then capture the landing as
 
 Treat GH issue criteria as draft, not spec: re-derive scope from this conversation. If no issue owns the work, the plan files one at step 0 (global CLAUDE.md `## Issues and board` says when an issue is needed).
 
+Once the issue is known, look for a plan that already covers it, since plans are local files and a parked plan missed here is easy to lose. A user who names a plan file instead (a plan with an empty `stories:` can't be found by issue) → read that file and apply the rules below to it as the one match. Otherwise grep the plans directory (resolved per CLAUDE.md "Plans Directory Resolution") for the issue number as a whole word (`\b<N>\b`, so 12 doesn't match 123), then keep only files whose frontmatter `stories:` list has it as an entry; the list can wrap onto the next line.
+
+Follow each `superseded` match to the plan its `## Superseded` section names; treat that plan as a match even if its `stories:` lacks the issue, and apply these status rules to it. Count each plan once. Set `done` and `abandoned` matches aside as records. Then act on how many `active` and `parked` plans are left:
+
+- More than one → list them with their status and Modified date, and ask which to use.
+- One `active` → say you found it, and pick up where it stands: the next PR's kickoff (Step 10) for a multi-PR plan with PRs left; with no PRs left, its unresolved Open items, then `done` per Step 8; otherwise the decisions it leaves open. Its settled Decisions stay settled (Rules).
+- One `parked` → ask whether to resume it or start a new plan.
+  - Resume → set `status: active` and replace its `## Parked` section with a dated line saying it resumed. Its Decisions were made against older code, so re-check each during the walk (Step 4); those that still hold are settled again, and a changed one is rewritten in place per Step 8.
+  - New plan → note that it replaces the parked one. When Step 8 writes the new file, set the parked one to `superseded` and name that file in its `## Superseded` section, so the issue has one current plan; naming it earlier would point at a file that may never exist. If the new plan ends conversation-only (Step 7), set the parked one to `abandoned` instead and say where the work went.
+- None → start a new plan.
+  - A `done` match → read it in full and use its Decisions and Done section as grounding (Step 3), so the new plan builds on what shipped instead of reopening settled choices.
+  - An `abandoned` match → mention it in one line, with the reason its `## Abandoned` section gives.
+
 ## Step 2: Restate Goal
 
 State the goal in 1 sentence. Ask y/n confirm only when real ambiguity exists; otherwise restate and proceed.
@@ -114,11 +127,20 @@ work: "<work-stream or empty>"
 branch: "<branch-name or null>" # primary branch; null when multi-PR
 stories: [<issue#s> or empty]
 worktree: <true | false>
+status: active # active | parked | done | superseded | abandoned; when not active, add a one-line reason
 ---
 ```
 
+Change `status` when the plan stops being worked, and leave the file where it is: `/plans`, this skill, and the `board`, `review` and `review-plan` skills read the field, and a missing one means `active`. Every change away from `active` also adds a short section named after the status (`## Done`, `## Parked`, `## Superseded` or `## Abandoned`, with the date) below the title, so the title stays the plan's first heading. The section holds what a reader picking the plan up needs:
+
+- `done`: set by the `board` skill's closeout when the last PR merges and the Open items are resolved; say where any remaining work lives
+- `parked`: the work is still wanted later; say what it is waiting on and how to restart it
+- `superseded`: another plan took the work over; name that plan
+- `abandoned`: the goal was given up without shipping; say why the work stopped and where anything worth keeping went
+
 Sections, in order (single-PR default):
 
+- **Title** - `# <title>`, the plan's first heading, which `/plans` shows as its summary
 - **Step 0** - the board steps from the `board` skill. Single-PR plan: the issue (existing `#N` or new); file it if new, add it to the board, move it to In Progress, assign. Multi-PR plan: name every workstream's issue (usually one per PR) and, when there are two or more, the epic's parent issue (existing or new); file all of them now (as sub-issues of the parent, when there is one), in Backlog or Up Next per the board skill's column rules, with their ACs; then move only PR 1's issue to In Progress. Each later PR's issue moves to In Progress at its kickoff (Step 10). Until an issue is filed, its draft ACs live here.
 - **Goal** — 1–2 sentences
 - **Approach** — chosen direction + why (1–2 lines)

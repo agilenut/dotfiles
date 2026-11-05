@@ -61,7 +61,8 @@ _Resolve the plan file to review._
 2. If a filename argument is provided, look for it in the resolved
    directory
 3. Otherwise, find the most recently modified `.md` file in the resolved
-   directory
+   directory whose `status:` is `active` or missing; closing a plan updates
+   its modified time, so without the filter a just-closed plan is picked
 4. If no plan found, tell user and stop
 5. Resolve the scope. A flag (`--outline` or `--pr <N>`) wins; with
    `--pr <N>`, confirm the plan has a `### PR N:` heading, or tell the
