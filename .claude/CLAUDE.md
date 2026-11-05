@@ -134,6 +134,32 @@ using the installed `dotfiles-test`.
 pre-commit run --all-files
 ```
 
+## Before a wrap
+
+`/wrap` runs these checks; each failure becomes an open thread unless the
+check says otherwise.
+
+- **Deploy drift.** Check the main checkout's branch and state as the
+  `dotfiles` skill's Deploy step 1 does, then run `chezmoi status` and
+  read it with the table in
+  [docs/deployment.md](../docs/deployment.md#reading-chezmoi-status).
+  Each row is an edit made to a deployed copy, a branch change applied
+  before it merged, a merged change not yet applied, or an app rewriting
+  its own file; the `dotfiles` skill and the deployment doc say how to
+  handle each.
+- **Privacy.** For each unmerged branch the wrap covers, read
+  `git log -p origin/main..<branch>`, plus each worktree's uncommitted
+  changes (`git diff HEAD`) and the untracked files
+  `git status --porcelain` lists, against the Privacy list below.
+  Gitleaks catches secrets only; names, client names, emails, and
+  hostnames need a read. A pushed branch is already public, so a hit is
+  not an ordinary open thread. Put it first in `/wrap`'s action list,
+  and make its fix the first item in its block:
+  - uncommitted change, untracked file, or unpushed commit: the first
+    "I'll do" action
+  - pushed commit: the first "Asking separately" question, so the user
+    can decide on a history rewrite
+
 ## Common Tasks
 
 ```bash

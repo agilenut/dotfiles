@@ -30,4 +30,9 @@ if ! is_worktree "$WORKTREE_PATH"; then
   exit 0
 fi
 
-teardown_worktree "$WORKTREE_PATH"
+# Claude Code fires this hook only for a worktree it chose to remove
+# (ExitWorktree's remove action, or a subagent's worktree with no changes),
+# so it removes with --force. A failure is reported but never fails the hook.
+if ! teardown_worktree "$WORKTREE_PATH" --force; then
+  echo "WARNING: cleanup of $WORKTREE_PATH did not finish; see the error above" >&2
+fi
