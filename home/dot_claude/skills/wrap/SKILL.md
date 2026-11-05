@@ -48,8 +48,9 @@ against other checkouts, and Steps 3-7 need both. Before Step 2, call
 `ExitWorktree` with `action: "keep"` (it changes nothing on disk), then
 copy this session's edits in the worktree's `.plans/` and `.reviews/` to
 the main tree per Step 7's copy-back rule, and work on the main tree's
-copies from then on. Step 7 then skips copy-back for this worktree, since
-the main tree's copies already hold its edits.
+copies from then on. Ask about a copy-back conflict here, before Step 2,
+since Step 3 edits that file. Step 7 then skips copy-back for this
+worktree, since the main tree's copies already hold its edits.
 
 ## Step 2: Find the related sessions' plans
 
@@ -126,15 +127,18 @@ only slows the wrap._
 
 ## Step 4: Integrity checks
 
-_Planned work needs an issue and no plan sits untouched, or the board
-doesn't show the work._
+_Planned work needs an issue so the board shows it, and no plan should
+sit untouched._
 
 A number from a branch name counts only once the tracker shows that issue
 exists and covers this work; an unchecked number may name an unrelated
 issue or none. When the repo has no GitHub remote, there is no tracker to
 check: skip the issue and board checks and say so in "Done without
-asking"; the Open-item, finished, and stale checks still run. Any other
-`gh` failure is an error to report, not a missing tracker.
+asking"; the checks on Open items, finished plans, and stale plans still
+run. There, a planned PR counts as merged when its branch tip is in
+`origin/main` (local `main` when the repo has no remote), and an Open item
+is resolved only when joined or dropped. Any other `gh` failure is an
+error to report, not a missing tracker.
 
 - Each unmerged planned PR in the confirmed plans has an open issue on the
   board. The plan names the issue (PR table and `stories:`), and the issue
@@ -163,22 +167,22 @@ Check each source below; verify what you find (run the command, read the
 file) instead of assuming. The usual action is a starting point; decide
 from the context, such as whether the plan continues or is done.
 
-| Source                                                     | Usual action                                                                                       |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Plan Open items not yet filed, joined, or dropped          | join a planned PR, file an issue, or drop                                                          |
-| Integrity gaps (Step 4)                                    | file the issue or add the reference                                                                |
-| Work for another repo or a separate session                | a handoff (below)                                                                                  |
-| Handoff plans from earlier sessions                        | delete each one a later session picked up (its own y/n, Step 6); otherwise it stays an open thread |
-| Uncommitted changes                                        | review then commit, or stash (`git stash push -u -m <tag>`; the stash stack is shared)             |
-| Unpushed commits                                           | push, or name why not                                                                              |
-| Branches and worktrees                                     | Step 7's rules                                                                                     |
-| Compose projects left from this repo's removed worktrees   | Step 7's Docker leftovers rule                                                                     |
-| Learnings not yet saved (corrections, stated preferences)  | memory, a rule change, or nothing                                                                  |
-| Related sessions' scratchpads, and `/tmp` files they wrote | Scratchpads, below                                                                                 |
-| Actions waiting on the user (drafts, UI settings, tests)   | Step 8's output; they can't be done here                                                           |
-| Sibling repos needing the same change                      | a handoff, only when a related session raised it                                                   |
-| Done work that isn't Live yet                              | Step 8's output (global Definition of Done)                                                        |
-| The repo's CLAUDE.md `## Before a wrap` section            | run each check it lists now; each failure is an open thread unless the check says otherwise        |
+| Source                                                     | Usual action                                                                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Plan Open items not yet filed, joined, or dropped          | join a planned PR, file an issue, or drop                                                                                            |
+| Integrity gaps (Step 4)                                    | file the issue or add the reference                                                                                                  |
+| Work for another repo or a separate session                | a handoff (below)                                                                                                                    |
+| Handoff plans from earlier sessions                        | delete each one a later session picked up (each with its own y/n in Step 6's "Asking separately"); otherwise it stays an open thread |
+| Uncommitted changes                                        | review then commit, or stash (`git stash push -u -m <tag>`; the stash stack is shared)                                               |
+| Unpushed commits                                           | push, or name why not                                                                                                                |
+| Branches and worktrees                                     | Step 7's rules                                                                                                                       |
+| Compose projects left from this repo's removed worktrees   | Step 7's Docker leftovers rule                                                                                                       |
+| Learnings not yet saved (corrections, stated preferences)  | memory, a rule change, or nothing                                                                                                    |
+| Related sessions' scratchpads, and `/tmp` files they wrote | Scratchpads, below                                                                                                                   |
+| Actions waiting on the user (drafts, UI settings, tests)   | Step 8's output; they can't be done here                                                                                             |
+| Sibling repos needing the same change                      | a handoff, only when a related session raised it                                                                                     |
+| Done work that isn't Live yet                              | Step 8's output (global Definition of Done)                                                                                          |
+| The repo's CLAUDE.md `## Before a wrap` section            | run each check it lists now; each failure is an open thread unless the check says otherwise                                          |
 
 **Handoffs.** Same work, next session: the plan is the handoff; make sure
 its Open items / Next section names the step. Other work (another repo,
@@ -192,7 +196,7 @@ named in the issue.
 transcript's file name without `.jsonl`). For this session, delete only
 its `scratchpad/` folder, just before Step 8's output: the harness
 recreates the rest of the session folder while the session runs, and a
-later wrap deletes that folder. Describe them by session and size, never
+later wrap deletes that folder. Describe the folders by session and size, never
 by path. Flag any session whose files hold secrets or personal data. List
 other `/tmp` files that look related; never delete them.
 
@@ -230,9 +234,10 @@ any that are empty:
    This holds however the action came up, including a user's override.
    An ended session's scratchpad isn't one of these: it is temporary by
    design, so deleting it goes in "I'll do". Nor are the volumes of a
-   Compose project tied to a worktree by its compose file or `.env`: they
-   hold that worktree's dev data, so removing them goes in "I'll do" with
-   the line naming them. Copy-back conflicts (Step 7) are asks here, since
+   Compose project tied to a worktree by its compose file, its `.env`, or
+   a recorded config path under a removed worktree: they certainly belong
+   to that worktree, so removing them goes in "I'll do" with the line
+   naming them. Copy-back conflicts (Step 7) are asks here, since
    overwriting either copy loses the other.
 
 Decide each thread yourself. When the right action is unclear, pick one
@@ -259,10 +264,13 @@ _Exact steps, because a mistake here deletes work._
 
 Run these checks, lookups, and copy-back comparisons while collecting
 threads in Step 5, since Step 6's list needs their results. Run removals
-and copy-back writes in Step 6, after approval.
+and the copy-back for a worktree being removed in Step 6, after approval.
+Three writes run elsewhere: Step 1's copy-back, the final copy to a kept
+worktree (below), and removing this session's own worktree (last
+section).
 
 With no GitHub remote, there are no merged PRs to look up: only the
-`origin/main` ancestor test below applies.
+ancestor test below applies, against the branch Step 4 names.
 
 **Merged branch.** `/pr` squash-merges and deletes the remote branch, so
 a merged branch is never in main's history and `git branch -d` refuses
@@ -297,8 +305,8 @@ worktree has the branch checked out, first switch that worktree to
   `/wrap all` counts them in one line.
 
 **Worktree.** Worktrees usually span sessions. Recommend removing one
-only when its plan's status (after Step 3) is `done`, `abandoned`, or
-`superseded`, or, when no plan uses it, when its branch is merged or its
+only when its plan's status is `done`, `abandoned`, or `superseded`
+after Step 3, or will be after an "I'll do" action in the same list, or, when no plan uses it, when its branch is merged or its
 tip is in `origin/main`. A kept worktree keeps its Compose project too,
 since the next PR uses its data. When the user picks removing a kept
 one, run the same steps. Before removing:
@@ -315,8 +323,8 @@ one, run the same steps. Before removing:
      files on its own). Dependency and build output (`node_modules/`,
      `.venv/`, `dist/`) needs no ask.
    - `.plans/` and `.reviews/`: run the copy-back rule below.
-3. Docker: when the worktree has a compose file, read
-   `COMPOSE_PROJECT_NAME` from its `.env`. For that project and its
+3. Docker: when the worktree has a compose file, read the project name
+   `<name>` (`COMPOSE_PROJECT_NAME`) from its `.env`. For that project and its
    `<name>-e2e` project (the script removes both), list the volumes and
    images with
    `docker volume ls --filter label=com.docker.compose.project=<name>`
@@ -380,8 +388,8 @@ volumes remain. Find those by the project label on volumes
 keeping names with no container
 (`docker ps -a -q --filter label=com.docker.compose.project=<name>` is
 empty) that start with this repo's name or with the main tree's
-`COMPOSE_PROJECT_NAME`. A volume records no path, so the name match can
-be wrong and the volume may belong to another project: put each in
+`COMPOSE_PROJECT_NAME`. A volume records no path, so it may belong to
+another project whose name matches: put each in
 "Asking separately" with its volumes, and remove it with the same
 command on a yes.
 

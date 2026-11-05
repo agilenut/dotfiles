@@ -153,9 +153,10 @@ check says otherwise.
   `git status --porcelain` lists, against the Privacy list below.
   Gitleaks catches secrets only; names, client names, emails, and
   hostnames need a read. A pushed branch is already public, so a hit is
-  not an ordinary open thread. Put it right after the readiness verdict,
-  and list its fix first in its block:
-  - unpushed commit: the first "I'll do" action
+  not an ordinary open thread. Put it first in `/wrap`'s action list,
+  and make its fix the first item in its block:
+  - uncommitted change, untracked file, or unpushed commit: the first
+    "I'll do" action
   - pushed commit: the first "Asking separately" question, so the user
     can decide on a history rewrite
 
