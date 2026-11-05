@@ -133,13 +133,21 @@ only slows the wrap._
 
 _Every planned PR needs an issue, or the board doesn't show the work._
 
+A number from a branch name counts only once the tracker shows that issue
+exists and covers this work; an unchecked number may name an unrelated
+issue or none. When the repo has no GitHub remote, there is no tracker to
+check: skip this step and say so in "Done without asking". Any other `gh`
+failure is an error to report, not a missing tracker.
+
 - Each unmerged planned PR in the confirmed plans has an open issue on the
   board. The plan names the issue (PR table and `stories:`), and the issue
   names the plan file in its body or a comment. A gap becomes an open
   thread whose fix is to file the issue or add the reference.
 - Every other active plan in the repo (`status: active`, or no `status:`)
   gets the same check. Also check that each of its Open items is filed,
-  joined to a planned PR, or dropped. An active plan that passes Step 3's
+  joined to a planned PR, or dropped. An item that a planned PR's work
+  will settle, such as a decision inside its next commit, already counts
+  as joined and needs no edit. An active plan that passes Step 3's
   finished test is an open thread whose fix is to set it `done`. Skip
   plans with any other status; a `parked` plan gets one unnumbered line in
   "Leaving alone" with the reason from its `## Parked` section.
@@ -158,22 +166,22 @@ Check each source below; verify what you find (run the command, read the
 file) instead of assuming. The usual action is a starting point; decide
 from the context, such as whether the plan continues or is done.
 
-| Source                                                     | Usual action                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Plan Open items not yet filed, joined, or dropped          | join a planned PR, file an issue, or drop                                                                                                                                                                                                                                                |
-| Integrity gaps (Step 4)                                    | file the issue or add the reference                                                                                                                                                                                                                                                      |
-| Work for another repo or a separate session                | a handoff (below)                                                                                                                                                                                                                                                                        |
-| Handoff plans from earlier sessions                        | delete each one a later session picked up; otherwise it stays an open thread                                                                                                                                                                                                             |
-| Uncommitted changes                                        | review then commit, or stash (`git stash push -u -m <tag>`; the stash stack is shared)                                                                                                                                                                                                   |
-| Unpushed commits                                           | push, or name why not                                                                                                                                                                                                                                                                    |
-| Branches and worktrees                                     | Step 7's rules                                                                                                                                                                                                                                                                           |
-| Compose projects left from this repo's removed worktrees   | Step 7's Docker rule                                                                                                                                                                                                                                                                     |
-| Learnings not yet saved (corrections, stated preferences)  | memory, a rule change, or nothing                                                                                                                                                                                                                                                        |
-| Related sessions' scratchpads, and `/tmp` files they wrote | delete each ended session's folder (`/private/tmp/claude-*/*/<session-id>/`); delete this session's own last. Describe them by session and size, never by path. Flag any session whose files hold secrets or personal data. List other `/tmp` files that look related; never delete them |
-| Actions waiting on the user (drafts, UI settings, tests)   | Step 8's output; they can't be done here                                                                                                                                                                                                                                                 |
-| Sibling repos needing the same change                      | a handoff, only when a related session raised it                                                                                                                                                                                                                                         |
-| Done work that isn't Live yet                              | Step 8's output (global Definition of Done)                                                                                                                                                                                                                                              |
-| The repo's CLAUDE.md `## Before a wrap` section            | run each check it lists now; each failure is an open thread                                                                                                                                                                                                                              |
+| Source                                                     | Usual action                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan Open items not yet filed, joined, or dropped          | join a planned PR, file an issue, or drop                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Integrity gaps (Step 4)                                    | file the issue or add the reference                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Work for another repo or a separate session                | a handoff (below)                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Handoff plans from earlier sessions                        | delete each one a later session picked up; otherwise it stays an open thread                                                                                                                                                                                                                                                                                                                                                                                     |
+| Uncommitted changes                                        | review then commit, or stash (`git stash push -u -m <tag>`; the stash stack is shared)                                                                                                                                                                                                                                                                                                                                                                           |
+| Unpushed commits                                           | push, or name why not                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Branches and worktrees                                     | Step 7's rules                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Compose projects left from this repo's removed worktrees   | Step 7's Docker rule                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Learnings not yet saved (corrections, stated preferences)  | memory, a rule change, or nothing                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Related sessions' scratchpads, and `/tmp` files they wrote | delete each ended session's folder (`/private/tmp/claude-*/*/<session-id>/`). For this session, delete only its `scratchpad/` folder, just before Step 8's output; the harness recreates the rest of the session folder while the session runs, and a later wrap deletes that folder. Describe them by session and size, never by path. Flag any session whose files hold secrets or personal data. List other `/tmp` files that look related; never delete them |
+| Actions waiting on the user (drafts, UI settings, tests)   | Step 8's output; they can't be done here                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Sibling repos needing the same change                      | a handoff, only when a related session raised it                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Done work that isn't Live yet                              | Step 8's output (global Definition of Done)                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| The repo's CLAUDE.md `## Before a wrap` section            | run each check it lists now; each failure is an open thread                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 **Handoffs.** Same work, next session: the plan is the handoff; make sure
 its Open items / Next section names the step. Other work (another repo, or work no related
@@ -200,7 +208,11 @@ any that are empty:
    and its Docker project kept for the plan's next PR. Number a line on
    from "I'll do" when there is an action the user could pick instead,
    and name it ("Keep worktree `X` for the plan's next PR; pick to
-   remove"). Nothing here runs unless the user picks it.
+   remove"); without a number, the user has no short reply that picks it.
+   A worktree kept for its plan always has such an action (removing it),
+   so its line is always numbered, unless a session that may still be
+   running uses it. Picking a removal that would lose work still leads to
+   its own y/n. Nothing here runs unless the user picks it.
 4. **Asking separately:** every action that destroys or rewrites
    something with no other copy, such as removing a worktree with
    uncommitted changes, unpushed commits, or files that can't be rebuilt;
@@ -212,7 +224,9 @@ any that are empty:
    design, so deleting it goes in "I'll do".
 
 Decide each thread yourself. When the right action is unclear, pick one
-anyway and give the reason, since the user can override it. Every thread
+anyway and give the reason, since the user can override it. List only
+actions that change something; rewording what a plan already records is
+not a thread, and each extra item costs the user a read. Every thread
 goes in exactly one block, or in Step 8's output when Step 5 sends it
 there. Anything that changes something, such as "keep as reference",
 goes in "I'll do".
@@ -282,10 +296,14 @@ project too, since the next PR uses its data. Before removing:
      `.venv/`, `dist/`) needs no ask.
    - `.plans/` and `.reviews/`: run the copy-back rule below.
 3. Docker: when the worktree has a compose file, read
-   `COMPOSE_PROJECT_NAME` from its `.env` and list the volumes of that
-   project and its `<name>-e2e` project, which the script also removes
-   (`docker volume ls --filter label=com.docker.compose.project=<name>`),
-   so the action's line names what removal deletes.
+   `COMPOSE_PROJECT_NAME` from its `.env` and list the volumes and images
+   of that project and its `<name>-e2e` project, which the script also
+   removes
+   (`docker volume ls --filter label=com.docker.compose.project=<name>`,
+   `docker image ls --filter label=com.docker.compose.project=<name>`),
+   so the action's line names what removal deletes. Name only what these
+   lookups return, minus any image a service names with `image:`, which
+   removal keeps.
 4. Remove with `~/.claude/hooks/cleanup-worktree.sh <worktree>`, adding
    `--force` only after its y/n. The script removes the worktree, then its
    Compose projects (containers, volumes, networks, built images), and
@@ -298,7 +316,10 @@ skips the check, so changes are lost without a listing.
 **Copy-back of `.plans/` and `.reviews/`.** Another session may have
 edited the main tree's copy while this worktree existed, and a two-file
 diff can't show which side changed a line. For each file in the
-worktree's folders:
+worktree's folders, first compare the two copies as they are now
+(`diff`). Transcripts can explain a difference the diff shows, but they
+record past states, so never report a conflict the current files don't
+show.
 
 - Missing from the main tree: copy it.
 - Identical: nothing to do.
@@ -317,12 +338,17 @@ worktree's folders:
   places, and a related session wrote the worktree's; otherwise show the
   diff and ask which to keep.
 
+When the worktree stays (Step 1's isolated worktree, or a removal that
+didn't happen), copy the main tree's final versions of these files to the
+worktree after the wrap's last edit to them, Step 6 actions included.
+Otherwise the worktree's copy falls behind, and the next wrap raises a
+difference that no session made.
+
 **Docker leftovers.** `docker compose ls --all --format json` lists every
 project on the machine. Consider only projects whose config path is under
 this repo's worktree paths (`<parent>/<repo>--*`) and no longer exists.
-List each with its volumes
-(`docker volume ls --filter label=com.docker.compose.project=<name>`) and
-remove it, running from `/` so no local compose file is loaded:
+List each with its volumes and images (the two lookups above, minus
+`image:`-named images) and remove it, running from `/` so no local compose file is loaded:
 
 ```bash
 (cd / && docker compose -p <name> down -v --rmi local --remove-orphans)
