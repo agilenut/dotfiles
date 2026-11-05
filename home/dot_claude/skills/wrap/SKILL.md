@@ -354,6 +354,17 @@ List each with its volumes and images (the two lookups above, minus
 (cd / && docker compose -p <name> down -v --rmi local --remove-orphans)
 ```
 
+`docker compose ls` misses a project whose containers are gone but whose
+volumes remain. Find those by the project label on volumes
+(`docker volume ls --format '{{.Label "com.docker.compose.project"}}'`),
+keeping names with no container
+(`docker ps -a -q --filter label=com.docker.compose.project=<name>` is
+empty) that start with this repo's name or with the main tree's
+`COMPOSE_PROJECT_NAME`. A volume records no path, so the name match can
+be wrong, and the volume may hold data with no other copy: put each in
+"Asking separately" with its volumes, and remove it with the same
+command on a yes.
+
 **This session's own worktree.** When this session started inside the
 worktree, `ExitWorktree` can't leave it. Run the same checks and asks, then
 remove it as the very last action, after Step 8's output:

@@ -329,6 +329,16 @@ test_worktree_teardown() {
 echo "$* [cwd=$PWD]" >>"$FAKE_DOCKER_LOG"
 case "$1" in
   info) [ "${FAKE_DOCKER_DAEMON:-up}" = up ] || exit 1 ;;
+  volume | image)
+    # FAKE_DOCKER_LEFTOVERS_FOR limits the reply to one project's label.
+    filter="${*: -1}"
+    if [ -z "${FAKE_DOCKER_LEFTOVERS_FOR:-}" ] \
+      || [ "$filter" = "label=com.docker.compose.project=$FAKE_DOCKER_LEFTOVERS_FOR" ]; then
+      [ "$1" = volume ] && echo "${FAKE_DOCKER_VOLUMES:-}"
+      [ "$1" = image ] && echo "${FAKE_DOCKER_IMAGES:-}"
+    fi
+    exit "${FAKE_DOCKER_LS_RC:-0}"
+    ;;
   compose)
     case " $* " in
       *" ps "*)
@@ -419,16 +429,71 @@ FAKE
     fail "missing path (rc=$rc stderr='$out')"
   fi
 
-  # ---- No containers: no down call ----
+  # ---- Nothing left of the project: no down call ----
   # Arrange
   make_wt empty
   # Act
   FAKE_DOCKER_PS="" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log"; then
-    pass "cleanup-worktree.sh skips docker down when the project has no containers"
+    pass "cleanup-worktree.sh skips docker down when the project has nothing left"
   else
-    fail "no-container teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+    fail "empty project teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- Volumes or images left without containers: still torn down ----
+  # Arrange
+  make_wt orphan
+  # Act
+  FAKE_DOCKER_PS="" FAKE_DOCKER_VOLUMES=wt-orphan_data run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
+    && grep -q -- "volume ls -q --filter label=com.docker.compose.project=wt-orphan " "$log" \
+    && grep -q -- "compose -p wt-orphan down -v --rmi local --remove-orphans" "$log"; then
+    pass "cleanup-worktree.sh tears down a project that has only leftover volumes"
+  else
+    fail "volume-only teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # Arrange
+  make_wt orphimg
+  # Act
+  FAKE_DOCKER_PS="" FAKE_DOCKER_IMAGES=sha256abc run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
+    && grep -q -- "image ls -q --filter label=com.docker.compose.project=wt-orphimg " "$log" \
+    && grep -q -- "compose -p wt-orphimg down -v --rmi local --remove-orphans" "$log"; then
+    pass "cleanup-worktree.sh tears down a project that has only leftover images"
+  else
+    fail "image-only teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- Leftovers only in the -e2e project: only it is torn down ----
+  # Arrange
+  make_wt e2eonly
+  # Act
+  FAKE_DOCKER_PS="" FAKE_DOCKER_VOLUMES=wt-e2eonly-e2e_data \
+    FAKE_DOCKER_LEFTOVERS_FOR=wt-e2eonly-e2e run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
+    && grep -q -- "compose -p wt-e2eonly-e2e down -v --rmi local --remove-orphans" "$log" \
+    && ! grep -q -- "compose -p wt-e2eonly down " "$log"; then
+    pass "cleanup-worktree.sh tears down only the -e2e project when only it has leftovers"
+  else
+    fail "e2e-only teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- Leftover lookup fails: warn, no down, still remove ----
+  # Arrange
+  make_wt lsfail
+  # Act
+  FAKE_DOCKER_PS="" FAKE_DOCKER_LS_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log" \
+    && [[ "$out" == *"lookup failed; Compose project wt-lsfail was not removed"* ]]; then
+    pass "cleanup-worktree.sh warns, naming the project, when the leftover lookup fails"
+  else
+    fail "leftover lookup failure (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
 
   # ---- Untracked file without --force: nothing touched ----

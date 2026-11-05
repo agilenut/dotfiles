@@ -108,8 +108,9 @@ compose_by_name() {
 }
 
 # Remove a Compose project and its "-e2e" variant: containers running or
-# stopped, volumes, networks, and images built without an `image:` tag.
-# Needs only the project name, so it can run after the worktree is gone.
+# stopped, volumes, networks, and images built without an `image:` tag,
+# also when only volumes or images are left. Needs only the project name,
+# so it can run after the worktree is gone.
 # Docker not installed or not running only warns; returns non-zero when
 # `docker compose down` fails.
 # Args: $1 = project name, $2 = "verbose" (optional)
@@ -126,14 +127,25 @@ teardown_compose_projects() {
     return 0
   fi
 
-  local suffix p containers
+  local suffix p label containers volumes images
   for suffix in "" "-e2e"; do
     p="${project}${suffix}"
     if ! containers=$(compose_by_name -p "$p" ps -a -q 2>/dev/null); then
       echo "WARNING: docker compose ps failed; Compose project $p was not removed" >&2
       continue
     fi
-    [ -n "$containers" ] || continue
+    # Volumes and images can outlive the containers (an earlier `down`
+    # without -v or --rmi), and `down -v --rmi local` removes them by
+    # project label even with no containers left.
+    if [ -z "$containers" ]; then
+      label="label=com.docker.compose.project=$p"
+      if ! volumes=$(docker volume ls -q --filter "$label" 2>/dev/null) \
+        || ! images=$(docker image ls -q --filter "$label" 2>/dev/null); then
+        echo "WARNING: docker volume or image lookup failed; Compose project $p was not removed" >&2
+        continue
+      fi
+      [ -n "$volumes$images" ] || continue
+    fi
     [ -n "$verbose" ] && echo "Removing Compose project $p..."
     if ! compose_by_name -p "$p" down -v --rmi local --remove-orphans >&2; then
       echo "ERROR: docker compose down failed for project $p; retry from /: docker compose -p $p down -v --rmi local --remove-orphans" >&2
