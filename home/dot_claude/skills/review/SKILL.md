@@ -81,9 +81,12 @@ _Read everything the orchestrator AND reviewers need before spawning._
 
 - `~/.claude/CLAUDE.md` and project `.claude/CLAUDE.md`
 - **Intent context**, in precedence order:
-  1. Plan file matching branch slug, or most recently modified plan
-     touching diff files (resolve plans dir per CLAUDE.md "Plans Directory
-     Resolution").
+  1. Plan file matching branch slug, or else the most recently modified
+     active plan (`status:` is `active` or missing) that touches diff
+     files (resolve plans dir per CLAUDE.md "Plans Directory Resolution").
+     Closing a plan updates its modified time, so without the status
+     filter a just-closed plan is picked. A slug match is used whatever
+     its status; say its status when it isn't active.
   2. PR body in PR mode: `gh pr view <N> --json body --jq .body`
   3. Commit message bodies: `git log main..HEAD --format=%B`
   4. None found → note in Step 14's final summary:
