@@ -112,13 +112,10 @@ only slows the wrap._
   plan points to its replacement in its `## Superseded` section; add that
   plan to the confirmed ones if Step 2 missed it.
 
-  A status change first adds a dated section below the title, named after
-  the status: `## Done` says where any remaining work lives, `## Parked`
-  what the plan waits on and how to restart it, `## Abandoned` why the
-  work stopped and where anything worth keeping went. Then set `status:`
-  to the bare value with the reason as a YAML comment
-  (`status: done # all PRs merged`). Status goes last, so a run that
-  stops partway leaves the plan active and the next wrap finishes it.
+  A status change follows the plan skill's Step 8: the dated section it
+  describes, and the reason as a comment on `status:`. Add the section
+  first and change `status:` last, so a run that stops partway leaves the
+  plan active and the next wrap finishes it.
 
 - **Board.** Move cards for the issues the related sessions worked, within
   the global `### Board` rules and the `board` skill's steps. Run the
