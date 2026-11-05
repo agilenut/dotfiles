@@ -150,9 +150,10 @@ check says otherwise.
   (`git diff HEAD`) in each worktree, against the Privacy list below.
   Gitleaks catches secrets only; names, client names, emails, and
   hostnames need a read. A pushed branch is already public, so a hit is
-  not an ordinary open thread: put it at the top of the output and make
-  its fix the first item in the pick. For a pushed commit, tell the user
-  before anything else so they can decide on a history rewrite.
+  not an ordinary open thread: put it at the top of the output, and make
+  its fix the first item the user sees: the first "I'll do" action for
+  an unpushed commit, or for a pushed one the first "Asking separately"
+  question, so the user can decide on a history rewrite.
 
 ## Common Tasks
 
