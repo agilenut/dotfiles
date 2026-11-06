@@ -454,7 +454,10 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
      ask first
 
   A standing override is debt; don't add one just because a sibling
-  override exists.
+  override exists. Dependabot security updates add these pins too
+  (NuGet: a direct `PackageReference` or central `PackageVersion` for a
+  package the code doesn't use). Treat them as rung 3: remove them once
+  a parent's range includes the patch.
 
 ## Prompts
 
