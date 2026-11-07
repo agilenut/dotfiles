@@ -141,6 +141,71 @@ it was sequenced. A dated one-line snapshot is fine when the history needs it;
 a status table or a restated rule is not, because nothing keeps it in step with
 its source.
 
+## Open threads
+
+_What is still owed lives as Basic Memory observation lines in the note it
+belongs to, listed by a query. No hand-kept list: it is a second copy that
+drifts._
+
+An open thread is a next action that the user (the person this knowledge base
+belongs to) or someone else owes, and that this knowledge base needs to
+remember. Put it in the note that holds its context. If none does, use the
+closest topic note; create a new note only when no topic note is close.
+
+- `- [todo] <action>` - the user's move, not the agent's.
+- `- [waiting] <action> - <person>` - someone else's move. Name the person as
+  a `[[Person]]` relation when their note is in this project, and in plain
+  text when it isn't, so the line doesn't leave an unresolved relation.
+
+An issue reference, when there is one, goes last after a comma:
+`- [waiting] Send the signed SOW - [[Pat Lee]], acme-co/portal#12`
+
+No date on the line; git records when it was added.
+
+When an issue, or a card on the project's board, already tracks the work, that
+is the source of truth. Write a line only when the next step is something it
+doesn't hold, such as a reply from someone else, and give only that step plus
+the issue reference. When the next step is just doing the tracked work, write
+no line. The same goes for work a branch or plan already holds.
+
+Basic Memory parses these lines, so their shape decides whether a query finds
+them:
+
+- A line with an inline `[text](url)` link is not indexed. Use a bare URL,
+  `<url>`, a reference-style `[text][ref]` link, or `[[Note]]`.
+- Any `#` after a space starts a tag, which adds a tag outside the controlled
+  list. Reference an issue as `<owner>/<repo>#N`.
+- `- [ ]` checkboxes are not observations; don't use them for threads.
+
+Write and change these lines with `bm_write` / `bm_edit`, then check with
+`bm_context` that each one is listed among the note's observations. A line
+that isn't indexed drops out of every query without an error. If one is
+missing, rewrite it to avoid the shapes above; if it still isn't listed, stop
+and tell the user which note and line, rather than changing what it says.
+
+List them for this project, or for every project. Results come in pages, so
+follow the continuation until none is left; the first page looks like the
+whole list.
+
+```text
+bm_search(project="<project>", items=["observation"], categories=["todo", "waiting"], page_size=100)
+bm_search(all_projects=True, items=["observation"], categories=["todo", "waiting"], page_size=100)
+```
+
+When the user asks what's waiting on them (what they owe), answer with the
+`[todo]` lines (`categories=["todo"]`), not `[waiting]`. Search every project
+unless the user names one, and add each project's board when its `AGENTS.md`
+names one.
+
+Close a thread by replacing its line with the outcome as an ordinary
+observation in the category that fits it (`[decision]`, `[fact]`), or delete
+the line when nothing is worth keeping. A closed line never keeps `[todo]` or
+`[waiting]`, and there is no `[closed]` category: closed lines would pile up
+into the status list that "What to store" rules out.
+
+When `/wrap` finds an open thread for a knowledge base that passes the
+tracked-work rule above, it writes it there as one of these lines.
+
 ## Write for the question, not the answer
 
 _Notes are reached by search, not loaded. Lead with the question and both

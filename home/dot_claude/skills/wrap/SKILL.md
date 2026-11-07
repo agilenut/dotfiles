@@ -11,9 +11,9 @@ _Close a session so no work is lost and nothing is left undone._
 
 The user runs `/wrap` when they want to end a session and start the next
 one fresh. After it, everything that lived only in the related sessions is
-written somewhere durable (plans, the board, issues). Finished branches,
-worktrees, and Compose projects are gone, and the next session has a
-ready-to-paste first line. It fails the user in two ways: work stays stuck
+written somewhere durable (plans, the board, issues, a knowledge base).
+Finished branches, worktrees, and Compose projects are gone, and the next
+session has a ready-to-paste first line. It fails the user in two ways: work stays stuck
 in a plan or a chat and is forgotten, or cleanup destroys work the user
 still needed. When a case isn't covered below, choose the action that
 avoids both.
@@ -120,10 +120,13 @@ only slows the wrap._
   the global `### Board` rules and the `board` skill's steps. Run the
   last-column check only through the board skill.
 - **Knowledge base.** When the repo's memory or CLAUDE.md names a
-  knowledge base for this work, add what the related sessions learned
-  (decisions, findings, open threads) following that knowledge base's own
-  conventions. Write the notes only; committing them is an action for
-  Step 6. When none is named, skip this without comment.
+  knowledge base for this work (if none, skip this without comment), add
+  the decisions and findings the related sessions learned. A session
+  started in a code repo doesn't load `~/.claude/knowledge-conventions.md`,
+  so read it first and follow it with that knowledge base's own `AGENTS.md`.
+  Open threads wait for Step 5, since Step 6 may send one to an issue or a
+  handoff instead. Write the notes only; committing them is an action for
+  Step 6 (Knowledge base lines, in Step 5, says when it runs).
 
 ## Step 4: Integrity checks
 
@@ -178,6 +181,7 @@ from the context, such as whether the plan continues or is done.
 | Branches and worktrees                                     | Step 7's rules                                                                                                                       |
 | Compose projects left from this repo's removed worktrees   | Step 7's Docker leftovers rule                                                                                                       |
 | Learnings not yet saved (corrections, stated preferences)  | memory, a rule change, or nothing                                                                                                    |
+| Next actions a named knowledge base needs to remember      | a `[todo]` / `[waiting]` line there (Knowledge base lines, below)                                                                    |
 | Related sessions' scratchpads, and `/tmp` files they wrote | Scratchpads, below                                                                                                                   |
 | Actions waiting on the user (drafts, UI settings, tests)   | Step 8's output; they can't be done here                                                                                             |
 | Sibling repos needing the same change                      | a handoff, only when a related session raised it                                                                                     |
@@ -190,6 +194,15 @@ or work no related session planned): an issue in the target repo, with no
 private details if that repo is public, plus a handoff plan (a draft plan
 with the full context) in the target repo's gitignored plans folder,
 named in the issue.
+
+**Knowledge base lines.** Write one only for a thread that nothing else
+tracks once Step 6 runs, per the tracked-work rule in the "Open threads"
+section of `~/.claude/knowledge-conventions.md`: not one sent to an issue,
+a handoff, a planned PR, or Step 8's output. Follow that section's line
+shape and its `bm_context` check, since a line in the wrong shape drops
+out of the open-threads query. Each line is an "I'll do" action. List one
+commit of the knowledge base after them, covering Step 3's notes too, and
+run it after the lines are written.
 
 **Scratchpads.** Delete each ended related session's folder
 (`/private/tmp/claude-*/*/<session-id>/`; a session's ID is its
