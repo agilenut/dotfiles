@@ -843,6 +843,21 @@ _TDD, AAA, build/test before reporting completion._
   getters) get unit tests.
 - **Mocks**: layer-dependent — heavy at unit, real deps at integration,
   nothing mocked at E2E.
+- **Tests of a nondeterministic component** (LLM evals, tests against a
+  live third-party service) follow the rules below. When the variation
+  comes from timing (a race, a missing wait) rather than from what the
+  component returns, fix the timing instead.
+  - Give each case one purpose, and assert enough that the case fails
+    whenever the component gets that purpose wrong.
+  - Add another assertion to a case only where a reasonable reviewer
+    wouldn't dispute its expected result and it has passed on repeated
+    runs. Give any other assertion its own case: a non-gating mark
+    applies to the whole case, so marking a case non-gating for one
+    flaky assertion stops its other assertions from gating too.
+  - Assert what the component decided, not what deterministic code
+    derives from its output. Otherwise the test passes or fails because
+    of that code, whatever the component did. That code gets its own
+    unit tests.
 
 ## Documentation
 
@@ -860,6 +875,24 @@ Universal:
   names) deliberately. Include them when they're the content (setup
   commands, API reference) or genuinely help the reader; skip them when
   they're noise distracting from the core message.
+- Don't copy a detail the code owns into a doc by hand. Nothing fails
+  when the code changes and the doc doesn't, so the copy goes stale
+  unnoticed.
+  - Values (counts, costs, timeouts, settings): name the constant or the
+    report that prints it instead of writing the value.
+  - Lists that mirror code (the conditions a function checks, the cases
+    it handles, the files in a folder): summarize the kinds of items and
+    what they are for ("rejects an upload on its file type or its size"),
+    and name the function or folder that holds them. When you show only a
+    few items, say they are examples, so the next writer doesn't
+    complete the list.
+  - Keep a value or list only when the reader needs it in the doc to act
+    (a default they type, how long a run takes so they can tell a stuck
+    one) or the doc exists to list it (a config reference). Then make
+    drift visible: generate it from code, check it in a test, or, if
+    nothing can check it, mark it approximate and date it.
+  - A dated measurement that justifies a choice belongs in the decision
+    record, where it stays true as history.
 - Structure (bullets, headings, spacing) matters more than character
   count
 - Lists for discrete items; prose for flowing ideas
@@ -879,8 +912,14 @@ Project docs (READMEs, guides, design docs):
 - When adding a new way to do something, audit and remove or merge the
   obsolete ways. Replace, don't append.
 - Update docs in the same PR as the code change, never separately, when
-  the change makes an existing doc wrong or incomplete.
-  **Changing code is not itself a reason to write documentation.**
+  the change makes an existing doc wrong or leaves it missing something
+  its reader needs. **Changing code is not itself a reason to write
+  documentation.**
+  - A list of examples is not missing anything when a new item isn't in
+    it. That includes a list labeled "for example" or "such as", and a
+    short list in an overview that doesn't claim to be complete. Don't
+    add the new item: adding every new item turns the list into a full
+    one that goes stale. Do fix an example the change renames or removes.
 - EXCEPTION: docs that record decisions preserve the history of the
   decision, not just its current state. HOW a project does that is its
   own convention — check its docs and CLAUDE.md before assuming. Two

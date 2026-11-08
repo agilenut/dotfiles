@@ -21,6 +21,7 @@ Decide what to cut or move before fixing wording, because a cut makes wording fi
 1. **Necessity.** Does this content need to exist here at all? Cutting is often the best clarity fix. Common cases:
    - a comment that tells the history of a change, or argues for a choice (git and decision records hold those)
    - a comment that restates what the code does
+   - a doc section or table that copies a list the code owns, such as a table of the files in a folder or of the conditions a function checks; apply Documentation → Universal: "Don't copy a detail the code owns", which says when to keep the list and what to replace it with
    - detail too fine for the task (a runbook usually wants a few bullets)
    - a point made twice, including in another file the same reader loads, such as an agent or skill repeating the global CLAUDE.md
 2. **Placement.** Is this the right home for it? Across the repo, ask whether it belongs in the root README or a doc of its own, and whether a code comment would be better as a decision record or an issue comment. Within a document, ask whether it sits where the reader needs it.
