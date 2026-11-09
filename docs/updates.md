@@ -68,11 +68,21 @@ image. One on an older build of an image a project builds is left out, since
 that project's own build picks it up.
 
 `update-containers` shows the compose command for each listed project,
-asks, and runs them. It uses the project name and config files recorded on
-the container, because plain `docker compose up -d` in the folder can
-target a different project. A project started with an `--env-file`, or by a
-script that exports variables, loses them here, so recreate it the way it
-was started.
+asks, and runs them. It uses the project name, config files, and
+`--env-file` files recorded on the container. Plain
+`docker compose up -d` in the folder can target a different project, and
+passes none of those env files.
+Variables a script exported when it started the project aren't recorded, so
+they are lost here; have the script pass an env file instead, or recreate
+the project the way it was started.
+
+`update-containers` skips any container whose published ports would change
+and names the old and new ports, since the new ports may belong to another
+project and the replacement would then fail to start after the old container
+is removed. Lost variables are the usual cause. It also skips a project
+whose config or env file is gone, a container whose config compose can't
+read, and one whose service is no longer in its config. Each of these skips
+fails the run.
 
 Pinned tags and Dockerfile base images belong to each repo and aren't
 changed here.
