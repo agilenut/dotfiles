@@ -9,11 +9,15 @@
 # own compose project, using the project name, config files, folder, and
 # service that compose recorded on the container: plain
 # `docker compose up -d` in the folder can name a different project and
-# leave these untouched.
+# leave these untouched. Each `--env-file` the project was started with is
+# recorded too, and passed again.
 #
-# Compose reads the project's `.env` as usual, but not an `--env-file` or
-# variables a script exported when it started the project, so a project
-# started that way is better recreated by that script.
+# Variables a script exported when it started the project aren't recorded,
+# so a project started that way is better recreated by that script. A
+# container whose published ports would change is skipped: the new ports may
+# belong to another project, and the replacement would fail to start after
+# the old container is removed. Those unrecorded variables are the usual
+# cause.
 #
 # Usage:
 #   update-containers        show the commands, ask, then run them
@@ -26,52 +30,123 @@ source "$(dirname "${BASH_SOURCE[0]}")/update-status"
 
 # Read "<container><TAB><project>" lines on stdin and print one row per
 # compose project, sorted by project:
-#   <project><TAB><working dir><TAB><comma-separated config files><TAB><services>
-# A container missing any of those compose labels is reported on stderr and
-# left out. `read` collapses consecutive tabs, so an empty label shifts the
-# ones after it and leaves the last field empty.
+#   <project><TAB><working dir><TAB><config files><TAB><services><TAB><env files>
+# with the config and env files comma-separated. A container without a
+# compose service label is reported on stderr and left out. A container
+# the port check skips is reported too, and this writes a line to fd 3 for
+# it so the caller can count it as a failure. The labels are read separated
+# by \x1f rather than tabs, since `read` collapses consecutive tabs and an
+# empty label would shift the ones after it.
 update_containers_plan() {
-  local name row project dir files service
+  local name row project dir files service envs
   while IFS=$'\t' read -r name _; do
     [ -n "$name" ] || continue
     row=$(docker container inspect --format \
-      '{{index .Config.Labels "com.docker.compose.project"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.project.working_dir"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.project.config_files"}}{{"\t"}}{{index .Config.Labels "com.docker.compose.service"}}' \
+      '{{index .Config.Labels "com.docker.compose.project"}}{{"\x1f"}}{{index .Config.Labels "com.docker.compose.project.working_dir"}}{{"\x1f"}}{{index .Config.Labels "com.docker.compose.project.config_files"}}{{"\x1f"}}{{index .Config.Labels "com.docker.compose.service"}}{{"\x1f"}}{{index .Config.Labels "com.docker.compose.project.environment_file"}}' \
       "$name" 2>/dev/null) || continue
-    IFS=$'\t' read -r project dir files service <<<"$row"
+    IFS=$'\x1f' read -r project dir files service envs <<<"$row"
     if [ -z "$service" ]; then
       echo "skip    $name (not started by compose; recreate it by hand)" >&2
       continue
     fi
-    printf '%s\t%s\t%s\t%s\n' "$project" "$dir" "$files" "$service"
+    if ! update_containers_ports_kept "$name" "$project" "$dir" "$files" "$service" "$envs"; then
+      echo >&3
+      continue
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\n' "$project" "$dir" "$files" "$service" "$envs"
   done | sort -t $'\t' -k1,1 -k4,4 | update_containers_group
 }
 
-# Join sorted "<project><TAB><dir><TAB><files><TAB><service>" rows into one
-# row per project, its services space-separated.
+# Print the first of comma-separated files $1 that doesn't exist, and fail
+# when all exist.
+update_containers_missing() {
+  local file
+  local -a parts
+  [ -n "$1" ] || return 1
+  IFS=',' read -r -a parts <<<"$1"
+  for file in "${parts[@]}"; do
+    [ -f "$file" ] || {
+      printf '%s\n' "$file"
+      return 0
+    }
+  done
+  return 1
+}
+
+# Print the compose options that select a project: name $1, folder $2,
+# comma-separated config files $3 and env files $4, one argument per line.
+update_containers_project_args() {
+  local file
+  local -a parts
+  printf '%s\n' -p "$1" --project-directory "$2"
+  IFS=',' read -r -a parts <<<"$3"
+  for file in "${parts[@]}"; do
+    printf '%s\n' -f "$file"
+  done
+  [ -n "$4" ] || return 0
+  IFS=',' read -r -a parts <<<"$4"
+  for file in "${parts[@]}"; do
+    printf '%s\n' --env-file "$file"
+  done
+}
+
+# Succeed when recreating container $1 (service $5 of project $2, folder $3,
+# comma-separated config files $4 and env files $6) keeps the ports it
+# publishes. Report it on stderr and fail when the ports would change, when
+# compose can't read the config, or when the config no longer has the
+# service. Ports are compared as "<host ip>:<host port>:<port>/<protocol>".
+# When a config or env file is missing it succeeds, leaving
+# update_containers_main to report the file. The config is read with
+# `--profile '*'` so it includes a service behind a profile; `up` starts a
+# named service whatever its profile.
+update_containers_ports_kept() {
+  local name="$1" project="$2" dir="$3" files="$4" service="$5" envs="$6" arg config err want have
+  local -a args=()
+  if update_containers_missing "$files,$envs" >/dev/null; then return 0; fi
+  while IFS= read -r arg; do args+=("$arg"); done < <(update_containers_project_args "$project" "$dir" "$files" "$envs")
+  args+=(--profile '*' config --format json)
+  if ! config=$(docker compose "${args[@]}" </dev/null 2>/dev/null); then
+    err=$({ docker compose "${args[@]}" </dev/null 2>&1 >/dev/null || true; } | tail -1)
+    echo "skip    $name (compose can't read its config: ${err:-no error shown}; recreate it by hand)" >&2
+    return 1
+  fi
+  if ! jq -e --arg s "$service" '.services | has($s)' <<<"$config" >/dev/null; then
+    echo "skip    $name (service $service no longer in its config; recreate it by hand)" >&2
+    return 1
+  fi
+  want=$(jq -r --arg s "$service" '(.services[$s].ports // [])[]
+    | "\(.host_ip // ""):\(.published // ""):\(.target)/\(.protocol // "tcp")"' <<<"$config" | sort)
+  have=$({ docker container inspect --format '{{json .HostConfig.PortBindings}}' "$name" 2>/dev/null || true; } \
+    | jq -r '(. // {}) | to_entries[] | .key as $p | (.value // [])[] | "\(.HostIp):\(.HostPort):\($p)"' | sort)
+  [ "$want" != "$have" ] || return 0
+  want="${want//$'\n'/, }" have="${have//$'\n'/, }"
+  echo "skip    $name (ports would change from ${have:-none} to ${want:-none}; recreate it the way it was started)" >&2
+  return 1
+}
+
+# Join sorted "<project><TAB><dir><TAB><files><TAB><service><TAB><env files>"
+# rows into one row per project, its services space-separated.
 update_containers_group() {
-  local project dir files service last="" last_dir="" last_files="" services=""
-  while IFS=$'\t' read -r project dir files service; do
+  local project dir files service envs last="" last_dir="" last_files="" last_envs="" services=""
+  while IFS=$'\t' read -r project dir files service envs; do
     if [ "$project" != "$last" ] && [ -n "$last" ]; then
-      printf '%s\t%s\t%s\t%s\n' "$last" "$last_dir" "$last_files" "$services"
+      printf '%s\t%s\t%s\t%s\t%s\n' "$last" "$last_dir" "$last_files" "$services" "$last_envs"
       services=""
     fi
-    last="$project" last_dir="$dir" last_files="$files"
+    last="$project" last_dir="$dir" last_files="$files" last_envs="$envs"
     services="${services:+$services }$service"
   done
-  [ -z "$last" ] || printf '%s\t%s\t%s\t%s\n' "$last" "$last_dir" "$last_files" "$services"
+  [ -z "$last" ] || printf '%s\t%s\t%s\t%s\t%s\n' "$last" "$last_dir" "$last_files" "$services" "$last_envs"
 }
 
 # Print the compose command for one plan row's fields, one argument per
 # line. `--no-deps` leaves the listed services' dependencies running as they
 # are, and `--no-build` keeps compose from rebuilding anything.
 update_containers_command() {
-  local project="$1" dir="$2" files="$3" services="$4" file service
-  local -a parts svcs
-  printf '%s\n' docker compose -p "$project" --project-directory "$dir"
-  IFS=',' read -r -a parts <<<"$files"
-  for file in "${parts[@]}"; do
-    printf '%s\n' -f "$file"
-  done
+  local project="$1" dir="$2" files="$3" services="$4" envs="$5" service
+  local -a svcs
+  printf '%s\n' docker compose
+  update_containers_project_args "$project" "$dir" "$files" "$envs"
   printf '%s\n' up -d --no-deps --no-build
   read -r -a svcs <<<"$services"
   for service in "${svcs[@]}"; do
@@ -95,34 +170,36 @@ update_containers_main() {
     return 1
   fi
 
-  local plan
-  plan=$(update_status_stale_containers | update_containers_plan)
+  # Not local: the EXIT trap runs after this function returns.
+  local plan failed
+  skips=$(mktemp)
+  trap 'rm -f "$skips"' EXIT
+  plan=$(update_status_stale_containers | update_containers_plan 3>"$skips")
+  failed=$(($(wc -l <"$skips")))
   if [ -z "$plan" ]; then
+    [ "$failed" -eq 0 ] || return 1
     echo "No containers to recreate."
     return 0
   fi
 
-  local project dir files services file missing arg ready="" failed=0
-  local -a cmd parts
-  while IFS=$'\t' read -r project dir files services; do
-    missing=""
-    IFS=',' read -r -a parts <<<"$files"
-    for file in "${parts[@]}"; do
-      [ -f "$file" ] || {
-        missing="$file"
-        break
-      }
-    done
-    if [ -n "$missing" ]; then
+  local project dir files services envs missing arg ready=""
+  local -a cmd
+  while IFS=$'\t' read -r project dir files services envs; do
+    if missing=$(update_containers_missing "$files"); then
       echo "skip    $project (config file gone: $missing)" >&2
       failed=$((failed + 1))
       continue
     fi
+    if missing=$(update_containers_missing "$envs"); then
+      echo "skip    $project (env file gone: $missing)" >&2
+      failed=$((failed + 1))
+      continue
+    fi
     cmd=()
-    while IFS= read -r arg; do cmd+=("$arg"); done < <(update_containers_command "$project" "$dir" "$files" "$services")
+    while IFS= read -r arg; do cmd+=("$arg"); done < <(update_containers_command "$project" "$dir" "$files" "$services" "$envs")
     printf '%q ' "${cmd[@]}"
     echo
-    ready+="$project"$'\t'"$dir"$'\t'"$files"$'\t'"$services"$'\n'
+    ready+="$project"$'\t'"$dir"$'\t'"$files"$'\t'"$services"$'\t'"$envs"$'\n'
   done <<<"$plan"
   [ -n "$ready" ] || return 1
 
@@ -139,10 +216,10 @@ update_containers_main() {
     esac
   fi
 
-  while IFS=$'\t' read -r project dir files services; do
+  while IFS=$'\t' read -r project dir files services envs; do
     [ -n "$project" ] || continue
     cmd=()
-    while IFS= read -r arg; do cmd+=("$arg"); done < <(update_containers_command "$project" "$dir" "$files" "$services")
+    while IFS= read -r arg; do cmd+=("$arg"); done < <(update_containers_command "$project" "$dir" "$files" "$services" "$envs")
     if "${cmd[@]}" </dev/null; then
       echo "recreated  $project ($services)"
     else
