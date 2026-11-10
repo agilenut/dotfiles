@@ -851,13 +851,28 @@ _TDD, AAA, build/test before reporting completion._
     whenever the component gets that purpose wrong.
   - Add another assertion to a case only where a reasonable reviewer
     wouldn't dispute its expected result and it has passed on repeated
-    runs. Give any other assertion its own case: a non-gating mark
-    applies to the whole case, so marking a case non-gating for one
-    flaky assertion stops its other assertions from gating too.
+    runs. When you leave an assertion out, the reason decides where it
+    goes:
+    - It hasn't passed on repeated runs: give it its own case. A
+      non-gating mark applies to the whole case, so marking a case
+      non-gating for one flaky assertion stops its other assertions from
+      gating too.
+    - A reasonable reviewer could dispute its expected result: assert it
+      only in a case of its own whose input, or a rule the owner of the
+      behavior agreed to and that is recorded in the case, settles that
+      result. Neither a case of its own nor a rule you choose yourself
+      settles a dispute. If no input or agreed rule settles it, leave it
+      unasserted: an expected result a reasonable reviewer would reject
+      fails on correct output, so the failure says nothing about the
+      component.
   - Assert what the component decided, not what deterministic code
     derives from its output. Otherwise the test passes or fails because
     of that code, whatever the component did. That code gets its own
     unit tests.
+  - Test each assertion you leave out somewhere else, unless no input or
+    agreed rule can settle it: in another case, or in unit tests when
+    deterministic code decides it. An existing test that covers the
+    behavior is enough.
 
 ## Documentation
 
