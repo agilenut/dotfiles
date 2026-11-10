@@ -606,11 +606,13 @@ handled in Step 9; user-undecided ones land here at natural severity.
 ### Per-finding card format
 
 `<q>` is this question's number, counting foundational questions too.
+The count goes in the status line at the bottom of the card (global
+CLAUDE.md), where the user looks first, so the header doesn't repeat it.
 When the fix would also change tests or files other than the cited one,
 `My take` says so, so the user's answer covers them.
 
 ```text
-Question <q> of <K> - needs your call (item #<i>)
+Needs your call (item #<i>)
 
 [<Severity>] <path/to/file.ext>:<line> (<reviewer>)
 
@@ -627,6 +629,8 @@ My take: <FIX | SKIP> - <reasoning>
 [Why surfacing this: <one line>]   <-- ONLY when surfacing despite a SKIP take (foundational, pattern-wide, or escalated-from-hedging)
 
 (f)ix / (s)kip / (c)ontext
+
+<work> · review questions (<q> of <K>) · need: f/s/c
 ```
 
 ### Input parsing
@@ -858,7 +862,9 @@ output._
    ```
 
 4. Print the final summary as the LAST chat output (no further chat from
-   this skill after this). Per-item enriched format with counts and item
+   this skill after this, except the status line that the global
+   CLAUDE.md requires at the end of a reply that waits on the user).
+   Per-item enriched format with counts and item
    numbers so the user can reference items by number for follow-up (e.g.,
    "actually fix #4"):
 
