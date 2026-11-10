@@ -24,8 +24,9 @@ These don't bend, regardless of step:
   change, security implication) — not a rephrased tradeoff.
 - **Hesitation → escalate.** Uncertain which auto-bucket fits (either
   direction)? Surface it. Auto-buckets are for unambiguous cases.
-- **Code edits only in Step 10 / Step 12.** All other steps are
-  read-only with respect to the codebase. Triage / audit file writes
+- **Code edits only in Step 9 (an accepted foundational fix) / Step 10 /
+  Step 12 (including its fix pass resumed from an earlier run).** All
+  other steps are read-only with respect to the codebase. Triage / audit file writes
   (Step 8 init, Step 13 finalize) and the commit-message draft (Step 2)
   are part of the protocol.
 
@@ -339,7 +340,9 @@ number is a soft signal only.
   as auto-skip with
   `previously skipped by user: <reason>; reference: <prior-triage-path>`.
   Other prior statuses (`auto-skipped` / `fixed` / `pending`) → do NOT
-  carry; re-bucket fresh.
+  carry; re-bucket fresh. (`accepted (fix pending)` entries never reach
+  this check: Step 12's Abort / pause applies them before reviewers
+  re-run.)
 - **Preferences match** (rule in either `review-preferences.md`) that
   says to skip → auto-skip with `matches review-preference: "<rule>"`.
   Preferences that name another bucket apply under Bucket criteria.
@@ -496,17 +499,26 @@ _For findings that would reshape other findings, dialog with the user
 before auto-fix._
 
 Foundational items dialog BEFORE auto-fix — direction is in flux; don't
-commit until it's settled. For each (severity order), present the Step-12
-card with this addition:
+commit until it's settled. Print the Step 11 opening summary first. For
+each (severity order), present the Step-12 card with this addition:
 
 ```text
-Heads up — this is foundational. If you take it, items #X, #Y, #Z may
+Heads up - this is foundational. If you take it, items #X, #Y, #Z may
 not apply; I'll re-evaluate them after your decision.
 ```
 
-- **Accepted** → re-run verify-and-bucket on dependents; flip superseded
-  ones to auto-skip with reason `superseded by item #<N>`; update triage.
+- **Accepted** → apply the fix now (Edit, then the verifier and failure
+  rule from Step 10) and set `Status: fixed (user-confirmed)`, or
+  `fixed (user freeform)`. Step 12 holds its fixes until the last answer,
+  but this one can't wait: re-checking its dependents and running the
+  auto-fixes both need the changed code. Then re-run verify-and-bucket on
+  dependents; flip superseded ones to auto-skip with reason
+  `superseded by item #<N>`; update triage. If the fix ends up not
+  applied, its dependents stay in their original buckets.
 - **Skipped** → dependents stay in original buckets.
+
+If the answers changed the opening summary's counts, print one updated
+summary line before Step 10.
 
 No foundationals → skip to Step 10.
 
@@ -532,32 +544,60 @@ _Apply mechanical fixes; verify each via build / targeted test._
    `.spec.`, `.test.`, `Tests/`, `tests/`, or matches project conventions
    → test fix; else non-test.
 3. For each auto-fix:
+
    - Apply via `Edit` (writes unstaged).
    - Move finding into triage `## Auto-fixed` with `Status: fixed (auto)`.
    - Run the matching verifier.
-   - On failure: `git checkout -- <file>`, re-bucket as needs-review with
-     reason `auto-fix failed build/test: <summary>`, move entry to
-     Needs-review.
+   - On failure, finish the fix: the error usually shows what it missed
+     (a caller not renamed, an import). If the change can't pass as
+     written, make it work another way that keeps what was agreed, and
+     note what changed in the triage entry. Finishing is for completing
+     the agreed change. When the failure turns up a fact that could
+     change the user's decision (the fix reaches further than they
+     agreed, changes behavior they didn't approve, or conflicts with
+     other code), undo it and ask instead, with that fact on the card,
+     after the other questions. When no working version keeps what was
+     agreed, undo it without asking and set
+     `Status: not applied (fix failed: <reason>)`; the final summary
+     lists it. To undo, reverse the fix's own `Edit` (its new text back
+     to its old text), not `git checkout -- <file>`, which also discards
+     the other fixes in that file and any unstaged edits under review.
+
+   This failure rule applies to every fix in the run: auto-fixes,
+   foundational fixes (Step 9), and answered fixes (Step 12).
 
 Do not run the full test suite — Step 14 reminder cues that.
 
-## Step 11: Dialog Intro (only when needs-review items exist)
+## Step 11: Opening Summary (only when questions exist)
 
-_Brief intro before the per-finding dialog. Skipped when no items
-need review._
+_Tell the user what the review already did and how many questions are
+coming, before the first one._
 
-If `N` needs-review items > 0, print:
+`K` is the number of questions: foundational plus needs-review items.
+When `K` > 0, print this once, before the first question. If Step 9
+already printed it, don't print it again here.
 
 ```text
-Needs your review: <N> findings. Starting with #<first>.
+Fixed <a>, skipped <b>, <K> questions for you, out of <total> findings.
 ```
 
-If `N` = 0, skip directly to Step 13. The final summary at Step 14 is the
+`<a>` is the auto-fixes, `<b>` the auto-skips, and `<total>` is
+`<a> + <b> + <K>`; findings on commits already made aren't counted.
+Before Step 10 has run, the fixes haven't happened yet, so say
+`Will fix <a>` instead of `Fixed <a>`.
+
+If `K` = 0, skip directly to Step 13. The final summary at Step 14 is the
 user's only chat output for this run.
 
-## Step 12: Needs-Review Dialog (one at a time)
+## Step 12: Needs-Review Dialog (answers first, fixes after)
 
-_Walk findings with the user, one at a time, applying chosen fixes._
+_Ask every question in a row, then apply the chosen fixes in one pass._
+
+The user often switches to other sessions while one is busy, so each
+wait between questions sends them away and makes them find their place
+again. Answering a question moves straight to the next one; no fixes run
+between questions. Recording the answer in triage, and saving a
+preference the user chose, are fine.
 
 Order: critical → important → suggestions. Within each tier, pattern-wide
 candidates first (by codebase-echo count). Foundational items already
@@ -565,8 +605,12 @@ handled in Step 9; user-undecided ones land here at natural severity.
 
 ### Per-finding card format
 
+`<q>` is this question's number, counting foundational questions too.
+When the fix would also change tests or files other than the cited one,
+`My take` says so, so the user's answer covers them.
+
 ```text
-Review item <i> of <N> - needs your call
+Question <q> of <K> - needs your call (item #<i>)
 
 [<Severity>] <path/to/file.ext>:<line> (<reviewer>)
 
@@ -603,15 +647,30 @@ Cap ~40 lines. Priority order if space is tight:
 
 If user needs more, they ask freeform.
 
-### After resolution (Status updates)
+### After each answer (Status updates)
 
-- `f` against `FIX` recommendation → apply via Edit, run verifier per Step 10,
-  `Status: fixed (user-confirmed)`.
+Record the answer in triage as soon as it is given, so a stopped dialog
+loses nothing. A freeform answer that needs discussion is discussed
+first; record it once it settles.
+
+- `f` against `FIX` recommendation → `Status: accepted (fix pending)`.
 - `s` against `FIX` recommendation → `Status: skipped (user redirected: "<reason>")`.
-- `f` against `SKIP` recommendation → `Status: skipped (user redirected: "<reason>")`.
+- `f` against `SKIP` recommendation → `Status: accepted (fix pending)`,
+  with the user's reason if they gave one. Keep the reason when the
+  status later changes to `fixed`.
 - `s` against `SKIP` recommendation → `Status: skipped (user accepted SKIP)`.
-- Freeform fix → apply via Edit, `Status: fixed (user freeform)` with the
-  user's reasoning captured in the entry.
+- Freeform fix → `Status: accepted (fix pending)` with the user's fix and
+  reasoning captured in the entry.
+
+### After the last answer: apply the fixes
+
+In severity order, for each `accepted (fix pending)` entry:
+
+1. Re-read the target lines (an earlier fix in this pass may have moved
+   or changed them), then apply via Edit.
+2. Run the verifier per Step 10, with its failure rule.
+3. Pass → `Status: fixed (user-confirmed)`, or `fixed (user freeform)`
+   for a freeform fix.
 
 ### Opt-in preference capture (on user redirect)
 
@@ -658,17 +717,21 @@ file via Edit. `n` → skip.
 
 ### Abort / pause
 
-User types `stop` / `pause` / `quit` / interrupt → mark remaining items
+User types `stop` / `pause` / `quit` / interrupt → run the fix pass
+above on the answers given so far, leave unanswered items
 `Status: pending` in triage, print:
 
 ```text
-Paused at item #<i>/<N>. Resume with /review — re-invocation reads the
-latest triage and resumes from pending items.
+Paused at question <q> of <K>; <n> answered fixes applied. Resume with
+/review; re-invocation reads the latest triage and resumes from pending
+items.
 ```
 
 Exit cleanly. Re-invocation finds the triage via Step 2's prior-triage
-scan; if pending items exist, offer to resume the dialog before re-running
-reviewers.
+scan. First, run the fix pass above on any `accepted (fix pending)`
+entries (left by an interrupted fix pass), resolving verifiers per
+Step 10 item 1, without asking again. Then, if `Status: pending` items
+remain, offer to resume the dialog before re-running reviewers.
 
 ## Step 13: Finalize Triage File
 
@@ -679,7 +742,7 @@ Triage was created Step 8, updated Steps 9/10/12. Finalize:
 - Recompute Summary counts
 - Ensure Salvage / failure log section is present (empty if none)
 - Confirm every needs-review entry has a terminal `Status:` (no leftover
-  `pending` unless user aborted)
+  `pending` or `accepted (fix pending)` unless user aborted)
 
 Path: `.reviews/code/<YYYY-MM-DD>-<HHMMSS>-<branch>-triage.md` (same
 timestamp as Step 3).
@@ -703,7 +766,7 @@ Sections (in order):
 
 Auto-fixed: <N>
 Auto-skipped: <N>
-Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
+Needs-review: <N> (pending: 0, accepted: 0, fixed: <x>, skipped: <y>)
 Commit messages, not applied: <N>
 
 ## Auto-fixed
@@ -740,7 +803,7 @@ Commit messages, not applied: <N>
 - Recommendation: <FIX | SKIP>
 - Foundational: <true | false>
 - Pattern-wide: <true | false; if true, N occurrences>
-- Status: <fixed (user-confirmed) | fixed (user freeform) | skipped (user redirected: "...") | skipped (user accepted SKIP) | pending | superseded by item #<N>>
+- Status: <fixed (user-confirmed) | fixed (user freeform) | skipped (user redirected: "...") | skipped (user accepted SKIP) | accepted (fix pending) | not applied (fix failed: <reason>) | pending | superseded by item #<N>>
 
 (... more entries ...)
 
@@ -775,7 +838,8 @@ output._
 2. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
    note any failures for the summary.
 3. **Evaluate re-run trigger.** Reflect on fixes applied this run
-   (auto-fixes from Step 10 + user-confirmed / freeform fixes from
+   (foundational fixes from Step 9 + auto-fixes from Step 10 +
+   user-confirmed / freeform fixes from
    Step 12). Did any introduce new behavior, branches, error handling,
    or change an architectural approach?
 
@@ -804,6 +868,7 @@ output._
    Needs-review (<N>/<total>; fixed: <x>, skipped: <y>, pending: <z>):
      #<i> - <status>: <5-word user reason or descriptor>
      ...
+   Fixes not applied (<N>/<total>): #<i> (<why the fix failed>), ...
    Commit messages, not applied (<N>/<total>): #<i> (commit <hash>), ...
      Reworded messages are in the triage file; reword a commit only if
      you want to.

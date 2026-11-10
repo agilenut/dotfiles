@@ -51,7 +51,9 @@ These don't bend, regardless of step:
   in the plan's favor.
 - **Hesitation → escalate.** Uncertain which auto-bucket fits (either
   direction)? Surface it. Auto-buckets are for unambiguous cases.
-- **Edits only in Step 10 / Step 12.** All other steps are read-only.
+- **Edits only in Step 9 (an accepted foundational fix) / Step 10 /
+  Step 12 (including its fix pass resumed from an earlier run).** All
+  other steps are read-only.
 
 ## Step 1: Find the Plan
 
@@ -252,7 +254,9 @@ Match by `same plan section + same root issue (paraphrase equivalence)`.
   as auto-skip with
   `previously skipped by user: <reason>; reference: <prior-triage-path>`.
   Other prior statuses (`auto-skipped` / `fixed` / `pending`) → do NOT
-  carry; re-bucket fresh.
+  carry; re-bucket fresh. (`accepted (fix pending)` entries never reach
+  this check: Step 12's Abort / pause applies them before reviewers
+  re-run.)
 - **Preferences match** (`review-preferences.md`, user or project) →
   auto-skip with `matches review-preference: "<rule>"`.
 - **CLAUDE.md / plan Decisions match**: finding contradicts an explicit
@@ -397,17 +401,26 @@ _For findings that would reshape other findings, dialog with the user
 before auto-fix._
 
 Foundational items dialog BEFORE auto-fix — direction is in flux; don't
-commit until it's settled. For each (severity order), present the Step-12
-card with this addition:
+commit until it's settled. Print the Step 11 opening summary first. For
+each (severity order), present the Step-12 card with this addition:
 
 ```text
-Heads up — this is foundational. If you take it, items #X, #Y, #Z may
+Heads up - this is foundational. If you take it, items #X, #Y, #Z may
 not apply; I'll re-evaluate them after your decision.
 ```
 
-- **Accepted** → re-run verify-and-bucket on dependents; flip superseded
-  ones to auto-skip with reason `superseded by item #<N>`; update triage.
+- **Accepted** → apply the plan edit now (snapshot first if
+  `snapshot-copy` is still `null`, per Step 10) and set
+  `Status: fixed (user-confirmed)`, or `fixed (user freeform)`. Step 12
+  holds its fixes until the last answer, but this one can't wait:
+  re-checking its dependents and running the auto-fixes both need the
+  changed plan. Then re-run verify-and-bucket on dependents; flip
+  superseded ones to auto-skip with reason `superseded by item #<N>`;
+  update triage.
 - **Skipped** → dependents stay in original buckets.
+
+If the answers changed the opening summary's counts, print one updated
+summary line before Step 10.
 
 No foundationals → skip to Step 10.
 
@@ -416,9 +429,10 @@ No foundationals → skip to Step 10.
 _Apply mechanical plan edits via Edit; snapshot the plan first so changes
 can be inspected or reverted._
 
-1. Before the first fix, copy the plan to
+1. Before the run's first fix (foundational, auto, or answered), copy
+   the plan to
    `.reviews/plans/<timestamp>-<plan-name>[-pr<N>|-outline]-pre-fix.md` and set triage
-   frontmatter `snapshot-copy: <pre-fix-path>`. If no auto-fixes run,
+   frontmatter `snapshot-copy: <pre-fix-path>`. If no fixes run,
    `snapshot-copy` stays `null`. The snapshot copy is the only recovery
    primitive — plan files are gitignored, so `git checkout`/`git diff`
    don't apply.
@@ -430,24 +444,36 @@ can be inspected or reverted._
    fixes from this run; re-run `/review-plan` after).
 5. No build/test — markdown doesn't compile.
 
-## Step 11: Dialog Intro (only when needs-review items exist)
+## Step 11: Opening Summary (only when questions exist)
 
-_Brief intro before the per-finding dialog. Skipped when no items
-need review._
+_Tell the user what the review already did and how many questions are
+coming, before the first one._
 
-If `N` needs-review items > 0, print:
+`K` is the number of questions: foundational plus needs-review items.
+When `K` > 0, print this once, before the first question. If Step 9
+already printed it, don't print it again here.
 
 ```text
-Needs your review: <N> findings. Starting with #<first>.
+Fixed <a>, skipped <b>, <K> questions for you, out of <total> findings.
 ```
 
-If `N` = 0, skip directly to Step 13. The final summary at Step 14 is
+`<a>` is the auto-fixes, `<b>` the auto-skips, and `<total>` is
+`<a> + <b> + <K>`. Before Step 10 has run, the fixes haven't happened
+yet, so say `Will fix <a>` instead of `Fixed <a>`.
+
+If `K` = 0, skip directly to Step 13. The final summary at Step 14 is
 the user's only chat output for this run.
 
-## Step 12: Needs-Review Dialog (one at a time)
+## Step 12: Needs-Review Dialog (answers first, fixes after)
 
-_Walk findings with the user, one at a time, applying chosen fixes to
-the plan._
+_Ask every question in a row, then apply the chosen plan edits in one
+pass._
+
+The user often switches to other sessions while one is busy, so each
+wait between questions sends them away and makes them find their place
+again. Answering a question moves straight to the next one; no plan
+edits run between questions. Recording the answer in triage, and saving
+a preference the user chose, are fine.
 
 Order: critical → important → suggestions. Within each tier, pattern-wide
 candidates first (by codebase-echo count). Foundational items already
@@ -455,20 +481,22 @@ handled in Step 9; user-undecided ones land here at natural severity.
 
 ### Per-finding card format
 
+`<q>` is this question's number, counting foundational questions too.
+
 ```text
-Review item <i> of <N> — needs your call
+Question <q> of <K> - needs your call (item #<i>)
 
 [<Severity>] <plan-section-or-line-ref> (<reviewer>)
 
 Claim: <one short paragraph quoting / paraphrasing the reviewer>
 
-Verified: <yes | no> — <one-line plan-reality summary>
+Verified: <yes | no> - <one-line plan-reality summary>
 
 Risk if skipped: <one line, ONLY when not self-evident from Claim>
 
 [Pattern: same token in <N> other places in the plan (full list in triage).]   <-- only for pattern-wide candidates
 
-My take: <FIX | SKIP> — <reasoning>
+My take: <FIX | SKIP> - <reasoning>
 
 [Why surfacing this: <one line>]   <-- ONLY when surfacing despite a SKIP take (foundational, pattern-wide, or escalated-from-hedging)
 
@@ -498,13 +526,27 @@ Cap ~40 lines. Priority order if space is tight:
 4. Tradeoffs: fix-as-recommended / alternative / skip
 5. Related findings on the same plan section
 
-### After resolution (Status updates)
+### After each answer (Status updates)
 
-- `y` against `FIX` → apply via Edit, `Status: fixed (user-confirmed)`.
+Record the answer in triage as soon as it is given, so a stopped dialog
+loses nothing. A freeform answer that needs discussion is discussed
+first; record it once it settles.
+
+- `y` against `FIX` → `Status: accepted (fix pending)`.
 - `n` against `FIX` → `Status: skipped (user redirected: "<reason>")`.
 - `y` against `SKIP` → `Status: skipped (user accepted SKIP)`.
-- Freeform fix → apply via Edit, `Status: fixed (user freeform)` with the
-  user's reasoning captured in the entry.
+- Freeform fix (including `n` against `SKIP` with a fix) →
+  `Status: accepted (fix pending)` with the user's fix and reasoning
+  captured in the entry.
+
+### After the last answer: apply the fixes
+
+Snapshot the plan first if `snapshot-copy` is still `null` (Step 10,
+item 1). Then, in
+severity order, for each `accepted (fix pending)` entry: re-read the
+target section (an earlier fix in this pass may have moved or changed
+it), apply via Edit, and set `Status: fixed (user-confirmed)`, or
+`fixed (user freeform)` for a freeform fix.
 
 ### Opt-in preference capture (on user redirect)
 
@@ -551,18 +593,21 @@ file via Edit. `n` → skip.
 
 ### Abort / pause
 
-User types `stop` / `pause` / `quit` / interrupt → mark remaining items
+User types `stop` / `pause` / `quit` / interrupt → apply the answers
+given so far (the fix pass above), leave unanswered items
 `Status: pending` in triage, print:
 
 ```text
-Paused at item #<i>/<N>. Resume with /review-plan <plan> <scope flag>;
-re-invocation reads the latest triage for that scope and resumes from
-pending items.
+Paused at question <q> of <K>; <n> answered fixes applied. Resume with
+/review-plan <plan> <scope flag>; re-invocation reads the latest triage
+for that scope and resumes from pending items.
 ```
 
 Exit cleanly. Re-invocation finds the triage via Step 2's prior-triage
-scan; if pending items exist, offer to resume the dialog before
-re-running reviewers.
+scan. First, run the fix pass above on any `accepted (fix pending)`
+entries (left by an interrupted fix pass) without asking again. Then,
+if `Status: pending`
+items remain, offer to resume the dialog before re-running reviewers.
 
 ## Step 13: Finalize Triage File
 
@@ -573,7 +618,7 @@ Triage was created Step 8, updated Steps 9/10/12. Finalize:
 - Recompute Summary counts
 - Ensure Salvage / failure log section is present (empty if none)
 - Confirm every needs-review entry has a terminal `Status:` (no leftover
-  `pending` unless user aborted)
+  `pending` or `accepted (fix pending)` unless user aborted)
 
 Path: `.reviews/plans/<YYYY-MM-DD>-<HHMMSS>-<plan-name>[-pr<N>|-outline]-triage.md` (same
 timestamp as Step 3).
@@ -599,7 +644,7 @@ Sections (in order):
 
 Auto-fixed: <N>
 Auto-skipped: <N>
-Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
+Needs-review: <N> (pending: 0, accepted: 0, fixed: <x>, skipped: <y>)
 
 ## Auto-fixed
 
@@ -635,7 +680,7 @@ Needs-review: <N> (pending: 0, fixed: <x>, skipped: <y>)
 - Recommendation: <FIX | SKIP>
 - Foundational: <true | false>
 - Pattern-wide: <true | false; if true, N occurrences>
-- Status: <fixed (user-confirmed) | fixed (user freeform) | skipped (user redirected: "...") | skipped (user accepted SKIP) | pending | superseded by item #<N>>
+- Status: <fixed (user-confirmed) | fixed (user freeform) | skipped (user redirected: "...") | skipped (user accepted SKIP) | accepted (fix pending) | pending | superseded by item #<N>>
 
 (... more entries ...)
 
