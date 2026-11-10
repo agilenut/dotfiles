@@ -324,27 +324,48 @@ test_worktree_teardown() {
   # A fake docker records each call and returns scripted output, so these
   # tests run on machines without Docker, CI included.
   mkdir -p "$bin"
+  # FAKE_DOCKER_CONTAINERS holds "<project><TAB><working dir>" lines.
+  # FAKE_DOCKER_VOLUMES holds "<project> <volume>" lines and
+  # FAKE_DOCKER_IMAGES "<project> <id> <repository> <service>" lines.
+  # A --filter on a project label limits every reply to that project.
+  # `docker images` replies the id; `docker image inspect <id>...` replies
+  # "<service> <repository>:latest" for each id.
   cat >"$bin/docker" <<'FAKE'
 #!/usr/bin/env bash
 echo "$* [cwd=$PWD]" >>"$FAKE_DOCKER_LOG"
+project="" prev=""
+for arg in "$@"; do
+  [ "$prev" = --filter ] && project="${arg#label=com.docker.compose.project=}"
+  prev="$arg"
+done
+rows() { printf '%s\n' "$1" | awk -v p="$project" 'NF && $1 == p { print $2 }'; }
 case "$1" in
   info) [ "${FAKE_DOCKER_DAEMON:-up}" = up ] || exit 1 ;;
-  volume | images)
-    # FAKE_DOCKER_LEFTOVERS_FOR limits the reply to one project's label.
-    filter="${*: -1}"
-    if [ -z "${FAKE_DOCKER_LEFTOVERS_FOR:-}" ] \
-      || [ "$filter" = "label=com.docker.compose.project=$FAKE_DOCKER_LEFTOVERS_FOR" ]; then
-      [ "$1" = volume ] && echo "${FAKE_DOCKER_VOLUMES:-}"
-      [ "$1" = images ] && echo "${FAKE_DOCKER_IMAGES:-}"
+  ps)
+    [ "${FAKE_DOCKER_PS_RC:-0}" -eq 0 ] || exit "$FAKE_DOCKER_PS_RC"
+    if [ -n "$project" ]; then
+      printf '%s\n' "${FAKE_DOCKER_CONTAINERS:-}" | awk -F'\t' -v p="$project" '$1 == p { print "id" NR }'
+    elif [ -n "${FAKE_DOCKER_CONTAINERS:-}" ]; then
+      printf '%s\n' "$FAKE_DOCKER_CONTAINERS"
     fi
-    exit "${FAKE_DOCKER_LS_RC:-0}"
+    ;;
+  volume)
+    [ "${FAKE_DOCKER_LS_RC:-0}" -eq 0 ] || exit "$FAKE_DOCKER_LS_RC"
+    rows "${FAKE_DOCKER_VOLUMES:-}"
+    ;;
+  images)
+    [ "${FAKE_DOCKER_LS_RC:-0}" -eq 0 ] || exit "$FAKE_DOCKER_LS_RC"
+    rows "${FAKE_DOCKER_IMAGES:-}"
+    ;;
+  image)
+    # image inspect --format <template> <id>...
+    shift 3
+    for id in "$@"; do
+      printf '%s\n' "${FAKE_DOCKER_IMAGES:-}" | awk -v id="$id" 'NF && $2 == id { print $4, $3 ":latest"; exit }'
+    done
     ;;
   compose)
     case " $* " in
-      *" ps "*)
-        [ -n "${FAKE_DOCKER_PS:-}" ] && echo "$FAKE_DOCKER_PS"
-        exit "${FAKE_DOCKER_PS_RC:-0}"
-        ;;
       *" down "*) exit "${FAKE_DOCKER_DOWN_RC:-0}" ;;
     esac
     ;;
@@ -365,10 +386,13 @@ FAKE
     commit -m "init" --quiet
 
   # make_wt <name>: a worktree on branch <name> with project wt-<name>.
+  # Sets $own to a FAKE_DOCKER_CONTAINERS line for a container of that
+  # project started from the worktree.
   make_wt() {
     wt="$repo--$1"
     tgit -C "$repo" worktree add --quiet -b "$1" "$wt" main
     echo "COMPOSE_PROJECT_NAME=wt-$1" >"$wt/.env"
+    own="wt-$1	$wt"
   }
 
   # run_hook <script> [args...]: runs a hook from RUN_DIR (default: the
@@ -386,26 +410,66 @@ FAKE
     stdout=$(cat "$root/stdout")
   }
 
-  # ---- Stopped project and its -e2e variant are torn down ----
+  # ---- Projects whose containers came from the worktree go, whatever their name ----
   # Arrange
-  make_wt stopped
+  make_wt byfolder
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_CONTAINERS="$own
+any-name-test	$wt/sub dir
+any-name-test	$wt" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
-    && grep -q -- "compose -p wt-stopped ps -a -q" "$log" \
-    && grep -q -- "compose -p wt-stopped down -v --rmi local --remove-orphans \[cwd=/\]" "$log" \
-    && grep -q -- "compose -p wt-stopped-e2e down -v --rmi local --remove-orphans" "$log"; then
-    pass "cleanup-worktree.sh removes stopped Compose projects from / and the worktree"
+    && grep -q -- "compose -p wt-byfolder down -v --rmi local --remove-orphans \[cwd=/\]" "$log" \
+    && grep -q -- "compose -p any-name-test down -v --rmi local --remove-orphans \[cwd=/\]" "$log" \
+    && ! grep -q -- "-e2e" "$log"; then
+    pass "cleanup-worktree.sh runs compose down from / for every project started from the worktree, and guesses no -e2e name"
   else
-    fail "stopped project teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+    fail "folder-matched teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- The resolved spelling of the folder matches too ----
+  # Arrange
+  make_wt resolved
+  # Act
+  FAKE_DOCKER_CONTAINERS="wt-resolved	$(cd "$wt" && pwd -P)" run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && grep -q -- "compose -p wt-resolved down " "$log"; then
+    pass "cleanup-worktree.sh matches a container that recorded the worktree's resolved path"
+  else
+    fail "resolved path match (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- A project with containers from another folder is kept, and named ----
+  # Arrange
+  make_wt mixed
+  # Act
+  FAKE_DOCKER_CONTAINERS="shared	$wt
+shared	$repo" run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log" \
+    && [[ "$out" == *"Compose project shared was not removed"* ]]; then
+    pass "cleanup-worktree.sh keeps a project that also has another folder's containers, and names it"
+  else
+    fail "mixed project (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- A sibling worktree whose folder name starts with this one's is not matched ----
+  # Arrange
+  make_wt sib
+  # Act
+  FAKE_DOCKER_CONTAINERS="wt-sib2	${wt}2" run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && ! grep -q -- " down " "$log"; then
+    pass "cleanup-worktree.sh leaves a project from a folder whose name only starts with the worktree's"
+  else
+    fail "sibling prefix (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
 
   # ---- Run from inside the worktree it removes ----
   # Arrange
   make_wt inside
   # Act
-  RUN_DIR="$wt" FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" .
+  RUN_DIR="$wt" FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" .
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
     && grep -q -- "compose -p wt-inside down .*\[cwd=/\]" "$log"; then
@@ -433,24 +497,24 @@ FAKE
   # Arrange
   make_wt empty
   # Act
-  FAKE_DOCKER_PS="" run_hook "$WORKTREE_CLEANUP" "$wt"
+  run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log"; then
-    pass "cleanup-worktree.sh skips docker down when the project has nothing left"
+    pass "cleanup-worktree.sh skips docker down when the worktree has no projects"
   else
     fail "empty project teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
 
-  # ---- Volumes or images left without containers: still torn down ----
+  # ---- Volumes or images left without containers, under the .env name: torn down ----
   # Arrange
   make_wt orphan
   # Act
-  FAKE_DOCKER_PS="" FAKE_DOCKER_VOLUMES=wt-orphan_data run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_VOLUMES="wt-orphan data" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
     && grep -q -- "volume ls -q --filter label=com.docker.compose.project=wt-orphan " "$log" \
     && grep -q -- "compose -p wt-orphan down -v --rmi local --remove-orphans" "$log"; then
-    pass "cleanup-worktree.sh tears down a project that has only leftover volumes"
+    pass "cleanup-worktree.sh tears down the .env project when only its volumes are left"
   else
     fail "volume-only teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
@@ -458,36 +522,60 @@ FAKE
   # Arrange
   make_wt orphimg
   # Act
-  FAKE_DOCKER_PS="" FAKE_DOCKER_IMAGES=sha256abc run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_IMAGES="wt-orphimg sha256abc wt-orphimg-app app" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
     && grep -q -- "images -q --filter label=com.docker.compose.project=wt-orphimg " "$log" \
     && grep -q -- "compose -p wt-orphimg down -v --rmi local --remove-orphans" "$log"; then
-    pass "cleanup-worktree.sh tears down a project that has only leftover images"
+    pass "cleanup-worktree.sh tears down the .env project when only its images are left"
   else
     fail "image-only teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
 
-  # ---- Leftovers only in the -e2e project: only it is torn down ----
+  # ---- Leftovers under a guessed -e2e name are left for /wrap ----
   # Arrange
   make_wt e2eonly
   # Act
-  FAKE_DOCKER_PS="" FAKE_DOCKER_VOLUMES=wt-e2eonly-e2e_data \
-    FAKE_DOCKER_LEFTOVERS_FOR=wt-e2eonly-e2e run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_VOLUMES="wt-e2eonly-e2e data" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
-  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
-    && grep -q -- "compose -p wt-e2eonly-e2e down -v --rmi local --remove-orphans" "$log" \
-    && ! grep -q -- "compose -p wt-e2eonly down " "$log"; then
-    pass "cleanup-worktree.sh tears down only the -e2e project when only it has leftovers"
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log"; then
+    pass "cleanup-worktree.sh does not guess a -e2e project for leftover volumes"
   else
-    fail "e2e-only teardown (rc=$rc stderr='$out' log='$(cat "$log")')"
+    fail "e2e-only leftovers (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- .env name whose containers run elsewhere: kept ----
+  # Arrange
+  make_wt busy
+  # Act
+  FAKE_DOCKER_CONTAINERS="wt-busy	$root/elsewhere" FAKE_DOCKER_VOLUMES="wt-busy data" \
+    run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log"; then
+    pass "cleanup-worktree.sh keeps the .env project when its containers came from another folder"
+  else
+    fail "env project with outside containers (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- .env carrying the main checkout's project name: its volumes are kept ----
+  # Arrange
+  make_wt mainname
+  # compose derives "repodir" from the main checkout's folder, "repo dir".
+  echo "COMPOSE_PROJECT_NAME=repodir" >"$wt/.env"
+  # Act
+  FAKE_DOCKER_VOLUMES="repodir pgdata" run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log"; then
+    pass "cleanup-worktree.sh never removes leftovers under the main checkout's project name"
+  else
+    fail "main checkout name guard (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
 
   # ---- Leftover lookup fails: warn, no down, still remove ----
   # Arrange
   make_wt lsfail
   # Act
-  FAKE_DOCKER_PS="" FAKE_DOCKER_LS_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_LS_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log" \
     && [[ "$out" == *"lookup failed; Compose project wt-lsfail was not removed"* ]]; then
@@ -496,12 +584,112 @@ FAKE
     fail "leftover lookup failure (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
 
+  # ---- Main checkout's project name, all containers from the worktree: kept ----
+  # Arrange
+  make_wt mainfolder
+  # Act
+  FAKE_DOCKER_CONTAINERS="repodir	$wt" FAKE_DOCKER_VOLUMES="repodir pgdata" \
+    run_hook "$WORKTREE_CLEANUP" "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log" \
+    && [[ "$out" == *"Compose project repodir was not removed: "*" runs a project with the same name"* ]]; then
+    pass "cleanup-worktree.sh keeps a project started from the worktree when it has the main checkout's name"
+  else
+    fail "main checkout name, started from the worktree (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- Main checkout's top-level compose name: kept ----
+  # Arrange
+  make_wt mainkey
+  printf 'name: custom-main\nservices: {}\n' >"$repo/compose.yaml"
+  # Act
+  FAKE_DOCKER_CONTAINERS="custom-main	$wt" run_hook "$WORKTREE_CLEANUP" "$wt"
+  printf 'services: {}\n' >"$repo/compose.yaml"
+  # Assert
+  if [ "$rc" -eq 0 ] && ! grep -q -- " down " "$log" \
+    && [[ "$out" == *"Compose project custom-main was not removed"* ]]; then
+    pass "cleanup-worktree.sh reads the main checkout's top-level compose name"
+  else
+    fail "main checkout name: key (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- Subfolder project another checkout also has: kept; one only this worktree has: removed ----
+  # Arrange
+  make_wt subdir
+  mkdir -p "$repo/infra"
+  # compose names both from their folder: "infra" and "only-here".
+  # Act
+  FAKE_DOCKER_CONTAINERS="infra	$wt/infra
+only-here	$wt/only-here" run_hook "$WORKTREE_CLEANUP" "$wt"
+  rmdir "$repo/infra"
+  # Assert
+  if [ "$rc" -eq 0 ] && ! grep -q -- "compose -p infra down " "$log" \
+    && grep -q -- "compose -p only-here down " "$log" \
+    && [[ "$out" == *"Compose project infra was not removed: "*" runs a project with the same name"* ]]; then
+    pass "cleanup-worktree.sh keeps a subfolder project whose name another checkout also derives"
+  else
+    fail "subfolder project names (rc=$rc stderr='$out' log='$(cat "$log")')"
+  fi
+
+  # ---- Dry run: prints what would go, changes nothing ----
+  # Arrange
+  make_wt dry
+  # img1 appears twice in the lookup and counts once. img3 is named with
+  # `image:`, which `down --rmi local` keeps, so it isn't counted.
+  # Act
+  FAKE_DOCKER_CONTAINERS="$own
+shared	$wt
+shared	$repo" FAKE_DOCKER_VOLUMES="wt-dry pgdata
+wt-dry cache" FAKE_DOCKER_IMAGES="wt-dry img1 wt-dry-app app
+wt-dry img1 wt-dry-app app
+wt-dry img2 wt-dry-worker worker
+wt-dry img3 example/tagged api" run_hook "$WORKTREE_CLEANUP" --dry-run "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ -d "$wt" ] && ! grep -q -- " down " "$log" \
+    && [[ "$stdout" == *"remove wt-dry: volumes cache pgdata; images 2"* ]] \
+    && [[ "$stdout" == *"keep shared: it also has containers from other folders"* ]] \
+    && [[ "$stdout" != *"Done."* ]]; then
+    pass "cleanup-worktree.sh --dry-run lists projects, volumes and built-image count, and removes nothing"
+  else
+    fail "dry run (rc=$rc stdout='$stdout' stderr='$out' log='$(cat "$log")')"
+  fi
+  tgit -C "$repo" worktree remove --force "$wt"
+
+  # ---- Dry run lists a leftover project under the .env name ----
+  # Arrange
+  make_wt dryleft
+  # Act
+  FAKE_DOCKER_VOLUMES="wt-dryleft pgdata" run_hook "$WORKTREE_CLEANUP" --dry-run "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ -d "$wt" ] && ! grep -q -- " down " "$log" \
+    && [[ "$stdout" == "remove wt-dryleft: volumes pgdata; images 0" ]]; then
+    pass "cleanup-worktree.sh --dry-run lists the .env project when only its volumes are left"
+  else
+    fail "dry run leftovers (rc=$rc stdout='$stdout' stderr='$out' log='$(cat "$log")')"
+  fi
+  tgit -C "$repo" worktree remove --force "$wt"
+
+  # ---- Dry run with a failed lookup says so instead of guessing ----
+  # Arrange
+  make_wt dryfail
+  # Act
+  FAKE_DOCKER_CONTAINERS="$own" FAKE_DOCKER_LS_RC=1 run_hook "$WORKTREE_CLEANUP" --dry-run "$wt"
+  # Assert
+  if [ "$rc" -eq 0 ] && [ -d "$wt" ] \
+    && [[ "$stdout" == "remove wt-dryfail: volumes unknown; images unknown" ]] \
+    && [[ "$out" == *"lookup failed for Compose project wt-dryfail"* ]]; then
+    pass "cleanup-worktree.sh --dry-run reports a failed volume or image lookup as unknown"
+  else
+    fail "dry run lookup failure (rc=$rc stdout='$stdout' stderr='$out')"
+  fi
+  tgit -C "$repo" worktree remove --force "$wt"
+
   # ---- Untracked file without --force: nothing touched ----
   # Arrange
   make_wt untracked
   echo "work in progress" >"$wt/notes.txt"
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -ne 0 ] && [ -d "$wt" ] && [ ! -s "$log" ] \
     && [[ "$out" == *"uncommitted"* ]]; then
@@ -512,7 +700,7 @@ FAKE
 
   # ---- Same worktree with --force: removed ----
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" --force "$wt"
+  FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" --force "$wt"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
     && grep -q -- "compose -p wt-untracked down -v --rmi local" "$log"; then
@@ -526,7 +714,7 @@ FAKE
   make_wt modified
   echo "# edited" >>"$wt/compose.yaml"
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -ne 0 ] && [ -d "$wt" ] && [ ! -s "$log" ]; then
     pass "cleanup-worktree.sh keeps a worktree with a modified tracked file"
@@ -540,7 +728,7 @@ FAKE
   make_wt locked
   tgit -C "$repo" worktree lock "$wt"
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -ne 0 ] && [ -d "$wt" ] && ! grep -q -- " down " "$log"; then
     pass "cleanup-worktree.sh keeps a locked worktree and its Docker project"
@@ -554,7 +742,7 @@ FAKE
   # Arrange
   make_wt relative
   # Act
-  RUN_DIR="$root" FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" "./repo dir--relative"
+  RUN_DIR="$root" FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" "./repo dir--relative"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ]; then
     pass "cleanup-worktree.sh removes a worktree given by a relative path"
@@ -562,28 +750,30 @@ FAKE
     fail "relative path (rc=$rc stderr='$out')"
   fi
 
-  # ---- docker down fails: worktree removed, -e2e still tried, errors name both ----
+  # ---- docker down fails: worktree removed, every project still tried, errors name each ----
   # Arrange
   make_wt downfail
   # Act
-  FAKE_DOCKER_PS=abc123 FAKE_DOCKER_DOWN_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_CONTAINERS="$own
+wt-downfail-test	$wt" FAKE_DOCKER_DOWN_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
   if [ "$rc" -ne 0 ] && [ ! -d "$wt" ] \
     && [[ "$out" == *"down failed for project wt-downfail;"* ]] \
-    && [[ "$out" == *"down failed for project wt-downfail-e2e;"* ]]; then
+    && [[ "$out" == *"down failed for project wt-downfail-test;"* ]]; then
     pass "cleanup-worktree.sh exits non-zero and names each project when docker compose down fails"
   else
     fail "docker down failure (rc=$rc stderr='$out')"
   fi
 
-  # ---- docker compose ps fails: warn, still remove ----
+  # ---- docker ps fails: warn, still remove ----
   # Arrange
   make_wt psfail
   # Act
   FAKE_DOCKER_PS_RC=1 run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
-  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && [[ "$out" == *"WARNING"*"wt-psfail"* ]]; then
-    pass "cleanup-worktree.sh warns, naming the project, when docker compose ps fails"
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && ! grep -q -- " down " "$log" \
+    && [[ "$out" == *"WARNING: docker ps failed"*"psfail"* ]]; then
+    pass "cleanup-worktree.sh warns, naming the worktree, when docker ps fails"
   else
     fail "docker ps failure (rc=$rc stderr='$out')"
   fi
@@ -616,16 +806,17 @@ FAKE
     fi
   fi
 
-  # ---- Invalid project name: Docker skipped ----
+  # ---- Invalid project name: leftover check skipped, folder match still runs ----
   # Arrange
   make_wt badname
   echo "COMPOSE_PROJECT_NAME=bad name!" >"$wt/.env"
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_CLEANUP" "$wt"
+  FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_CLEANUP" "$wt"
   # Assert
-  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && [ ! -s "$log" ] \
+  if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] \
+    && grep -q -- "compose -p wt-badname down " "$log" && ! grep -q -- "volume ls" "$log" \
     && [[ "$out" == *"WARNING"*"COMPOSE_PROJECT_NAME"* ]]; then
-    pass "cleanup-worktree.sh warns and skips Docker when COMPOSE_PROJECT_NAME is invalid"
+    pass "cleanup-worktree.sh warns and skips only the leftover check when COMPOSE_PROJECT_NAME is invalid"
   else
     fail "invalid project name (rc=$rc stderr='$out' log='$(cat "$log")')"
   fi
@@ -650,8 +841,12 @@ FAKE
   make_wt hook
   echo "discarded" >"$wt/notes.txt"
   printf '{"cwd":"%s"}' "$wt" >"$root/hook-input"
+  # The hook resolves symlinks before cleanup (the temp folder sits under
+  # one on macOS), so only the resolved path can match; the fake container
+  # records that one.
+  own="wt-hook	$(cd "$wt" && pwd -P)"
   # Act
-  FAKE_DOCKER_PS=abc123 run_hook "$WORKTREE_REMOVE" <"$root/hook-input"
+  FAKE_DOCKER_CONTAINERS="$own" run_hook "$WORKTREE_REMOVE" <"$root/hook-input"
   # Assert
   if [ "$rc" -eq 0 ] && [ ! -d "$wt" ] && [ -z "$stdout" ] \
     && grep -q -- "compose -p wt-hook down -v --rmi local" "$log"; then
@@ -664,8 +859,9 @@ FAKE
   # Arrange
   make_wt hookfail
   printf '{"cwd":"%s"}' "$wt" >"$root/hook-input"
+  own="wt-hookfail	$(cd "$wt" && pwd -P)"
   # Act
-  FAKE_DOCKER_PS=abc123 FAKE_DOCKER_DOWN_RC=1 run_hook "$WORKTREE_REMOVE" <"$root/hook-input"
+  FAKE_DOCKER_CONTAINERS="$own" FAKE_DOCKER_DOWN_RC=1 run_hook "$WORKTREE_REMOVE" <"$root/hook-input"
   # Assert
   if [ "$rc" -eq 0 ] && [ -z "$stdout" ] \
     && [[ "$out" == *"WARNING"* ]] && [[ "$out" == *"wt-hookfail"* ]]; then
