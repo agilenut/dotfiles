@@ -233,11 +233,15 @@ any that are empty:
    an action the user could pick instead, number it, continuing from the
    "I'll do" numbers, and name the action ("Keep worktree `X` for the
    plan's next PR; pick to remove"); without a number, the user has no
-   short reply that picks it.
+   short reply that picks it. When picking it would destroy something,
+   name that on an indented line under it, as in "I'll do" (for a kept
+   worktree, Step 7's dry run lists the Docker data). Picking the number
+   approves what that line names.
    A worktree kept for its plan always has such an action (removing it),
    so its line is always numbered, unless a session that may still be
-   running uses it. Picking a removal that would lose work still leads to
-   its own y/n. Nothing here runs unless the user picks it.
+   running uses it, or Step 7's Docker dry run for it failed. Picking a
+   removal that would lose work, in any of the ways "Asking separately"
+   lists, still leads to its own y/n. Nothing here runs unless the user picks it.
 4. **Asking separately:** every action that destroys or rewrites
    something with no other copy, such as removing a worktree with
    uncommitted changes, unpushed commits, or files that can't be rebuilt;
@@ -247,11 +251,12 @@ any that are empty:
    This holds however the action came up, including a user's override.
    An ended session's scratchpad isn't one of these: it is temporary by
    design, so deleting it goes in "I'll do". Nor are the volumes of a
-   Compose project tied to a worktree by its compose file, its `.env`, or
-   a recorded config path under a removed worktree: they certainly belong
-   to that worktree, so removing them goes in "I'll do" with the line
-   naming them. Copy-back conflicts (Step 7) are asks here, since
-   overwriting either copy loses the other.
+   Compose project that `cleanup-worktree.sh --dry-run` marks `remove` for
+   a worktree being removed, or of a project whose recorded config path is
+   under a removed worktree: they certainly belong to that worktree, so
+   removing them goes in "I'll do" with the line naming them. Copy-back
+   conflicts (Step 7) are asks here, since overwriting either copy loses the
+   other.
 
 Decide each thread yourself. When the right action is unclear, pick one
 anyway and give the reason, since the user can override it. List only
@@ -321,8 +326,13 @@ worktree has the branch checked out, first switch that worktree to
 only when its plan's status is `done`, `abandoned`, or `superseded`
 after Step 3, or will be after an "I'll do" action in the same list, or, when no plan uses it, when its branch is merged or its
 tip is in `origin/main`. A kept worktree keeps its Compose project too,
-since the next PR uses its data. When the user picks removing a kept
-one, run the same steps. Before removing:
+since the next PR uses its data. For a kept worktree whose line is
+numbered, also run the Docker dry run (item 3 below), and put only its
+`remove` projects and any warning on the indented line under it; skip its
+`keep` lines, since nothing touches those projects either way. When the
+user picks removing a kept one, run items 1 and 2 below, then remove it
+with item 4; the pick already approved the Docker data its line named.
+Before removing:
 
 1. Commits: on a branch, no commits past the PR's `headRefOid` (the
    merged test above), or the tip is in `origin/main`. Detached:
@@ -336,18 +346,48 @@ one, run the same steps. Before removing:
      files on its own). Dependency and build output (`node_modules/`,
      `.venv/`, `dist/`) needs no ask.
    - `.plans/` and `.reviews/`: run the copy-back rule below.
-3. Docker: when the worktree has a compose file, read the project name
-   `<name>` (`COMPOSE_PROJECT_NAME`) from its `.env`. For that project and its
-   `<name>-e2e` project (the script removes both), list the volumes and
-   images with
-   `docker volume ls --filter label=com.docker.compose.project=<name>`
-   and `docker images --filter label=com.docker.compose.project=<name>`.
-   The action's line names what these return, minus any image a service
-   names with `image:`, since removal keeps those.
+3. Docker: run `~/.claude/hooks/cleanup-worktree.sh --dry-run <worktree>`.
+   It changes nothing and prints what step 4 will do to each Compose
+   project, so the line you show is what removal deletes:
+
+   - `remove <project>: volumes <names>; images <count>`: add the project
+     to the worktree's removal line with its data volumes by name, and end
+     the line with the totals:
+     `deletes <n> data volumes and <m> built images`, leaving out a zero
+     total. Name volumes per project, since a dev project and its test
+     project often share volume names. Don't list containers; a service
+     keeps the data it needs in volumes. Leave out `volumes none` and
+     `images 0`. When a line says `unknown`, write "lookup failed" after
+     that project and total only the known projects, so the user knows the
+     list may be incomplete. The script also prints a `WARNING:` for that
+     failed lookup; don't quote it separately. Example:
+
+     ```text
+     Remove worktree acme--lti (PR #970 merged) and its Compose projects
+       acme-wt-lti (pgdata, uploads), acme-wt-lti-test (pgdata), acme-wt-lti-e2e:
+       deletes 3 data volumes and 2 built images
+     ```
+
+   - `keep <project>: <reason>`: removal leaves the project alone. Put one
+     line under "Leaving alone" with the reason.
+   - Any other `WARNING:` line (exit 0): the list is incomplete (for
+     example, Docker isn't running or a lookup failed), and removal may
+     leave projects behind. Quote the message on the worktree's line.
+   - An `ERROR:` line or a non-zero exit: step 4 would fail the same way,
+     before removing anything. Don't offer the removal: put the worktree
+     under "Leaving alone", unnumbered, with the message quoted, until the
+     cause is fixed.
+   - No output and exit 0: removal touches no Docker projects; add
+     nothing.
+
 4. Remove with `~/.claude/hooks/cleanup-worktree.sh <worktree>`, adding
-   `--force` only after its y/n. The script removes the worktree, then its
-   Compose projects (containers, volumes, networks, built images), and
-   exits non-zero on any failure.
+   `--force` only after its y/n. The script removes the worktree, then the
+   Compose projects step 3 marked `remove` (containers, volumes, networks,
+   built images), and exits non-zero on any failure. It looks the projects
+   up again when it runs, so it also removes a project started after the
+   dry run. Each project step 3 marked `keep` shows up again as
+   `WARNING: Compose project <project> was not removed: <reason>`, with
+   the reason step 3 printed; that is expected, not a failure.
 
 Never use `ExitWorktree` with `discard_changes: true`. Its check for
 uncommitted work fails on the hook-created sibling worktrees, and the flag
@@ -387,9 +427,14 @@ difference that no session made.
 **Docker leftovers.** `docker compose ls --all --format json` lists every
 project on the machine. Consider only projects whose config path is under
 this repo's worktree paths (`<parent>/<repo>--*`) and no longer exists.
-List each in "I'll do" with its volumes and images (the two lookups
-above, minus `image:`-named images). On approval, remove it from `/`, so
-no local compose file is loaded:
+List each in "I'll do" with its data volumes by name, and say any built
+images are deleted too. This lists the volumes:
+
+```bash
+docker volume ls --filter label=com.docker.compose.project=<name> --format '{{.Label "com.docker.compose.volume"}}'
+```
+
+On approval, remove it from `/`, so no local compose file is loaded:
 
 ```bash
 (cd / && docker compose -p <name> down -v --rmi local --remove-orphans)
