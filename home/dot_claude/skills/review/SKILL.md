@@ -106,8 +106,9 @@ _Read everything the orchestrator AND reviewers need before spawning._
   follows this review, per the Git rules in CLAUDE.md, and save it to
   `.reviews/code/<timestamp>-<branch>-commit-msg.txt` (run
   `date +%Y-%m-%d-%H%M%S` now; every file this review writes uses that
-  timestamp). The file holds only the message, since git commits it as
-  written. Fixes to the message edit that file. When other fixes change
+  timestamp). The file is the reviewed draft and holds only the
+  message; at commit time, Step 14 pastes its current text verbatim
+  into the commit command. Fixes to the message edit that file. When other fixes change
   what the commit does, update the message to match. Reviewing it before
   it is in history lets its fixes apply like any other.
 
@@ -886,8 +887,8 @@ output._
    touched (even if already staged), run `pre-commit run`, re-stage, then
    commit. Skipping the re-stage commits the pre-review blob and drops the
    fixes.
-   Local mode: commit with the reviewed message,
-   `git commit -F <absolute path to the commit-msg.txt file>`.
+   Local mode: commit with the reviewed message in
+   <absolute path to the commit-msg.txt file>.
    Re-build and run full test suite if pre-commit touched code.
    ```
 
@@ -900,6 +901,10 @@ output._
    action-or-content focused. Examples: `typo in error msg`,
    `missing using directive`, `matches review-preference`,
    `parameterize SqlCommand`, `covered by middleware upstream`.
+
+   When the user approves the commit, read the commit-msg.txt file then
+   (its text may have changed during the review) and pass it inline per
+   the global CLAUDE.md `## Git` rule.
 
    PR mode appends:
 

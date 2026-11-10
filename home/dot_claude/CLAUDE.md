@@ -270,7 +270,7 @@ _Permission prompting, Preferred commands, and Hook behavior._
   `python -m …`, `node -e`, or any `<lang> -c/-e` form, temporary scripts,
   or heredocs feeding interpreters when other tools will work since they
   prompt. Heredocs feeding non-interpreter commands are fine
-  (e.g. `git commit -m "$(cat <<EOF ... EOF)"`).
+  (e.g. `git commit -m "$(cat <<'EOF' ... EOF)"`).
 - Query and filter files are data, not scripts: a GraphQL query read with
   `gh api graphql -F query=@<file>` or a `jq -f <file>` filter, kept in
   the scratchpad. Use one when a one-line command gets too complex to
@@ -643,6 +643,13 @@ _Branching, committing, PRs._
   Target ~10-20 lines total. Don't enumerate files, don't recap the
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
+- Pass commit messages, PR bodies, and comment text inline in a quoted
+  heredoc (`git commit -m "$(cat <<'EOF' ... EOF)"`, same for
+  `--body`), so I read the text in the permission prompt before I
+  approve it; `-F` and `--body-file` show only a path. The quoted
+  `'EOF'` keeps `$` and backticks in the text as written. If a
+  worktree-isolated session refuses the inline form, show the full text
+  in chat first, then use the file form.
 - People and models read commits and PR bodies later to trace why
   something changed. Like a commit message, a PR body states the why and
   the decisions behind the change plainly, plus whatever else its skill
