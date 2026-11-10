@@ -187,7 +187,7 @@ an open PR with no checks as CI_RUNNING.
    - Needs deploy → leave for post-merge
    - Needs manual human action → leave unchecked
 3. NEVER check off `### Post-merge` items
-4. Update PR body: `gh pr edit <number> --body`
+4. Update PR body: `gh pr edit <number> --body "<body>"`
 5. Report which items still need manual testing. Tell user to test them and
    run `/pr` again.
 
@@ -305,7 +305,7 @@ any line matches PATTERN, instead of succeeding when some line doesn't.
 1. Process `### Post-merge` items:
    - Verify remotely if possible (query endpoint, check logs) → check off
    - Needs manual human action → leave unchecked
-2. Update PR body: `gh pr edit <number> --body`
+2. Update PR body: `gh pr edit <number> --body "<body>"`
 3. Report which items still need manual testing. Tell user to test them and run `/pr <number>` again.
 
 ### MERGED_DONE
@@ -351,6 +351,9 @@ _Output, prompt announcements, re-verification._
   prompts (commits, pushes, merges, PR/issue create / edit / comment),
   output a one-line intent announcement immediately before the Bash call
   so the prompt has full context (e.g. "Merging PR #NNN — approve prompt").
+- **Pass every commit message, PR body, and comment inline**, per the
+  global CLAUDE.md `## Git` rule. Wherever a step shows
+  `-m "<message>"` or `--body "<body>"`, use that rule's heredoc form.
 - Terminal output (status, CI summaries): use plain `path:line` format for
   file references
 - GitHub content (PR body, comments, issue edits): use markdown links

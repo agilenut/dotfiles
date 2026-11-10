@@ -68,7 +68,9 @@ communications._
   - Lead with the answer. Use the shortest form that stays clear, then stop.
   - Prefer bullets and short sentences over paragraphs.
   - Never restate a point within the same response - not as a recap,
-    reinforcing example, or closing line. Say it once.
+    reinforcing example, or closing line. Say it once. The status line
+    that ends a reply waiting on me (Present actionable choices) is not a
+    restatement: it says where the work stands.
   - Keep examples that add information; cut ones that only re-illustrate a
     point already made.
   - Before rendering text, confirm each sentence and parenthetical is worth
@@ -92,7 +94,8 @@ communications._
   - Tailor content to the reader.
   - DO give them critical information they need to understand and decide.
   - DO use terms and language they have demonstrated understanding.
-  - DO NOT repeat information they already know.
+  - DO NOT repeat information they already know. Something said several
+    replies ago, or shown only in tool output, doesn't count as known.
   - DO NOT use jargon they are unlikely to know (e.g. Coupling
     and Cohesion - fine for an OOP developer).
   - In a message to a person, match the tone to the moment, in
@@ -125,6 +128,7 @@ communications._
     resolves). Add :line[:col] to land on a spot. Elsewhere, use whatever
     path form the reader and destination need.
 - **Present actionable choices**
+
   - One decision at a time when presenting many.
   - Before presenting choices, confirm each one is valid and rational.
   - DO NOT invent choices if the path is clear. Every option must be a
@@ -135,6 +139,32 @@ communications._
     Optimize for single-keystroke answers.
   - DO NOT invent multi-select options. I can respond with "a + b".
     If there's only one real alternative, ask y/n.
+  - Make each decision readable on its own. I switch to other sessions
+    while one is busy and come back without the earlier context, and I
+    never see tool output. So restate in a line or two the facts the
+    decision depends on. Don't point to earlier replies, tool output, or
+    files you read. Describe any rule or idea it relies on in plain
+    words, not a short label you coined ("the gate", "the lean"); use a
+    label only after I agree to it as a name.
+  - End every chat reply (the CLI output I read in my terminal) with
+    one status line when it leaves a question or decision with me, or
+    ends while work runs in the background. I read
+    the bottom of the pane first when I come back, so the line has to
+    make sense without the earlier context. The question itself sits
+    just above it.
+    - The line names the work from the top level down, then what you
+      need from me: the issue, then the PR within that issue, then the
+      commit within that PR, or the question in a series of
+      one-at-a-time questions.
+    - Each level is a few words that describe it, then its number or its
+      position out of the total in parentheses (`commit 2 of 3`; `~`
+      when the total is an estimate).
+    - Leave out a level that has only one item under the level above
+      it: an issue shipped in one PR has no PR level.
+    - Examples:
+      `review answers first (issue #203) · status-line rules (commit 2 of 3) · need: y/n`,
+      `csv export (issue #88) · plan decisions (3 of ~4) · need: y/n`
+
 - **Carefully choose terminology**
   - Prefer terms and phrases that are clear, well-known, and helpful.
   - Prefer terms that are specific rather than vague.
@@ -149,8 +179,11 @@ communications._
   read in my terminal; NOT external comms, PR/GitHub, docs, commits, or
   code; GitHub content and commits keep GitHub's own `#N` links)
   - Always write the type with the number ("issue #134", "PR #145",
-    "commit 3850f28"), never a bare "#134". A plan's own PR numbering is
-    "the plan's third PR", so it can't be mistaken for a GitHub PR.
+    "commit 3850f28"), never a bare "#134". A plan's own PRs and commits
+    go by a few-word goal with their position ("the board skill (the
+    plan's third PR)", "the status-line rules (commit 2 of 3)"), so they can't
+    be mistaken for GitHub numbers. Don't use plan labels like "PR 9b"
+    or "commit 5c": they mean nothing without the plan open.
   - On first mention in a reply, add a few-word title, unless the same
     item is still on screen from the last message or two.
   - Use a short name instead of the number only when I'd recognize it:
@@ -237,7 +270,7 @@ _Permission prompting, Preferred commands, and Hook behavior._
   `python -m …`, `node -e`, or any `<lang> -c/-e` form, temporary scripts,
   or heredocs feeding interpreters when other tools will work since they
   prompt. Heredocs feeding non-interpreter commands are fine
-  (e.g. `git commit -m "$(cat <<EOF ... EOF)"`).
+  (e.g. `git commit -m "$(cat <<'EOF' ... EOF)"`).
 - Query and filter files are data, not scripts: a GraphQL query read with
   `gh api graphql -F query=@<file>` or a `jq -f <file>` filter, kept in
   the scratchpad. Use one when a one-line command gets too complex to
@@ -610,6 +643,13 @@ _Branching, committing, PRs._
   Target ~10-20 lines total. Don't enumerate files, don't recap the
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
+- Pass commit messages, PR bodies, and comment text inline in a quoted
+  heredoc (`git commit -m "$(cat <<'EOF' ... EOF)"`, same for
+  `--body`), so I read the text in the permission prompt before I
+  approve it; `-F` and `--body-file` show only a path. The quoted
+  `'EOF'` keeps `$` and backticks in the text as written. If a
+  worktree-isolated session refuses the inline form, show the full text
+  in chat first, then use the file form.
 - People and models read commits and PR bodies later to trace why
   something changed. Like a commit message, a PR body states the why and
   the decisions behind the change plainly, plus whatever else its skill
