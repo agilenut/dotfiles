@@ -673,10 +673,11 @@ issues, when to move board items._
 
 ### Filing
 
-- **Track real work with an issue.** Most work gets one, including
-  infrastructure and test-infrastructure work. The only PRs that need no
-  issue: a small comment or doc change, a text fix, a security patch or
-  dependency update.
+- **Track real work with an issue,** a new one or one that already owns
+  the work. Most work gets one, including infrastructure and
+  test-infrastructure work. The only PRs that need no issue: a small
+  comment or doc change, a text fix, a security patch or dependency
+  update.
 - **File only issues I've agreed to.** My request for real work counts as
   agreeing, and so does a plan that scopes the issue. Keep boy-scouting
   what the Boy-scout rule covers. Raise anything bigger found while coding
@@ -688,7 +689,17 @@ issues, when to move board items._
   an issue I agree to, or is dropped with my OK.
 - **Look for the issue that already owns the work before filing.** A
   follow-up that finishes or advances an open issue ties to it instead of
-  getting its own.
+  getting its own. That includes a fix for a defect in what an open
+  issue's PRs shipped, or one that breaks its ACs, even after those PRs
+  merged: the fix references that issue (the workstream issue, not its
+  epic's parent). Uncheck each AC the defect breaks, with a comment on
+  the issue naming the defect and the fix, so a board review doesn't
+  check it off again. A defect that does neither, or a feature its ACs
+  don't cover, needs its own issue. So does a defect found after the
+  issue closes, referencing the closed one: the closing comment records
+  what shipped, so a later fix is new work the board should show. While
+  an epic is open, a new issue for its work is a sub-issue of the epic's
+  parent.
 - **Start work with its issue, not a branch.** Reuse the issue that owns
   the work or file one, add it to the board if the project has one, move
   it to In Progress, assign me, then code. When a plan governs the work,
