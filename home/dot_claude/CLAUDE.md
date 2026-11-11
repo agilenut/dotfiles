@@ -749,9 +749,16 @@ issues, when to move board items._
 - **Default to "Part of #N"** in PRs and commits; the issue stays open
   across related PRs. Use a closing keyword (Closes, Fixes, Resolves) only
   when I ask, or where the project's `board-settings` memory says merged
-  PRs don't close linked issues (a repo setting, separate from a board
-  workflow that closes issues at Done). There, "Closes #N" links the PR
-  to the issue without closing it.
+  PRs don't close linked issues (a repo setting, separate from the board's
+  "Auto-close issue" workflow). There, "Closes #N" links the PR to the
+  issue without closing it.
+- **Before saying whether or when an issue closes,** check both things
+  that can close it: the `board-settings` memory (whether merged PRs close
+  linked issues) and the board's "Auto-close issue" workflow (whether
+  moving a board item to Done closes its issue). Read the workflow from the
+  board each time, with the `board` skill's workflows query:
+  `board-settings` doesn't store it, because it can be turned on or off on
+  the board at any time.
 - **Only reference an issue when the number is known:** from the plan's
   `stories:` frontmatter, the branch name (e.g. `feat/123-add-auth`),
   commits, or me. Don't make up a number. If a reference seems required,
@@ -810,8 +817,8 @@ issues, when to move board items._
   issue has a comment naming the PRs that shipped it and any AC that
   changed. That is the Definition of Done's Done row. Your last allowed
   column is Done unless the project's memory names another. When your
-  last allowed column is Done and the board doesn't close issues there,
-  close the issue after the move.
+  last allowed column is Done and the board's "Auto-close issue" workflow
+  is off, close the issue after the move.
 
 ## Worktree
 
