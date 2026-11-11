@@ -162,11 +162,10 @@ An issue reference, when there is one, goes last after a comma:
 
 No date on the line; git records when it was added.
 
-When an issue, or a card on the project's board, already tracks the work, that
-is the source of truth. Write a line only when the next step is something it
-doesn't hold, such as a reply from someone else, and give only that step plus
-the issue reference. When the next step is just doing the tracked work, write
-no line. The same goes for work a branch or plan already holds.
+When an issue or its board item already tracks the work, that is the source
+of truth. Write a line only when the next step is something it doesn't hold,
+such as a reply from someone else, and give only that step plus the issue
+reference. When the next step is just doing the tracked work, write no line. The same goes for work a branch or plan already holds.
 
 Basic Memory parses these lines, so their shape decides whether a query finds
 them:

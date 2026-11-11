@@ -206,7 +206,7 @@ Plan files are gitignored, so there is no commit step for the plan.
 
 Before starting PR N (N > 1):
 
-1. Confirm the previous PR's closeout ran for each issue it worked (ACs checked, closing comment, card moved per the `board` skill).
+1. Confirm the previous PR's closeout ran for each issue it worked (ACs checked, closing comment, board item moved per the `board` skill).
 2. Re-read the plan's Decisions and Open items, and what merged PRs actually changed: their PR bodies, `.reviews/plans/*-pr<M>-*` triage, and `.reviews/code/*` triage for their branches.
 3. Update the plan before writing commits: rewrite any Decision a merged PR changed, update the PR table, and propose AC changes on PR N's issue per the global AC rules.
 4. Write PR N's commits in the plan file, numbering on from the previous PR's last commit.

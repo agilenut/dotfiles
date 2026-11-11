@@ -116,9 +116,9 @@ only slows the wrap._
   first and change `status:` last, so a run that stops partway leaves the
   plan active and the next wrap finishes it.
 
-- **Board.** Move cards for the issues the related sessions worked, within
-  the global `### Board` rules and the `board` skill's steps. Run the
-  last-column check only through the board skill.
+- **Board.** Move board items for the issues the related sessions worked,
+  within the global `### Board` rules and the `board` skill's steps. Run
+  the last-column check only through the board skill.
 - **Knowledge base.** When the repo's memory or CLAUDE.md names a
   knowledge base for this work (if none, skip this without comment), add
   the decisions and findings the related sessions learned. A session
@@ -223,7 +223,7 @@ should learn exactly what a bare `y` runs by reading one list, without
 working out an action from a description. Use these blocks, leaving out
 any that are empty:
 
-1. **Done without asking:** plans updated, cards moved, checks that
+1. **Done without asking:** plans updated, board items moved, checks that
    passed. One line per area.
 2. **I'll do:** numbered actions, each a verb and its object with a short
    reason ("Delete branch `feat/12-export`: merged as PR #969"). On an
