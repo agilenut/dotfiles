@@ -1,6 +1,6 @@
 ---
 name: board
-description: "Use when filing an issue, adding work to the GitHub board, starting or finishing an issue, moving a board item or card (to In Progress, In Review, or Done), marking work blocked, ordering board items, reviewing the board, or asking what to work on next. Also when /plan or /pr reaches a board step."
+description: 'Use when filing an issue, adding work to the GitHub board, starting or finishing an issue, moving a board item or card (to In Progress, In Review, or Done), marking work blocked, ordering board items, reviewing, checking, or fixing the board as a whole ("make sure the board is right", "clean up the board"), or asking what to work on next. Also when /plan or /pr reaches a board step.'
 user-invocable: true
 argument-hint: "[review | next | <issue#> | <work name>]"
 ---
@@ -312,6 +312,9 @@ gh api graphql -f query='mutation($p:ID!,$i:ID!,$a:ID!){updateProjectV2ItemPosit
 the board before relying on it for `afterId`.
 
 ### Review the board (`/board review`)
+
+Runs for `/board review`, and for a request without the command to check
+or fix the board as a whole ("make sure the board is right").
 
 Read open issues and their board items, plus issues closed in the last 30
 days (`gh issue list --state closed --search "closed:>=<date>"`). List
