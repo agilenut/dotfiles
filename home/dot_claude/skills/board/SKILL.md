@@ -42,13 +42,19 @@ metadata:
 - Board: <owner>/<number>, or "none (user confirmed)"; none → skip every
   board step for this repo
 - Last allowed column: Done | In Review (a role, mapped through Columns)
-- Auto-close on merge: off | on | unknown
+- Merged PRs close linked issues: off | on | unknown (checked <date> via <PR #N | the user>)
 - Stale after: 7 days
 - Staging/device testing: <how this project verifies after merge, or "none">
 - Client repo: yes | no
 - Label conventions: <e.g. "bugs get a severity:\* label", or "none">
 - Columns: <only when names differ, e.g. "Up Next = Ready; In Progress = Doing">
 ```
+
+"Merged PRs close linked issues" is the repo's setting (Settings → General
+→ Issues). It is separate from the board's "Auto-close issue" workflow,
+which closes issues when their board item reaches Done; this skill checks
+that workflow each session instead of storing it. Fill in the setting by
+running "Check whether merged PRs close linked issues" (Operations).
 
 This skill names columns by role: Backlog, Up Next, In Progress, In
 Review, Done. A board copied from the template uses those names. When a
@@ -69,10 +75,11 @@ to the board's name; use the board's names in every command and message.
    the owner's boards (`gh project list --owner <owner>`) and ask which
    one to link, whether to create one, or whether the repo has none. One
    linked → use it. Several → ask.
-2. In the same question, ask: last allowed column (default Done), whether
-   auto-close on merge is off (Settings → General → Issues; no API reads
-   it), how the project tests after merge, whether it is a client repo,
-   and any label conventions.
+2. Run "Check whether merged PRs close linked issues". In the same
+   question as step 1, ask: last allowed column (default Done), how the
+   project tests after merge, whether it is a client repo, any label
+   conventions, and, only if the check didn't settle it, whether merged
+   PRs close linked issues.
 3. Write the file and add its pointer line to the project's `MEMORY.md`.
 
 **Creating a board** (only after the user says yes): copy the user's
@@ -132,6 +139,92 @@ gh pr list --state all --search "<N> in:body" --json number,state,title
 ```
 
 ## Operations
+
+### Check whether merged PRs close linked issues
+
+No REST or GraphQL field reports the repo's setting itself, but each
+issue's closed event records what closed it. Save the query and the
+filter below as two scratchpad files (multi-line inline queries prompt,
+and an isolated worktree session refuses them), then run:
+
+```bash
+gh api graphql -F query=@<query-file> -f o=<owner> -f r=<repo> \
+  | jq --arg repo <owner>/<repo> -f <filter-file>
+```
+
+The filter picks the most recently merged PR into the default branch that
+links an issue in this repo which was still open when the PR merged. A PR
+links an issue with a closing keyword or from its sidebar.
+
+```graphql
+query ($o: String!, $r: String!) {
+  repository(owner: $o, name: $r) {
+    defaultBranchRef {
+      name
+    }
+    pullRequests(states: MERGED, last: 20) {
+      nodes {
+        number
+        mergedAt
+        baseRefName
+        closingIssuesReferences(first: 5) {
+          nodes {
+            number
+            repository {
+              nameWithOwner
+            }
+            timelineItems(itemTypes: [CLOSED_EVENT], first: 5) {
+              nodes {
+                ... on ClosedEvent {
+                  createdAt
+                  closer {
+                    __typename
+                    ... on PullRequest {
+                      number
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```jq
+.data.repository as $repository
+| [$repository.pullRequests.nodes[]
+   | select(.baseRefName == $repository.defaultBranchRef.name)
+   | . as $pr
+   | .closingIssuesReferences.nodes[]
+   | select(.repository.nameWithOwner == $repo)
+   | {pr: $pr.number, merged: $pr.mergedAt, issue: .number,
+      closes: [.timelineItems.nodes[]
+        | {at: .createdAt,
+           by: (if .closer == null then null
+                elif .closer.__typename == "PullRequest" then .closer.number
+                else .closer.__typename end)}]}
+   | .merged as $m
+   | select(all(.closes[]; .at >= $m))]
+| max_by(.merged)
+```
+
+Read the result:
+
+- `on`: the issue's first close has `by` equal to `pr`.
+- `off`: `closes` is empty (the issue is still open), or the first close
+  has `by: null` (closed by hand) or `"ProjectV2"` (the board's "Auto-close
+  issue" workflow, at Done).
+- Any other `by`, such as another PR or `"Commit"`: ask the user, since a
+  commit with a closing keyword can close the issue whatever the setting.
+- `null` (no PR qualifies): ask the user to look under Settings → General
+  → Issues.
+
+Write the answer, the date, and the PR (or "the user") on the settings
+line.
 
 ### File an issue
 

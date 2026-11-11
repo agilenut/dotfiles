@@ -748,8 +748,10 @@ issues, when to move board items._
 
 - **Default to "Part of #N"** in PRs and commits; the issue stays open
   across related PRs. Use a closing keyword (Closes, Fixes, Resolves) only
-  when I ask, or where the project's memory says auto-close on merge is
-  off. There, "Closes #N" links the PR to the issue without closing it.
+  when I ask, or where the project's `board-settings` memory says merged
+  PRs don't close linked issues (a repo setting, separate from a board
+  workflow that closes issues at Done). There, "Closes #N" links the PR
+  to the issue without closing it.
 - **Only reference an issue when the number is known:** from the plan's
   `stories:` frontmatter, the branch name (e.g. `feat/123-add-auth`),
   commits, or me. Don't make up a number. If a reference seems required,

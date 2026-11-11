@@ -111,11 +111,15 @@ an open PR with no checks as CI_RUNNING.
   Include `### Pre-merge` / `### Post-merge` only if they have items;
   omit `## Test Plan` entirely if neither section has items.
 
-- Link the issue per CLAUDE.md `## Issues and board` referencing rules:
-  "Closes #N" when the user asks, or where the project's `board-settings`
-  memory says auto-close on merge is off (it links the PR without closing
-  the issue); otherwise "Part of #N". No `board-settings` yet → the
-  `board` skill's Step 1 creates it.
+- Link the issue per CLAUDE.md `## Issues and board` referencing rules.
+  No `board-settings` yet → the `board` skill's Step 1 creates it. If its
+  "Merged PRs close linked issues" line says `unknown` or has no
+  `(checked <date> via ...)` note, first run the `board` skill's "Check
+  whether merged PRs close linked issues" and update the line: a wrong
+  `off` closes the issue on merge, and an `unknown` keeps every PR off
+  "Closes #N" and so out of the issue's sidebar. Then use "Closes #N"
+  when the user asks, or where the line says `off` (it links the PR
+  without closing the issue); otherwise "Part of #N".
 - **Review the drafted body.** Spawn `language-reviewer` with the drafted
   title and body as text to review. Pass as context, not text to review:
   the issue's ACs, the plan path if one governs this PR, and
