@@ -124,7 +124,7 @@
   signingkey = "~/.ssh/id_ed25519_git_signing_key_personal.pub"
 
 [profiles.personal.packages.darwin]
-  dev       = [ "dotnet-sdk", "git-ignore", "go", "powershell", "shellcheck", "shfmt" ]
+  dev       = [ "git-ignore", "go", "powershell", "shellcheck", "shfmt" ]
   quicklook = [ "qlmarkdown", "syntax-highlight" ]
 
 [[profiles.personal.apps.casks]]

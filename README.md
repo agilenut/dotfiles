@@ -65,7 +65,7 @@ Packages and configuration are organized into profiles defined in `.chezmoidata.
 | Category       | Scope              | Example                          |
 | -------------- | ------------------ | -------------------------------- |
 | **Core tools** | Global (all users) | fzf, bat, git, neovim, tmux, zsh |
-| **Dev tools**  | Profile-specific   | go, dotnet-sdk, shellcheck       |
+| **Dev tools**  | Profile-specific   | go, powershell, shellcheck       |
 | **GUI apps**   | Profile-specific   | 1Password, VS Code, Alfred       |
 | **Git config** | Profile-specific   | name, email, signing key         |
 
@@ -111,8 +111,7 @@ Then set `profile = "work"` in `~/.config/chezmoi/chezmoi.toml`.
 ### Development Tools (personal profile)
 
 - **go** - Go programming language
-- **dotnet-sdk** - .NET development
-- **powershell** - cross-platform shell
+- **powershell** - cross-platform shell. It pulls in Homebrew's `dotnet`, which tracks the newest .NET major, so mise installs the .NET SDK each repo's `global.json` pins
 - **shellcheck** / **shfmt** - shell linting and formatting
 
 ### XDG Compliance

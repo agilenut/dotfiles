@@ -48,6 +48,12 @@ test_mise_config() {
   else
     fail "mise ignores packageManager (settings.idiomatic_version_file_enable_tools lacks pnpm or yarn)"
   fi
+  # Homebrew's .NET follows the newest major, so a repo's SDK comes from mise.
+  if [[ "$idiomatic" == *dotnet* ]]; then
+    pass "mise reads global.json for dotnet"
+  else
+    fail "mise ignores global.json (settings.idiomatic_version_file_enable_tools lacks dotnet)"
+  fi
 
   if [[ -n "$(mise config get -f "$config" tools.pnpm 2>/dev/null || true)" ]]; then
     pass "global pnpm is set"
