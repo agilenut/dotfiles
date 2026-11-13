@@ -36,7 +36,7 @@ dotfiles/
 Profiles control which packages and configuration to install:
 
 - **Core tools** (global): Installed for all profiles - fzf, bat, git, neovim, tmux, etc.
-- **Dev tools** (profile-specific): go, powershell, shellcheck, etc.
+- **Dev tools** (profile-specific): go, shellcheck, shfmt, etc.
 - **Apps** (profile-specific): GUI applications like 1Password, VS Code
 - **Git config** (profile-specific): name, email, signing key
 

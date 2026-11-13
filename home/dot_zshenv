@@ -76,8 +76,8 @@ export DOTNET_CLI_HOME="$XDG_STATE_HOME/dotnet"
 export DOTNET_NOLOGO=true
 export DOTNET_CLI_TELEMETRY_OPTOUT=true
 # Global .NET tools find their runtime through DOTNET_ROOT. mise installs every
-# .NET version into this one folder, so it serves repos that pin an SDK and
-# everywhere else. Homebrew's dotnet (powershell's dependency) sets its own.
+# .NET version into this one folder, so it has the runtimes for repos that pin
+# an SDK and for everywhere else.
 if [[ -d "$XDG_DATA_HOME/mise/dotnet-root" ]]; then
   export DOTNET_ROOT="$XDG_DATA_HOME/mise/dotnet-root"
 fi

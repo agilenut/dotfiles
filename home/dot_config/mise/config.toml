@@ -8,6 +8,9 @@
   node = "lts"
   # Node 25+ no longer ships corepack, so mise provides pnpm instead.
   pnpm = "latest"
+  # The only .NET on PATH. Global .NET tools install and run on it, and repos
+  # that pin an SDK in global.json get theirs installed beside it.
+  dotnet = "latest"
 
 [settings]
   # Honor .nvmrc / .node-version so each repo runs the Node its CI uses,

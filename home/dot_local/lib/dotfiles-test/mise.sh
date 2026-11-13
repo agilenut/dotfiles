@@ -19,8 +19,8 @@ test_mise_config() {
     return
   fi
 
-  # Assert the file's contents, not `mise current node`: CI has no
-  # mise-installed Node, and the resolved version moves with every release.
+  # Assert the file's contents, not `mise current node`: the resolved
+  # version moves with every release.
   local probe
   if ! probe="$(mise config get -f "$config" 2>&1)"; then
     fail "mise can't read $config: ${probe%%$'\n'*}"
@@ -48,7 +48,7 @@ test_mise_config() {
   else
     fail "mise ignores packageManager (settings.idiomatic_version_file_enable_tools lacks pnpm or yarn)"
   fi
-  # Homebrew's .NET follows the newest major, so a repo's SDK comes from mise.
+  # mise is the only .NET, so a repo's global.json pin works only if mise reads it.
   if [[ "$idiomatic" == *dotnet* ]]; then
     pass "mise reads global.json for dotnet"
   else
@@ -59,5 +59,17 @@ test_mise_config() {
     pass "global pnpm is set"
   else
     fail "global pnpm is unset (pnpm is missing outside repos that pin it)"
+  fi
+
+  if [[ -n "$(mise config get -f "$config" tools.dotnet 2>/dev/null || true)" ]]; then
+    pass "global dotnet is set"
+  else
+    fail "global dotnet is unset (no dotnet for global tools outside repos that pin one)"
+  fi
+  # `command -v dotnet` alone also passes on a CI runner's own .NET.
+  if (cd "$HOME" && mise which dotnet >/dev/null 2>&1); then
+    pass "mise installed its global dotnet"
+  else
+    fail "mise's global dotnet isn't installed (run \`mise install\` from \$HOME)"
   fi
 }
