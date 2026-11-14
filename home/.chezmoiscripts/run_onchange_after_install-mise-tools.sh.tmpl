@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Install the tools in mise's global config. mise activate only warns about a
+# missing tool, and its shim exists only once a version is installed, so without
+# this a fresh machine has no node, pnpm or dotnet until `mise install` is run by
+# hand. dotnet comes only from mise, and nvim's roslyn install needs it.
+#
+# The hash below re-runs this whenever the global tool list changes:
+# {{ include "dot_config/mise/config.toml" | sha256sum }}
+
+set -euo pipefail
+
+{{ if eq .chezmoi.os "darwin" -}}
+# A first apply starts from a stock PATH, and the packages script's
+# `brew shellenv` changed only its own process, so add Homebrew here too.
+if [ -x "/opt/homebrew/bin/brew" ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -x "/usr/local/bin/brew" ]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+# The packages script installs mise on macOS, so a missing one is an error:
+# failing keeps chezmoi from recording this run, and the next apply retries.
+if ! command -v mise >/dev/null 2>&1; then
+  echo "mise not found; install it with Homebrew, then run chezmoi apply again" >&2
+  exit 1
+fi
+{{- else -}}
+if ! command -v mise >/dev/null 2>&1; then
+  echo "mise not installed; skipping its global tools" >&2
+  exit 0
+fi
+{{- end }}
+
+# From $HOME, so only the global config applies, not a repo's pins.
+cd "$HOME"
+mise install

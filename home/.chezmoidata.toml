@@ -124,7 +124,7 @@
   signingkey = "~/.ssh/id_ed25519_git_signing_key_personal.pub"
 
 [profiles.personal.packages.darwin]
-  dev       = [ "dotnet-sdk", "git-ignore", "go", "powershell", "shellcheck", "shfmt" ]
+  dev       = [ "git-ignore", "go", "shellcheck", "shfmt" ]
   quicklook = [ "qlmarkdown", "syntax-highlight" ]
 
 [[profiles.personal.apps.casks]]
@@ -164,6 +164,12 @@
 [[profiles.personal.apps.casks]]
   name = "logi-options-plus"
   app  = "Logi Options+"
+
+# The cask, not the formula: the cask bundles its own .NET runtime, and the
+# formula depends on Homebrew's dotnet. .NET comes only from mise.
+[[profiles.personal.apps.casks]]
+  name = "powershell"
+  app  = "PowerShell"
 
 [[profiles.personal.apps.casks]]
   name = "rectangle-pro"

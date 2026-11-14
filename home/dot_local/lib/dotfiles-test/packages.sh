@@ -26,13 +26,13 @@ test_commands_installed() {
   # macOS extras: in darwin core packages or the personal dev/quicklook
   # profiles. Not enforced on Linux because either (a) the package isn't
   # in the distro's default repos (chezmoi, gh, eza on apt) or (b) it's
-  # in a personal-profile-only list (dotnet, go, shellcheck, shfmt, etc.)
+  # in a personal-profile-only list (go, shellcheck, shfmt, etc.)
   # that may or may not be present on a Linux runner.
   if [[ "$(uname)" == "Darwin" ]]; then
     commands+=(
       "chezmoi"
       "claude"
-      "dotnet"
+      "dotnet" # installed by mise from its global config
       "fd"
       "git-credential-manager"
       "git-ignore"
