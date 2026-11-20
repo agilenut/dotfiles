@@ -497,71 +497,87 @@ _Library use, warnings, secrets, DRY, naming, comments, perf, build vs buy._
 _How to write instructions a model follows: product prompts, CLAUDE.md,
 skills, agents, and memory._
 
+Writing from the goal:
+
 - Open a product prompt, agent, or skill with its goal: who uses its
   output, what they need from it, and the main way it fails them. The goal
-  gives the model a test for cases its rules don't cover, the same way a
-  rule's reason does. A persona ("You are a senior...") says who the model
-  is but gives it nothing to decide with.
-- Before adding a mechanical rule (one that names a specific case and
-  what to do in it), check whether the goal is stated clearly enough for
-  the model to judge that case itself. If it isn't, fix the goal first and
-  rerun the case. Add the rule only if the case still fails. A prompt
-  built from many mechanical rules usually lacks a clear goal, and its
-  rules start to contradict each other.
-- Add a rule only if the model would act differently without it. Don't
-  explain what the model already knows.
-- Give the reason with each rule. A model that knows why can handle the
-  case the rule didn't anticipate.
-- Match the level of detail to how fragile the task is. Use exact steps
-  when a deviation breaks something or there is one right answer: a
-  format another program parses, a fixed order of operations, a safety
-  boundary. Use principles where several approaches are valid and the
-  right one depends on context, such as judging a review finding or
-  writing a reply that should sound natural.
-- For a prompt that runs many times, weigh cost and latency along with
+  lets the model decide cases no rule covers. A persona ("You are a
+  senior...") gives it nothing to decide with.
+- Add a rule only if the model would act differently without it, and give
+  its reason, so the model can handle cases the rule didn't foresee.
+- Before adding a mechanical rule (one that names a case and what to do
+  in it), check whether a clearer goal would handle the case, whether it
+  came from a failing test or from behavior I report. If the goal is
+  unclear, fix it and recheck;
+  add the rule only if the case still goes wrong. Before a version ships,
+  ask which existing rules a clearer goal could replace. Many mechanical
+  rules usually mean an unclear goal, and they start to contradict each
+  other.
+- Don't explain what the model already knows, but state facts it can't
+  see, such as a server limit or the input format, as facts: "the server
+  sends at most two follow-ups on a concept", not "ask up to two
+  follow-ups", which reads as a target.
+- Match the level of detail to how fragile the task is: exact steps when
+  a deviation breaks something or there is one right answer (a format
+  another program parses, a fixed order of operations, a safety
+  boundary), principles where the right approach depends on context.
+- Use one term per thing. A model reads two names as two things.
+- Don't use emphasis as a style: models overreact to ALL-CAPS,
+  "CRITICAL", and "you MUST", and apply the rule too broadly. When a rule
+  is ignored, first check that it
+  states its reason and sits near where it applies; add emphasis to that
+  rule only if it is still missed. Leave the emphasis already in this file
+  unless you rewrite its rule.
+- Don't repeat what the same reader gets from another loaded source (a
+  shared system prompt, a file read at run time, or this file, which every
+  custom subagent loads): copies drift apart. An agent or skill points to
+  a rule here by section name and adds only what its job needs; when you
+  rename a section, update the pointers to it.
+
+Iterating and shipping:
+
+- An experiment changes one thing in a prompt. Say so in the brief, so a
+  reviewer checks only that change.
+- A version meant to ship reads as one piece written from the goal: fold
+  in what the experiments found instead of stacking their edits. The
+  piece is the prompt, or for a long instruction file, the section the
+  change is in. Brief a writer on the end state, not the smallest edit.
+  When the version adds length, give the reason in the commit message or
+  PR (or your report to me), never in the prompt.
+- Check prompt output against the goal, with test cases and assertions
+  (Testing → "Tests of a nondeterministic component") and, for a failure
+  you've seen, a judge model told what to look for. If output is scored
+  only on whether it followed each rule, every rule you add looks like it
+  helped.
+- When you brief a reviewer, give the text before your intent. A reviewer
+  who reads the intent first reads the text as you did and misses its
+  second readings.
+
+Model and cost:
+
+- Find the model that runs a prompt before deciding what it can do: the
+  model ID in the API call, config, or command, or a Claude Code agent's
+  or skill's `model:` key, else the session's model. A model named in a
+  comment, or an Azure deployment name (which needn't match the model),
+  is a guess.
+- Where this section and the vendor's current guidance disagree, this
+  section decides how a prompt is written (goal, rules, emphasis, terms)
+  and the vendor decides what the model can do (reasoning, structured
+  output, caching, message roles). Tell me when a disagreement changes a
+  prompt or a review finding, naming the rule here and the guidance, so I
+  can decide whether to update this section.
+- For a prompt that runs many times, weigh cost and latency with
   accuracy, since both are paid on every call.
   - Use the smallest model and reasoning effort that can meet the goal.
-    Below that, no prompt change helps; each step above it costs more on
-    every call.
+    Below that, no prompt change helps.
   - Put the content that changes least first, so the provider can cache
-    the prefix and later calls skip reprocessing it. Check the provider's
-    caching rules too, since some need an explicit opt-in and a minimum
-    prefix length. Opt in only when calls repeat within the cache
-    lifetime: a cache write can cost more than an uncached call, so a
-    prompt that runs a few times a day can pay more with caching on.
-  - Before cutting output or reasoning effort to save cost or time,
-    measure accuracy and completion tokens (including reasoning) with and
-    without the cut. The model may use the output it writes to work
-    through its answer, so cutting output can raise reasoning tokens and
-    cancel the saving.
-- Find the model that runs a prompt before deciding anything that depends
-  on what it can do: the model ID in the API call, config, or command, or
-  for a Claude Code agent or skill its `model:` key, else the session's
-  model. A model named only in a comment, or an Azure deployment name, is
-  a guess, since deployment names don't have to match the model.
-- When this section and the vendor's current guidance disagree, this
-  section decides how a prompt is written (goal, rules, emphasis, terms)
-  and the vendor guidance decides what the model can do (reasoning,
-  structured output, caching, message roles). Tell me when this section
-  and the vendor's guidance disagree in a way that changes a prompt or a
-  review finding, naming the rule here and the guidance, so I can decide
-  whether this section needs updating for newer models.
-- Don't use emphasis as a style. Anthropic's prompting guide (2026) says
-  models overreact to ALL-CAPS, "CRITICAL", and "you MUST", and apply
-  the emphasized rule too broadly. When a rule is ignored, first
-  check that it states its reason and sits near where it applies. Add
-  emphasis to that one rule only if it is still missed. Emphasis already
-  in this file predates this rule; leave it unless you are rewriting that
-  rule.
-- Use one term per thing. A model, like a person, reads two names as two
-  different things.
-- Don't repeat what the same reader already gets from another source
-  loaded with the prompt, such as a shared system prompt, a file injected
-  into the prompt or read at run time, or (for agents and skills) this
-  file. Copies drift apart. Every custom subagent loads this file, so an
-  agent or skill points to a rule here by its section name and adds only
-  what is specific to its job. When you rename a section, search for
-  pointers to it and update them.
+    the prefix, and check its caching rules (some need an opt-in or a
+    minimum prefix length). Opt in only when calls repeat within the cache
+    lifetime, since a cache write can cost more than an uncached call.
+  - Before cutting output or reasoning effort, measure accuracy and
+    completion tokens (including reasoning) with and without the cut. The
+    model may use its output to reason, so the cut can raise reasoning
+    tokens instead.
 
 ## Errors
 
@@ -958,6 +974,10 @@ Universal:
 - Before adding content (a section, a bullet, a paragraph), check that
   the reader needs it and that this is the right place for it. When
   unsure, leave it out.
+- When a change to a doc or prompt is meant to ship, reread the whole
+  piece (the doc or prompt, or for a long instruction file, the section
+  the change is in), not only the changed lines, and ask what could now
+  be cut or merged.
 - Capture only meaningful signal; no fluff, no restatement, no "as
   discussed above"
 - Use specific identifiers (class / function / file / table / command
