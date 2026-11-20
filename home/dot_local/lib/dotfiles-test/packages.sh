@@ -106,7 +106,7 @@ test_casks_installed() {
   }
 
   check_app "Visual Studio Code"
-  check_app "Alfred 5"
+  check_app "Alfred 6"
   check_app "Firefox"
   check_app "Google Chrome"
   check_app "1Password"
