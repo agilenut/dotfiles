@@ -141,7 +141,7 @@
 
 [[profiles.personal.apps.casks]]
   name = "alfred"
-  app  = "Alfred 5"
+  app  = "Alfred 6"
 
 [[profiles.personal.apps.casks]]
   name = "appcleaner"
