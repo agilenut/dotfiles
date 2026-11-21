@@ -33,7 +33,7 @@ A few special files shape the deploy:
   chezmoi managing the target; the old copy stays until it is listed here.
 - `.chezmoiexternal.toml` - git repos chezmoi clones (antidote, tpm).
 - `.chezmoiscripts/` - scripts that run during an apply (packages, macOS
-  defaults, the `smart_approve.py` install).
+  defaults).
 
 To find out what chezmoi does with a file:
 
