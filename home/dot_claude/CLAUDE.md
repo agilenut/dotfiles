@@ -255,22 +255,18 @@ phrase to drop or translate.
 
 ## Bash
 
-_Permission prompting, Preferred commands, and Hook behavior._
+_Permission prompting, preferred commands, and command shapes._
 
 - GOAL: Construct commands to reduce permission prompting.
-- ALWAYS use builtin tools like Read/Edit/Write/Grep/Glob or
-  allow-listed commands from settings[.local].json when possible.
-- Allow-listed text tools: jq, grep, sed, head, tail, sort, uniq, wc, cut,
-  diff, cat, echo.
-- Prefer `jq` for structured data (JSON, NDJSON) and `grep -E` for
-  line / text filtering. Reach for `awk` only when neither fits or the
-  user explicitly asks — it occasionally false-positive-prompts under
-  the permission check above, and jq/grep read more naturally.
+- Use `jq` for JSON and `grep`, `cut`, or `sort` for text. `awk` has no
+  allow rule because it can run commands and write files, so it waits on
+  the classifier or prompts. Use it when the job needs math or conditions
+  on fields.
 - NEVER use inline scripts (`sh -c`, `bash -c`, `python -c`,
   `python -m …`, `node -e`, or any `<lang> -c/-e` form, temporary scripts,
   or heredocs feeding interpreters when other tools will work since they
-  prompt. Heredocs feeding non-interpreter commands are fine
-  (e.g. `git commit -m "$(cat <<'EOF' ... EOF)"`).
+  prompt. A heredoc that only supplies text, such as a commit message,
+  isn't an inline script.
 - Query and filter files are data, not scripts: a GraphQL query read with
   `gh api graphql -F query=@<file>` or a `jq -f <file>` filter, kept in
   the scratchpad. Use one when a one-line command gets too complex to
@@ -293,33 +289,26 @@ _Permission prompting, Preferred commands, and Hook behavior._
   only in a project (never `-g`), `dotnet tool` use `--local` in projects
   or `--global` only outside a project
 
-### PreToolUse Hook
+### Command shapes
 
-- PreToolUse hook splits on `&&`, `||`, `;`, `|`, and newlines, then checks
-  each segment independently. Pipelines and chains auto-approve when
-  every segment is allow-listed — compose freely (e.g.
-  `gh pr list --json … | jq …`, `git log --oneline | head`).
-- Wrapper commands `time`, `nice`, `env` (binary form), `command`,
-  `exec`, `ionice`, `taskset` are peeled — the inner command is what's
-  checked. `sudo`/`doas` are not peeled (privilege escalation always
-  prompts).
-- `xargs [FLAGS] CMD` is peeled — `CMD` is what's checked, with
-  positional args attached. `xargs sh -c '…'` / `bash -c` / `python -c`
-  / `awk` still prompt (the executor is what's checked). Unknown long
-  flags bail rather than mis-parse.
-- `awk '…'` auto-allows when the program scans clean — no `system(`,
-  `getline`, `print >`/`print |`, `printf >`/`printf |`, `@load`,
-  `@include`, or backticks. Programs using `-f`/`-i`/`-e`/`-E`/`--source`/`--include`
-  (loads external scripts, in-place rewrite) always prompt. Tokens that
-  look dangerous as string-literal substrings get rejected as a
-  false-positive — accepted cost.
-- Native ASK overrides hook-allow. If an all-allow-listed chain still
-  prompts, check `~/.claude/settings.json` `ask` for a broader pattern
-  catching one segment.
-- Debug with `SMART_APPROVE_VERBOSE=1` — appends per-segment match info
-  to `~/.claude/logs/smart_approve.log`. `tail`/`grep` it to see which
-  segment didn't match. Note: command previews land in the log
-  unredacted, so don't enable while running commands with secrets in args.
+- Claude Code can't check some shapes from the text, so no allow rule
+  approves them: in auto mode they wait on the classifier, and in other
+  modes they prompt. Write the plain form when one works:
+  - spell out paths instead of using variables, the scratchpad path
+    included (`$HOME` is fine)
+  - run `git` from the working directory, with no `cd <dir> &&` before
+    it and no `git -C`
+  - no `$(...)` or backticks: run the inner command first and use its
+    output. The quoted-heredoc message form in the Git section is the
+    exception, since that text is meant to be read before approval.
+  - no loops: pass all the items to one command, or run one command each
+  - a pipe instead of `<(...)`, no `&` to run a command in the background,
+    at most one `cd`
+  - set values with a flag or argument, not a leading `VAR=` or `env`
+  - write a file with the Write tool, or redirect only into the working
+    directory
+- An ask rule prompts even in auto mode; when an allowed command prompts,
+  check the `ask` list in `~/.claude/settings.json`.
 
 ## Planning
 
