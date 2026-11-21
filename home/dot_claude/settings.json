@@ -382,6 +382,8 @@
       "Bash(gh api *--method*-X*)"
     ],
     "ask": [
+      "Bash(auth0 api *://*)",
+      "Bash(aws *--endpoint-url*)",
       "Bash(aws *ecs describe-task-definition*)",
       "Bash(aws *lambda get-function-configuration*)",
       "Bash(aws *s3 cp *)",

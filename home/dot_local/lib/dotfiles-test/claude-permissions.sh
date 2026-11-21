@@ -7,6 +7,8 @@ CLAUDE_PERMISSIONS_ASK=(
   # Commands whose arguments can send a request to a host Claude picks. The
   # matching allow rules (`gh api -X GET *`, `git fetch *`, ...) end in a
   # wildcard that also takes a URL or host flag.
+  'Bash(auth0 api *://*)'
+  'Bash(aws *--endpoint-url*)'
   'Bash(dotnet *--source*)'
   'Bash(gh *--hostname*)'
   'Bash(gh api *://*)'
