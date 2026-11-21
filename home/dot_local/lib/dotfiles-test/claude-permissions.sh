@@ -2,10 +2,11 @@
 # Claude Code permission rule tests (~/.claude/settings.json)
 # shellcheck shell=bash
 
-# Ask rules for commands whose arguments can send a request to a host Claude
-# picks. The matching allow rules (`gh api -X GET *`, `git fetch *`, ...) end
-# in a wildcard that also takes a URL or host flag.
+# Ask rules that prompt even in auto mode.
 CLAUDE_PERMISSIONS_ASK=(
+  # Commands whose arguments can send a request to a host Claude picks. The
+  # matching allow rules (`gh api -X GET *`, `git fetch *`, ...) end in a
+  # wildcard that also takes a URL or host flag.
   'Bash(dotnet *--source*)'
   'Bash(gh *--hostname*)'
   'Bash(gh api *://*)'
@@ -15,6 +16,26 @@ CLAUDE_PERMISSIONS_ASK=(
   'Bash(npm *--registry*)'
   'Bash(pnpm *--registry*)'
   'Bash(uv *--*index*)'
+  # Commands that print a secret or download stored files. The auto-mode
+  # classifier sometimes lets these run on its own. The `aws` rules have a
+  # wildcard before the service because global options such as `--profile`
+  # can come first.
+  'Bash(aws *ecs describe-task-definition*)'
+  'Bash(aws *lambda get-function-configuration*)'
+  'Bash(aws *s3 cp *)'
+  'Bash(aws *s3 sync *)'
+  'Bash(aws *s3api get-object*)'
+  'Bash(aws *secretsmanager *get-secret-value*)'
+  'Bash(aws *ssm get-parameter*)'
+  'Bash(az cognitiveservices account keys list *)'
+  'Bash(az functionapp config appsettings list *)'
+  'Bash(az keyvault secret download *)'
+  'Bash(az keyvault secret show *)'
+  'Bash(az storage account keys list *)'
+  'Bash(az storage account show-connection-string *)'
+  'Bash(az webapp config appsettings list *)'
+  'Bash(az webapp config connection-string list *)'
+  'Bash(az webapp deployment list-publishing-profiles *)'
 )
 
 # Deny rules for shapes an allow rule would otherwise approve:
@@ -85,11 +106,11 @@ test_claude_permissions() {
 
   # A list set without "$defaults" replaces the built-in list instead of
   # adding to it.
-  if jq -e '.autoMode | [.allow, .soft_deny, .hard_deny] | map(select(. != null and index("$defaults") == null)) | length == 0' \
+  if jq -e '.autoMode | [.environment, .allow, .soft_deny, .hard_deny] | map(select(. != null and index("$defaults") == null)) | length == 0' \
     "$settings" >/dev/null 2>&1; then
-    pass "autoMode rule lists keep the built-in rules"
+    pass "autoMode lists keep the built-in entries"
   else
-    fail "an autoMode rule list has no \"\$defaults\" entry, so it drops the built-in rules"
+    fail "an autoMode list has no \"\$defaults\" entry, so it drops the built-in entries"
   fi
 
   local rule
