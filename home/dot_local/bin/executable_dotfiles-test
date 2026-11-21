@@ -22,7 +22,7 @@ source "$LIB_DIR/auto-update.sh"
 source "$LIB_DIR/worktree.sh"
 source "$LIB_DIR/tmux-claude.sh"
 source "$LIB_DIR/tmux-continuum.sh"
-source "$LIB_DIR/smart_approve.sh"
+source "$LIB_DIR/claude-permissions.sh"
 source "$LIB_DIR/reply-check.sh"
 source "$LIB_DIR/nvim-tooling.sh"
 source "$LIB_DIR/open-path.sh"
@@ -132,8 +132,8 @@ main() {
   # Tmux continuum auto-save health
   test_continuum_autosave
 
-  # Smart approve hook tests
-  test_smart_approve
+  # Claude Code permission rules
+  test_claude_permissions
 
   # Reply-check Stop hook tests
   test_reply_check

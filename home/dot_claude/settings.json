@@ -12,7 +12,6 @@
       "Glob",
       "Grep",
       "Read",
-      "WebFetch",
       "WebSearch",
       "Write",
       "Bash(actionlint *)",
@@ -106,7 +105,6 @@
       "Bash(defaults help)",
       "Bash(df *)",
       "Bash(diff *)",
-      "Bash(dig *)",
       "Bash(dirname *)",
       "Bash(docker compose *)",
       "Bash(docker images *)",
@@ -362,8 +360,7 @@
       "Bash(git *--config-env *)",
       "Bash(git *--exec-path=*)",
       "Bash(git *--exec-path *)",
-      "Bash(git *--upload-pack=*)",
-      "Bash(git *--upload-pack *)",
+      "Bash(git *--upl*)",
       "Bash(git *--receive-pack=*)",
       "Bash(git *--receive-pack *)",
       "Bash(git clone *protocol.ext*)",
@@ -391,7 +388,11 @@
       "Bash(tee *.claude/settings*)",
       "Bash(tee *.claude/hooks*)",
       "Bash(sed -i* * *.claude/settings*)",
-      "Bash(sed -i* * *.claude/hooks*)"
+      "Bash(sed -i* * *.claude/hooks*)",
+      "Bash(gh api *-X*-X*)",
+      "Bash(gh api *--method*--method*)",
+      "Bash(gh api *-X*--method*)",
+      "Bash(gh api *--method*-X*)"
     ],
     "ask": [
       "Bash(brew install *)",
@@ -407,6 +408,15 @@
       "Bash(git -C * reset *--hard*)",
       "Bash(git merge *)",
       "Bash(git push *)",
+      "Bash(dotnet *--source*)",
+      "Bash(gh *--hostname*)",
+      "Bash(gh api *://*)",
+      "Bash(git fetch *://*)",
+      "Bash(git ls-remote *://*)",
+      "Bash(git pull *://*)",
+      "Bash(npm *--registry*)",
+      "Bash(pnpm *--registry*)",
+      "Bash(uv *--*index*)",
       "Bash(gh pr create *)",
       "Bash(gh pr merge *)",
       "Bash(source *)"
@@ -414,18 +424,6 @@
     "defaultMode": "auto"
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/smart_approve.py",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
