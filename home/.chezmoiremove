@@ -16,3 +16,13 @@
 #
 # Safe to drop once every machine has applied this. Added 2026-10-23.
 .claude/skills/voice
+
+# Claude Code's own permission rules replaced the smart_approve approval
+# hook. A session started before the switch still calls the hook, and
+# deleting the file blocks that session's Bash commands, so close such
+# sessions before applying.
+#
+# Safe to drop once every machine has applied this. Added 2026-11-21.
+.claude/hooks/smart_approve.py
+.claude/hooks/__pycache__
+
