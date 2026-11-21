@@ -15,17 +15,6 @@
       "WebSearch",
       "Write",
       "Bash(actionlint *)",
-      "Bash(auth0 api GET *)",
-      "Bash(aws cloudwatch describe-alarms *)",
-      "Bash(aws ec2 describe-addresses *)",
-      "Bash(aws ec2 describe-instances *)",
-      "Bash(aws ec2 describe-security-groups *)",
-      "Bash(aws ec2 describe-snapshots *)",
-      "Bash(aws ec2 describe-volumes *)",
-      "Bash(aws rds describe-db-instances *)",
-      "Bash(aws route53 list-hosted-zones *)",
-      "Bash(aws s3 ls *)",
-      "Bash(aws ssm describe-instance-information *)",
       "Bash(az account show *)",
       "Bash(az acr manifest list-metadata *)",
       "Bash(az acr show *)",
@@ -65,8 +54,6 @@
       "Bash(az monitor scheduled-query list *)",
       "Bash(az resource list *)",
       "Bash(az resource show *)",
-      "Bash(az rest --method get *)",
-      "Bash(az rest --method GET *)",
       "Bash(az role assignment list *)",
       "Bash(az role definition list *)",
       "Bash(az stack group show *)",
@@ -472,7 +459,7 @@
     "environment": [
       "**Organization**: None configured",
       "**Primary use of Claude Code**: software development on a personal macOS workstation, across several unrelated private client repositories plus public personal ones",
-      "**Cloud provider(s)**: Azure. `az` is the expected cloud CLI; `aws` and `gcloud` are not part of normal work, so reaching for them is unexpected",
+      "**Cloud provider(s)**: mostly Azure (`az`), with some AWS (`aws`) and Auth0 (`auth0`) work. `gcloud` is not part of normal work, so reaching for it is unexpected",
       "**Repository visibility**: mixed. Read visibility from the remote rather than assuming. Dotfiles and config repositories here are public and must never receive client names, hostnames, subscription IDs, or personal identifiers",
       "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
       "**Org-specific CLIs**: None configured",
@@ -480,7 +467,7 @@
       "**CI/CD deploy targets**: None configured",
       "**Network posture**: local development servers listen on localhost and 127.0.0.1 on ports allocated dynamically per git worktree, so a port number carries no meaning and no fixed list exists. A localhost or 127.0.0.1 request is a local development service. This does NOT extend to the rest of the local network: other private-network addresses and `.local` names are separate hosts, not development services, and are judged on their own terms",
       "**Host containment**: ordinary developer workstation with open internet and no egress allow-list",
-      "**Protected deployment namespaces / environments**: cloud resource groups, servers, and application names matching the Sensitive remote targets rule below are production, and are read-only unless the user's own message names the production target explicitly. A command the agent itself composed naming a production target does not satisfy that. Non-production environments are ordinary work for reads and routine changes, while destructive operations there (deleting a resource group, dropping a database) are judged on their own terms",
+      "**Protected deployment namespaces / environments**: cloud resource groups, servers, and application names matching the Sensitive remote targets rule below are production, and changing them needs the user to ask for the change. Plain words are enough: a message that points at production (\"compare it to prod\", \"open the prod db firewall\") counts, and so does a yes to a change the agent described first, naming the target and what the change does. A production target that appears only in a command the agent composed, with no such message or yes, does not count. Non-production environments are ordinary work for reads and routine changes, while destructive operations there (deleting a resource group, dropping a database) are judged on their own terms",
       "**Data retention / declassification**: None configured",
       "**Trusted repo**: The git repository the agent started in (its working directory) and its configured remote(s). When the repo's public/private visibility is given — by the Repository visibility entry or the user's own message — use it to scope what is OK to commit or push there: confidential material is fine in a private repo; in a public one, only that repo's own work is — and content ported, repointed, or first read from outside this session's repo is not its own work, whoever directed the port. Visibility scopes confidential material only: secrets and sensitive data (personal & entrusted) are never cleared into any repo by its visibility (see Definitions).",
       "**Source control**: GitHub via `gh`. Content-level judgment (secrets, client data, fitness for a public repo) applies in full to anything being pushed or opened as a pull request",
@@ -491,6 +478,10 @@
       "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar",
       "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`)",
       "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment"
+    ],
+    "allow": [
+      "$defaults",
+      "Cloud Configuration Reads: Reading how Azure, AWS, or Auth0 resources are set up is fine in any environment, production included, without the user naming the target, because the response holds no secrets or customer data and debugging needs it. Judge by what the response contains and whether the call changes anything, not by the command's verb. Covered: calls whose only effect is to return resource metadata or to check a request, sent to the provider's own endpoints (management.azure.com, and graph.microsoft.com for directory objects, for Azure; the endpoints the `aws` CLI picks by default; the tenant's `/api/v2` for Auth0). Examples: `az` show or list of resources, role assignments, firewall rules, or database admins; `az rest` POSTs for cost or usage queries, name-availability checks, or template validation and what-if; `aws` describe and list commands and `aws s3 ls`; `auth0 api get` (either case) for tenant settings, roles, or APIs. Not covered, so the built-in rules decide: a response that holds a secret, key, password, token, or connection string, including configuration listings that print setting values (app settings, function or task environment variables, publishing profiles, Auth0 client or connection records), ARM actions such as listKeys or listSecrets, and commands such as `get-credentials` or `get-login-password`; a response that holds the data a workload stores (objects, table rows or items, mail, files, chats, user records, application logs); dumping a running workload's environment or opening a shell in it (`containerapp exec`, `webapp ssh`); a call to any other host, such as a URL outside those endpoints or `--endpoint-url`; and anything that changes state (create, update, delete, start, stop, restart, scale, rotate keys, or a role or access change)."
     ]
   }
 }

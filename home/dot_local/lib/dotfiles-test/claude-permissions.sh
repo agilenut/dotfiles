@@ -72,6 +72,26 @@ test_claude_permissions() {
     fail "WebFetch or dig has an allow rule, so it can send data to any host without a check"
   fi
 
+  # Each can call any URL or endpoint its arguments name, and an allow rule
+  # would approve every call with no classifier check, secret reads
+  # included. The autoMode allow entry lets the classifier approve their
+  # configuration reads instead.
+  if jq -e '.permissions.allow | map(select(test("^Bash\\((az rest|auth0 api|aws)[ :)]"))) | length == 0' \
+    "$settings" >/dev/null 2>&1; then
+    pass "az rest, auth0 api, and aws have no allow rule"
+  else
+    fail "az rest, auth0 api, or aws has an allow rule, so its calls skip the classifier"
+  fi
+
+  # A list set without "$defaults" replaces the built-in list instead of
+  # adding to it.
+  if jq -e '.autoMode | [.allow, .soft_deny, .hard_deny] | map(select(. != null and index("$defaults") == null)) | length == 0' \
+    "$settings" >/dev/null 2>&1; then
+    pass "autoMode rule lists keep the built-in rules"
+  else
+    fail "an autoMode rule list has no \"\$defaults\" entry, so it drops the built-in rules"
+  fi
+
   local rule
   for rule in "${CLAUDE_PERMISSIONS_ASK[@]}"; do
     if jq -e --arg r "$rule" '.permissions.ask | index($r) != null' \
