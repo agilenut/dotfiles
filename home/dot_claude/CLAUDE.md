@@ -533,6 +533,13 @@ Iterating and shipping:
   change is in. Brief a writer on the end state, not the smallest edit.
   When the version adds length, give the reason in the commit message or
   PR (or your report to me), never in the prompt.
+- A rewrite changes many lines at once, so it can drop a line that
+  produced a behavior the tests check, or add one the model misreads.
+  Before testing it, list the old lines behind each behavior the tests
+  cover and check that the rewrite keeps what they say, then read each new
+  line for what it would let the model do. When a behavior gets worse,
+  restore the old lines for it one at a time, rerunning the tests after
+  each, before writing new wording.
 - Check prompt output against the goal, with test cases and assertions
   (Testing → "Tests of a nondeterministic component") and, for a failure
   you've seen, a judge model told what to look for. If output is scored
@@ -952,6 +959,12 @@ _TDD, AAA, build/test before reporting completion._
     agreed rule can settle it: in another case, or in unit tests when
     deterministic code decides it. An existing test that covers the
     behavior is enough.
+  - A judge model's verdicts on the same output change from one judge
+    pass to the next, often by as much as the difference you are
+    measuring. Judge the versions you compare in the same judge passes,
+    and use at least two independent judge passes, adding up their counts
+    of each problem. One judge pass can find a problem but can't show it
+    is fixed.
 
 ## Documentation
 
