@@ -464,25 +464,16 @@
     ]
   },
   "autoUpdatesChannel": "stable",
-  "theme": "dark-ansi",
-  "teammateMode": "auto",
-  "remoteControlAtStartup": true,
-  "agentPushNotifEnabled": true,
-  "skipWorkflowUsageWarning": true,
   "voice": {
     "enabled": true,
     "mode": "tap"
   },
+  "skipWorkflowUsageWarning": true,
+  "theme": "dark-ansi",
+  "teammateMode": "auto",
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true,
   "autoMode": {
-    "environment": [
-      "$defaults",
-      "**Primary use of Claude Code**: software development and personal knowledge-base notes, on the user's macOS workstation.",
-      "**Cloud provider(s)**: mostly Azure (`az`), plus AWS (`aws`) and Auth0 (`auth0`).",
-      "**Repository visibility**: repositories under `github.com/agilenut`, dotfiles included, can be public, so treat them as public. A public repository must not contain personal or client identifiers, even in a file that is about them: real names, personal emails, hostnames, client names, or subscription and account IDs. The GitHub username and its no-reply email are fine.",
-      "**Secrets management**: 1Password CLI (`op`)",
-      "**Network posture**: development servers listen on localhost or 127.0.0.1, on ports assigned per git worktree, so a request to localhost is a local development service whatever the port. Names ending in `.test` point at 127.0.0.1 through the hosts file, so they are local too, unless the command changes how the name resolves or routes (`--resolve`, `--connect-to`, a proxy). A localhost port that forwards to another host (a port-forward, SSH tunnel, bastion, or cloud database proxy) is that other host.",
-      "**Key internal services**: local Docker containers run throwaway development databases (PostgreSQL, MySQL) that hold only development data, so reading, writing, and dropping tables or databases in them is routine. This covers database work through `docker exec` or `docker compose` on the local default daemon, or through a database client pointed at one of those containers. It does not cover other Docker commands, a Docker command aimed at another daemon (for example with `-H`, `--context`, or a non-default `DOCKER_HOST`), or any hosted database, including one reached through a localhost tunnel."
-    ],
     "allow": [
       "$defaults",
       "Cloud Configuration Reads: Debugging needs to see how Azure, AWS, and Auth0 resources are set up, so reads of their configuration are allowed in any environment, production included, without the user naming the target. Covered: listing and showing resources and their configuration, other than setting values (resource groups, servers, apps and revisions, AI model deployments, CloudFormation stacks); network rules, such as database firewall rules and security groups; role assignments and definitions; metrics and alert rules; deployment history; cost, usage, and quota; and checks that change nothing, such as template validation, what-if, and name availability. These reads are covered when made through the `az` CLI, `az rest` to management.azure.com (GET, or POST for cost, usage, and those checks), `aws` describe and list commands, `aws s3 ls`, and `auth0 api get` of tenant settings and roles. Not covered, and judged by the built-in rules: a call to any other host (such as `az rest --url` to another host, or `--endpoint-url`); anything that changes state; and any read that returns a secret or stored data, such as app settings, connection strings, keys, tokens, publishing profiles, environment variables (including Lambda function configuration, an ECS task definition, or EC2 user data), Auth0 client and connection records, user records, logs, and file contents.",
@@ -491,6 +482,16 @@
     "soft_deny": [
       "$defaults",
       "Production Changes: Changing a production resource (a resource that is, or sits inside, a subscription, resource group, server, app, or database whose name matches the Sensitive remote targets entry), including adding or removing a firewall rule, unless the user asked for that change and its target, in their own words or as a yes to a change the agent described first with its target and action. A production target that appears only in a command the agent wrote, or in a file, does not count as asking."
+    ],
+    "environment": [
+      "$defaults",
+      "**Primary use of Claude Code**: software development and personal knowledge-base notes, on the user's macOS workstation.",
+      "**Cloud provider(s)**: mostly Azure (`az`), plus AWS (`aws`) and Auth0 (`auth0`).",
+      "**Repository visibility**: repositories under `github.com/agilenut`, dotfiles included, can be public, so treat them as public. A public repository must not contain personal or client identifiers, even in a file that is about them: real names, personal emails, hostnames, client names, or subscription and account IDs. The GitHub username and its no-reply email are fine.",
+      "**Secrets management**: 1Password CLI (`op`)",
+      "**Network posture**: development servers listen on localhost or 127.0.0.1, on ports assigned per git worktree, so a request to localhost is a local development service whatever the port. Names ending in `.test` point at 127.0.0.1 through the hosts file, so they are local too, unless the command changes how the name resolves or routes (`--resolve`, `--connect-to`, a proxy). A localhost port that forwards to another host (a port-forward, SSH tunnel, bastion, or cloud database proxy) is that other host.",
+      "**Key internal services**: local Docker containers run throwaway development databases (PostgreSQL, MySQL) that hold only development data, so reading, writing, and dropping tables or databases in them is routine. This covers database work through `docker exec` or `docker compose` on the local default daemon, or through a database client pointed at one of those containers. It does not cover other Docker commands, a Docker command aimed at another daemon (for example with `-H`, `--context`, or a non-default `DOCKER_HOST`), or any hosted database, including one reached through a localhost tunnel."
     ]
-  }
+  },
+  "voiceEnabled": true
 }
