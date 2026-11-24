@@ -122,18 +122,19 @@ harder to see.
 - Store the file exactly as the app writes it: its format, section order,
   values it adds, and file mode (`private_` for 600). For a template, match
   the rendered output.
-- Keep formatters off it: list it in `.prettierignore`, and give it an
-  `.editorconfig` section if its indentation or final newline differs.
+- If the app reformats the file, keep formatters off it: list it in
+  `.prettierignore`, and give it an `.editorconfig` section if its
+  indentation or final newline differs.
 - Check it: make the app save without changing anything (toggle a setting
   and back, or run its setup step), then confirm `chezmoi diff <target>`
   is empty.
 
-| File                                 | Written by                                                         | What the source matches                                                                     |
-| ------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                                  | Karabiner's own format, byte for byte, and 600 mode                                         |
-| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`)               | On macOS, GCM's full path as the credential helper, in the layout git writes                |
-| `~/.config/lazygit/themes/*.yml`     | lazygit, when it migrates renamed config keys                      | The current key names, set in `themes/templates/lazygit.yml.tmpl`                           |
-| `~/.config/composer/composer.json`   | Composer, on `composer global require` or `composer global remove` | `"*"` as the version (a `composer global require` with no version rewrites it as a `^` pin) |
+| File                                 | Written by                                                         | What the source matches                                                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                                  | Karabiner's own format, byte for byte, and 600 mode                                                                              |
+| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`)               | On macOS, GCM's full path as the credential helper, in the layout git writes                                                     |
+| `~/.config/lazygit/themes/*.yml`     | lazygit, when it migrates renamed config keys                      | The current key names, set in `themes/templates/lazygit.yml.tmpl`                                                                |
+| `~/.config/composer/composer.json`   | Composer, on `composer global require` or `composer global remove` | `"*"` as the Laravel Cloud CLI's version; a `composer global require laravel/cloud-cli` with no version rewrites it as a `^` pin |
 
 ## When an apply isn't enough
 
