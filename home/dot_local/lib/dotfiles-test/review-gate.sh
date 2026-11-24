@@ -359,6 +359,70 @@ test_review_gate() {
     fail "worktree commit after a review was refused"
   fi
 
+  # A triage file in a sibling worktree's .reviews/code/ (neither this
+  # worktree nor the main checkout) is accepted.
+  local wt2="$fx/push-wt2"
+  git -C "$p" worktree add -q -b wt-sibling "$wt2" >/dev/null 2>&1
+  git -C "$wt" switch -q -c wt-two
+  mkdir -p "$wt2/.reviews/code"
+  echo triage >"$wt2/.reviews/code/2026-01-01-000000-wt-two-triage.md"
+  rg_stage "$wt" w.txt two
+  if rg_claude "$wt" "$REVIEW_GATE" mark "$wt2/.reviews/code/2026-01-01-000000-wt-two-triage.md" >/dev/null 2>&1; then
+    pass "mark accepts a triage file in another worktree of the repo"
+  else
+    fail "mark refused a triage file in another worktree of the repo"
+  fi
+
+  # Bare-repo workspace: <container>/.bare, worktrees inside the container,
+  # triage files at the container root.
+  local bw="$fx/bare-ws"
+  mkdir -p "$bw/.reviews/code"
+  git init -q --bare "$bw/.bare"
+  printf 'gitdir: ./.bare\n' >"$bw/.git"
+  git -C "$bw" worktree add -q --orphan -b main "$bw/main" >/dev/null 2>&1
+  git -C "$bw/main" config commit.gpgsign false
+  echo triage >"$bw/.reviews/code/2026-01-01-000000-main-triage.md"
+  rg_stage "$bw/main" b.txt one
+  if rg_claude "$bw/main" "$REVIEW_GATE" mark "$bw/.reviews/code/2026-01-01-000000-main-triage.md" >/dev/null 2>&1; then
+    pass "mark accepts a triage file at a bare-repo workspace's root"
+  else
+    fail "mark refused a triage file at a bare-repo workspace's root"
+  fi
+
+  # ---- Branch review of staged fixes, and the last branch review ----
+  local br="$fx/branch-fix"
+  rg_with_remote "$br"
+  rg_stage "$br" f.txt one
+  rg_mark "$br" --branch
+  rg_claude "$br" git commit -qm one >/dev/null 2>&1
+  local branch_reviewed_sha
+  branch_reviewed_sha=$(git -C "$br" rev-parse HEAD)
+  rg_stage "$br" f.txt two
+  rg_mark "$br"
+  rg_claude "$br" git commit -qm two >/dev/null 2>&1
+  rg_stage "$br" f.txt three
+  rg_claude "$br" "$REVIEW_GATE" defer "later" >/dev/null
+  rg_claude "$br" git commit -qm three >/dev/null 2>&1
+  if [ "$(rg_claude "$br" "$REVIEW_GATE" last)" = "$branch_reviewed_sha" ]; then
+    pass "last prints the newest branch-reviewed commit, skipping commit reviews and deferrals"
+  else
+    fail "last printed '$(rg_claude "$br" "$REVIEW_GATE" last)', expected $branch_reviewed_sha"
+  fi
+  # A branch review whose fixes are staged: the fix commit is the pushed tip.
+  rg_stage "$br" f.txt review-fix
+  rg_mark "$br" --branch
+  if rg_claude "$br" git commit -qm "review fixes" >/dev/null 2>&1 \
+    && rg_claude "$br" git push -q origin main >/dev/null 2>&1; then
+    pass "a branch review records its staged fixes, so the fix commit can be pushed"
+  else
+    fail "push of a branch review's fix commit was refused"
+  fi
+  if [ -z "$(rg_claude "$nr" "$REVIEW_GATE" last)" ]; then
+    pass "last prints nothing when no commit was reviewed"
+  else
+    fail "last printed a commit in a repo with no reviews"
+  fi
+
   trap - EXIT
   review_gate_cleanup
 }

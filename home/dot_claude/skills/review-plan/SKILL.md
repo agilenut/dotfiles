@@ -729,6 +729,7 @@ action-or-content focused. Examples: `typo in step title`,
 `missing chezmoi apply line`, `Decisions-section addition`,
 `split commit 1 into three`.
 
-No `.last-reviewed.json` analog — carry-over via prior triage handles
-dedup. "When was this plan last reviewed?" requires listing
-`.reviews/plans/` and matching by plan-name prefix.
+Plan reviews record nothing with `review-gate` (that is for code);
+carry-over via prior triage handles dedup. "When was this plan last
+reviewed?" requires listing `.reviews/plans/` and matching by plan-name
+prefix.

@@ -26,7 +26,9 @@ These don't bend, regardless of step:
   direction)? Surface it. Auto-buckets are for unambiguous cases.
 - **Code edits only in Step 9 (an accepted foundational fix) / Step 10 /
   Step 12 (including its fix pass resumed from an earlier run).** All
-  other steps are read-only with respect to the codebase. Triage / audit file writes
+  other steps are read-only with respect to the codebase (Step 14's
+  pre-commit run may reformat files; that is pre-commit's edit, not one
+  of yours). Triage / audit file writes
   (Step 8 init, Step 13 finalize) and the commit-message draft (Step 2)
   are part of the protocol.
 
@@ -36,18 +38,23 @@ _Figure out what to review and which reviewers to spawn._
 
 ### Scope
 
+First, in every mode, run `git status --short` and keep its output as the
+starting state (Step 8 saves it in the triage file). Step 14 checks it
+before recording the review.
+
 Explicit arg (first non-reviewer argument wins):
 
 - `branch` → branch mode: `main..HEAD`
 - `pr` → PR mode: PR diff
-- `unreviewed` → diff since `.last-reviewed.json` entry (fail if no entry)
+- `unreviewed` → diff since the newest commit a branch review covered,
+  `<sha>` from `review-gate last` (fail if it prints nothing)
 
 Default precedence (no arg):
 
 1. Run `git status` and `git diff --stat`
 2. Uncommitted changes → **local mode**
-3. Clean tree → read `.reviews/code/.last-reviewed.json`; if entry exists
-   and `git log <sha>..HEAD` has commits → **unreviewed mode**
+3. Clean tree → run `review-gate last`; if it prints a commit `<sha>` and
+   `git log <sha>..HEAD` has commits → **unreviewed mode**
 4. Else → `gh pr view --json number,title,baseRefName,headRefName`
 5. PR exists → **PR mode**
 6. Else → **branch mode** (`main..HEAD`)
@@ -63,6 +70,10 @@ Confirm `git branch --show-current` equals
 - Mismatch → surface
   `PR #<N> is on branch <X>; you're on <Y>. Switch branches first.`
   and stop.
+- Same branch, but `git rev-parse HEAD` differs from
+  `gh pr view --json headRefOid --jq .headRefOid` (unpushed or unpulled
+  commits) → use **branch mode** instead, so the review sees the commits
+  Step 14 records.
 
 Do NOT auto-switch.
 
@@ -94,7 +105,10 @@ _Read everything the orchestrator AND reviewers need before spawning._
      `No plan/PR/commit bodies — reduced confidence; more findings landed in needs-review.`
 - **Diff** per mode:
 
-  - Local: `git diff` + `git diff --cached`
+  - Local: `git diff` + `git diff --cached`, plus each untracked file
+    that isn't ignored (`git ls-files --others --exclude-standard`) as a
+    new file (`git diff --no-index /dev/null <file>`), since a commit
+    usually adds them
   - Unreviewed: `git diff <sha>..HEAD`
   - Branch: `git diff main..HEAD`
   - PR: `gh pr diff <number>`
@@ -761,6 +775,8 @@ mode: <local | branch | unreviewed | pr>
 reviewers-ran: [base, language, security, ux, ai]
 plan-file: <path or null>
 timestamp: <iso>
+start-status: |
+  <Step 1's `git status --short` output, or empty>
 ---
 ```
 
@@ -831,18 +847,11 @@ Commit messages, not applied: <N>
 
 Single continuous numbering across all sections.
 
-## Step 14: Update Review Marker + Final Summary
+## Step 14: Record the Review + Final Summary
 
-_Silent file updates first, then one combined summary as the last chat
-output._
+_Silent steps first, then one combined summary as the last chat output._
 
-1. Update `.reviews/code/.last-reviewed.json` — single JSON object mapping
-   branch → SHA. Read existing if present (parse mentally; no trailing
-   commas / comments), add or update current branch's entry, write back as
-   one well-formed JSON object. Create if missing.
-2. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
-   note any failures for the summary.
-3. **Evaluate re-run trigger.** Reflect on fixes applied this run
+1. **Evaluate re-run trigger.** Reflect on fixes applied this run
    (foundational fixes from Step 9 + auto-fixes from Step 10 +
    user-confirmed / freeform fixes from
    Step 12). Did any introduce new behavior, branches, error handling,
@@ -859,8 +868,45 @@ output._
    ```text
    Fixes introduced [<one-line summary of new surface or approach
    change>] - re-run `/review` on the updated state before committing?
-   y/n
+   The review isn't recorded, so a commit is refused until the re-run
+   records it. y/n
    ```
+
+2. **Record the review.** `review-gate` refuses Claude's commits and
+   pushes unless a review recorded the exact tree being committed. Record
+   a tree only when this run's reviewers saw all of it apart from this
+   run's fixes. Otherwise leave it unrecorded and give the reason in the
+   final summary. Examples of not recording:
+
+   - the re-run trigger fired
+   - a reviewer failed, so its findings are unavailable
+   - the review was narrowed to some files
+   - the dialog was resumed from a paused triage without re-running the
+     reviewers, so the tree may have changed since they ran
+   - in branch, unreviewed, or PR mode, the starting state (Step 1) shows
+     something already staged, or a file a fix touched had uncommitted
+     changes, which the review didn't see
+
+   To record:
+
+   1. Stage exactly what was reviewed: in local mode, the paths in the
+      reviewed diff plus every file a fix touched; in other modes, only
+      the files a fix touched.
+   2. Run the repo's pre-commit (global CLAUDE.md `## Git` says how to
+      find it) and re-stage those paths until clean. Formatter output and
+      whitespace changes count as this run's fixes; log them in the
+      triage file. A failure that needs any other change: don't record,
+      and say a new `/review` is needed after the fix.
+   3. Check that `git diff --cached --name-only` lists only the paths from
+      sub-item 1; if it lists others, don't record.
+   4. After the last edit, including any pre-commit made: local mode
+      `review-gate mark <triage file path>`; branch, unreviewed, and PR
+      modes `review-gate mark --branch <triage file path>`, which also
+      covers the staged fixes. Any edit after this needs a new review. If
+      `mark` refuses or fails, put its output in the final summary.
+
+3. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
+   note any failures for the summary.
 
 4. Print the final summary as the LAST chat output (no further chat from
    this skill after this, except the status line that the global
@@ -883,14 +929,18 @@ output._
 
    Triage: .reviews/code/<timestamp>-<branch>-triage.md
 
-   Build green. Fixes above are unstaged: re-stage every file the fixes
-   touched (even if already staged), run `pre-commit run`, re-stage, then
-   commit. Skipping the re-stage commits the pre-review blob and drops the
-   fixes.
+   Build green.
+   Recorded: review of tree <first 12 characters>. Any further edit needs
+   a new review before it can be committed.
    Local mode: commit with the reviewed message in
    <absolute path to the commit-msg.txt file>.
-   Re-build and run full test suite if pre-commit touched code.
    ```
+
+   Print the `Recorded:` line only when item 2 recorded the review;
+   otherwise print `Not recorded: <reason, or mark's output>. A commit of
+this tree will be refused until a review records it.` When pre-commit
+   changed code after the build, add `Pre-commit changed code after the
+build: re-run the build and tests.`
 
    `<total>` is the total count of findings across all buckets, plus
    the commit-message findings that weren't applied. Omit a

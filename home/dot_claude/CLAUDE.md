@@ -893,9 +893,9 @@ Worktree).
 
 All review output goes to `.reviews/` relative to main worktree's
 project root: `.reviews/code/` for code reviews, `.reviews/plans/` for
-plan reviews. Branch review state is tracked in
-`.reviews/code/.last-reviewed.json`. An isolated worktree session uses
-the worktree's own `.reviews/` (see Worktree).
+plan reviews. `/review` records each tree it covered with `review-gate`.
+That log lives in the git dir, so all worktrees share it. An isolated
+worktree session uses the worktree's own `.reviews/` (see Worktree).
 
 ## Database
 
