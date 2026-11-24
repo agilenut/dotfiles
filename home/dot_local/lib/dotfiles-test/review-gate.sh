@@ -125,6 +125,13 @@ test_review_gate() {
   else
     fail "refusal message doesn't name both ways forward: $out"
   fi
+  # Claude reads the refusal, so it must not say how to clear the variable
+  # the gate depends on.
+  if grep -qiE 'unset|env -u|CLAUDECODE=' <<<"$out"; then
+    fail "refusal message tells the reader how to clear CLAUDECODE: $out"
+  else
+    pass "refusal message doesn't say how to turn the gate off"
+  fi
 
   rg_mark "$r"
   if rg_claude "$r" git commit -qm reviewed >/dev/null 2>&1; then
@@ -213,7 +220,7 @@ test_review_gate() {
   fi
   local log
   log="$(git -C "$r" rev-parse --path-format=absolute --git-common-dir)/claude-reviews.log"
-  if grep -q 'defer.*end-of-PR rename$' "$log" && ! cut -f1 "$log" | grep -qv '^[0-9a-f]\{40\}$'; then
+  if cut -f2,5 "$log" | grep -qx 'defer	end-of-PR rename' && ! cut -f1 "$log" | grep -qv '^[0-9a-f]\{40\}$'; then
     pass "defer logs its reason on one line"
   else
     fail "defer reason missing from the review log, or it broke a line"
@@ -372,6 +379,43 @@ test_review_gate() {
     pass "pushing a tag is not gated"
   else
     fail "pushing a tag was refused"
+  fi
+
+  # ---- A commit review covers the change from its base, not just a tree ----
+  local am="$fx/amend"
+  rg_with_remote "$am"
+  rg_stage "$am" m.txt base
+  rg_mark "$am" --branch
+  rg_claude "$am" git commit -qm base >/dev/null 2>&1
+  rg_claude "$am" git push -q -u origin main >/dev/null 2>&1
+  # Deferred commit A, then a reviewed change amended into it: the review
+  # saw only A->T, so the amended commit's change from base isn't covered.
+  rg_stage "$am" m.txt deferred-a
+  rg_claude "$am" "$REVIEW_GATE" defer "a" >/dev/null
+  rg_claude "$am" git commit -qm a >/dev/null 2>&1
+  rg_stage "$am" n.txt reviewed-b
+  rg_mark "$am"
+  rg_claude "$am" git commit -q --amend -m "a and b" >/dev/null 2>&1
+  if rg_claude "$am" git push -q origin main >/dev/null 2>&1; then
+    fail "an amend folding a reviewed change into a deferred commit was pushed unreviewed"
+  else
+    pass "an amend into a deferred commit isn't covered by the later review"
+  fi
+  # Two commits each reviewed, squashed into one: the reviews chain from
+  # the squashed commit's parent to its tree, so it's covered.
+  git -C "$am" reset -q --hard origin/main
+  rg_stage "$am" m.txt reviewed-c
+  rg_mark "$am"
+  rg_claude "$am" git commit -qm c >/dev/null 2>&1
+  rg_stage "$am" n.txt reviewed-d
+  rg_mark "$am"
+  rg_claude "$am" git commit -qm d >/dev/null 2>&1
+  git -C "$am" reset -q --soft origin/main
+  rg_claude "$am" git commit -qm "c and d" >/dev/null 2>&1
+  if rg_claude "$am" git push -q origin main >/dev/null 2>&1; then
+    pass "a squash of commits that were each reviewed can be pushed"
+  else
+    fail "a squash of reviewed commits was refused"
   fi
 
   # ---- A review recorded in a worktree ----

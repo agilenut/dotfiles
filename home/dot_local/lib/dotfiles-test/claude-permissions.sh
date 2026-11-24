@@ -80,6 +80,12 @@ CLAUDE_PERMISSIONS_DENY=(
   'Bash(git -C * config *claude.reviewHook*)'
   'Bash(git config *claude.reviewhook*)'
   'Bash(git -C * config *claude.reviewhook*)'
+  # The hook runs only when CLAUDECODE=1, so clearing or changing it in
+  # the same command turns the gate off (`unset` has an allow rule).
+  'Bash(unset *CLAUDECODE*)'
+  'Bash(export *CLAUDECODE*)'
+  'Bash(env *CLAUDECODE*)'
+  'Bash(*CLAUDECODE=*)'
 )
 
 test_claude_permissions() {

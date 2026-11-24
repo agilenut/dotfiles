@@ -19,7 +19,10 @@
 # repos with a remote; `git config claude.reviewHook true` opts a repo in and
 # `false` opts it out. A branch's first push needs a branch review of HEAD, so
 # every PR gets one branch review. Later pushes need each new commit covered by
-# its own review or by a branch review of it or a commit built on it.
+# reviews that chain from its parent's tree to its own (so an amend or squash
+# that keeps a reviewed tree but changes the parent isn't covered), or by a
+# branch review of it or a commit built on it. Tag pushes aren't checked; the
+# push prompt still covers them.
 
 set -euo pipefail
 
@@ -32,11 +35,17 @@ log_file() {
   printf '%s/claude-reviews.log' "$(git rev-parse --path-format=absolute --git-common-dir)"
 }
 
+EMPTY_TREE=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+
+# Log line: tree, kind, time, branch, note (triage path or reason), base.
+# The base is HEAD's tree when the review ran: a commit review saw only the
+# change from its base to its tree.
 record() {
-  local tree="$1" kind="$2" note="${3//[$'\t\n']/ }" branch
+  local tree="$1" kind="$2" note="${3//[$'\t\n']/ }" branch base
   branch=$(git branch --show-current)
-  printf '%s\t%s\t%s\t%s\t%s\n' "$tree" "$kind" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "${branch:-detached}" "$note" >>"$(log_file)"
+  base=$(git rev-parse -q --verify 'HEAD^{tree}' || printf '%s' "$EMPTY_TREE")
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$tree" "$kind" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "${branch:-detached}" "$note" "$base" >>"$(log_file)"
 }
 
 # has_record <tree> <kind regex>
@@ -44,6 +53,23 @@ has_record() {
   local log
   log=$(log_file)
   [ -f "$log" ] && cut -f1,2 "$log" | grep -qE "^$1	($2)\$"
+}
+
+# commit_covered <tree> <parent tree>: a chain of commit reviews runs from
+# the parent's tree to this tree, so every change between them was reviewed.
+# An amend or squash keeps its tree but can change its parent, so the tree
+# alone isn't enough.
+commit_covered() {
+  local tree="$1" parent="$2" depth="${3:-0}" log base
+  [ "$tree" = "$parent" ] && return 0
+  [ "$depth" -lt 50 ] || return 1
+  log=$(log_file)
+  [ -f "$log" ] || return 1
+  while read -r base; do
+    [ -n "$base" ] || continue
+    commit_covered "$base" "$parent" $((depth + 1)) && return 0
+  done < <(grep -E "^$tree	commit	" "$log" | cut -f6 | sort -u || true)
+  return 1
 }
 
 gate_active() {
@@ -165,7 +191,8 @@ commit (no -a or paths), then either:
   - for an end-of-PR commit or a trivial change, run
     review-gate defer "<reason>", then commit again; its output names the
     review to run before you push.
-(Not Claude Code? CLAUDECODE=1 leaked into this shell; unset it.)
+If you ran this yourself outside Claude Code, this shell inherited Claude
+Code's environment; open a new terminal.
 EOF
   exit 1
 }
@@ -199,9 +226,8 @@ cmd_pre_push() {
     for sha in $new; do
       local tree parent_tree
       tree=$(git rev-parse "$sha^{tree}")
-      has_record "$tree" commit && continue
-      parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || true)
-      [ "$tree" = "$parent_tree" ] && continue
+      parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || printf '%s' "$EMPTY_TREE")
+      commit_covered "$tree" "$parent_tree" && continue
       uncovered+=("$(git log -1 --format='%h %s' "$sha")")
     done
   done
