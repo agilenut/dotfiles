@@ -25,12 +25,15 @@ hunk - which is why only PHP is affected.
   delta fails to highlight PHP with _any_ theme (Monokai tested too). Do NOT add
   PHP scopes to the bat theme template (`themes/templates/bat.tmTheme.tmpl`) - the
   theme is not the problem (an earlier plan note wrongly suggested this).
-- delta is already the latest release (0.19.2).
 - Raising `diff.context` enough to always include `<?php` means near-full-file
   context on every diff in every language - not worth it.
-- A source-only PHP syntax (`source.php`, no HTML wrapper) would fix it, but
-  bat's set ships only the embedded syntax and delta uses its own compiled-in
-  syntaxes (no `--map-syntax`, doesn't read bat's cache) - nowhere to plug it in.
+- Untried: a source-only PHP syntax (`source.php`, no HTML wrapper) in
+  `~/.config/bat/syntaxes` might fix it. bat ships only the embedded syntax,
+  but delta reads custom syntaxes from bat's cache (this repo's Bats syntax
+  works that way). It would have to win the `.php` extension over the built-in
+  syntax. Correction: this entry originally said delta used only its
+  compiled-in syntaxes, and that 0.19.2 was the latest release. delta 0.22
+  lists syntaxes from bat's cache (verified 2026-11-24).
 
 Upstream delta limitation for HTML-embedded languages. _Diagnosed 2026-07-07._
 
