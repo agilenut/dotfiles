@@ -63,6 +63,9 @@ CLAUDE_PERMISSIONS_ASK=(
 #   writes; the deny rules stop them in auto mode too. A combined short
 #   flag such as `-an` isn't matched. Message text after `-m` can match a
 #   deny rule, so a commit message that mentions `--no-verify` is denied.
+#   Known gaps, outside the threat model (Claude forgetting or cutting a
+#   corner, not evading): editing a git config file directly (`sed -i`),
+#   and plumbing such as `git commit-tree` or `git update-ref`.
 CLAUDE_PERMISSIONS_DENY=(
   'Bash(gh api *-X*-X*)'
   'Bash(gh api *--method*--method*)'
@@ -82,10 +85,14 @@ CLAUDE_PERMISSIONS_DENY=(
   'Bash(git -C * config *claude.reviewhook*)'
   # The hook runs only when CLAUDECODE=1, so clearing or changing it in
   # the same command turns the gate off (`unset` has an allow rule).
+  # Claude Code matches each part of a compound command on its own, so a
+  # rule anchored on the assignment catches `x && CLAUDECODE= git commit`
+  # without denying reads such as `grep 'CLAUDECODE=' file`.
   'Bash(unset *CLAUDECODE*)'
   'Bash(export *CLAUDECODE*)'
-  'Bash(env *CLAUDECODE*)'
-  'Bash(*CLAUDECODE=*)'
+  'Bash(env -u*CLAUDECODE*)'
+  'Bash(env *CLAUDECODE=*)'
+  'Bash(CLAUDECODE=*)'
 )
 
 test_claude_permissions() {

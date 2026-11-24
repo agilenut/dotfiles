@@ -20,7 +20,7 @@
 # `false` opts it out. A branch's first push needs a branch review of HEAD, so
 # every PR gets one branch review. Later pushes need each new commit covered by
 # reviews that chain from its parent's tree to its own (so an amend or squash
-# that keeps a reviewed tree but changes the parent isn't covered), or by a
+# whose reviews don't chain back to its new parent isn't covered), or by a
 # branch review of it or a commit built on it. Tag pushes aren't checked; the
 # push prompt still covers them.
 
@@ -37,22 +37,46 @@ log_file() {
 
 EMPTY_TREE=4b825dc642cb6eb9a060e54bf8d69288fbee4904
 
-# Log line: tree, kind, time, branch, note (triage path or reason), base.
-# The base is HEAD's tree when the review ran: a commit review saw only the
-# change from its base to its tree.
+# Log line: tree, kind, time, branch, note (triage path or reason), base,
+# head. The base is HEAD's tree when the review ran (a commit review saw only
+# the change from its base to its tree); the head is HEAD's commit then (a
+# branch review saw that commit's history plus what was staged).
 record() {
-  local tree="$1" kind="$2" note="${3//[$'\t\n']/ }" branch base
+  local tree="$1" kind="$2" note="${3//[$'\t\n']/ }" branch base head
   branch=$(git branch --show-current)
   base=$(git rev-parse -q --verify 'HEAD^{tree}' || printf '%s' "$EMPTY_TREE")
-  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$tree" "$kind" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    "${branch:-detached}" "$note" "$base" >>"$(log_file)"
+  head=$(git rev-parse -q --verify HEAD || printf none)
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$tree" "$kind" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "${branch:-detached}" "$note" "$base" "$head" >>"$(log_file)"
+}
+
+# branch_covered <commit>: a branch review ran on this commit, or on its
+# parent with this commit's tree staged (the review's fixes, committed after),
+# or on a commit with the same tree and parent (an amend that only rewords
+# it). A later commit that only repeats the tree, as a revert can, isn't.
+branch_covered() {
+  local sha="$1" tree parent log head
+  log=$(log_file)
+  [ -f "$log" ] || return 1
+  tree=$(git rev-parse "$sha^{tree}")
+  parent=$(git rev-parse -q --verify "$sha^" || printf none)
+  # Read to the end: `grep -q` exiting early can kill the writer, and
+  # pipefail would then report a match as a failure.
+  while read -r head; do
+    [ "$head" = "$sha" ] || [ "$head" = "$parent" ] && return 0
+    [ "$(git rev-parse -q --verify "$head^" || printf none)" = "$parent" ] \
+      && [ "$(git rev-parse -q --verify "$head^{tree}" || true)" = "$tree" ] && return 0
+  done < <(grep -E "^$tree	branch	" "$log" | cut -f7 | sort -u || true)
+  return 1
 }
 
 # has_record <tree> <kind regex>
 has_record() {
   local log
   log=$(log_file)
-  [ -f "$log" ] && cut -f1,2 "$log" | grep -qE "^$1	($2)\$"
+  # Not `grep -q`: an early exit can kill `cut`, and pipefail would then
+  # report a match as a failure.
+  [ -f "$log" ] && cut -f1,2 "$log" | grep -E "^$1	($2)\$" >/dev/null
 }
 
 # commit_covered <tree> <parent tree>: a chain of commit reviews runs from
@@ -60,14 +84,17 @@ has_record() {
 # An amend or squash keeps its tree but can change its parent, so the tree
 # alone isn't enough.
 commit_covered() {
-  local tree="$1" parent="$2" depth="${3:-0}" log base
+  local tree="$1" parent="$2" log base
   [ "$tree" = "$parent" ] && return 0
-  [ "$depth" -lt 50 ] || return 1
+  # Trees already checked on this walk; a change and its revert can both be
+  # reviewed, which makes a cycle.
+  case " ${visited:-} " in *" $tree "*) return 1 ;; esac
+  visited="${visited:-} $tree"
   log=$(log_file)
   [ -f "$log" ] || return 1
   while read -r base; do
     [ -n "$base" ] || continue
-    commit_covered "$base" "$parent" $((depth + 1)) && return 0
+    commit_covered "$base" "$parent" && return 0
   done < <(grep -E "^$tree	commit	" "$log" | cut -f6 | sort -u || true)
   return 1
 }
@@ -124,7 +151,7 @@ cmd_mark() {
   log=$(log_file)
   # One triage file per review run: reusing an old one would record edits
   # made after that review.
-  if [ -f "$log" ] && cut -f5 "$log" | grep -Fxq "$triage"; then
+  if [ -f "$log" ] && cut -f5 "$log" | grep -Fx "$triage" >/dev/null; then
     die "this triage file already recorded a review; run /review again for the current changes"
   fi
   # The staged tree in both kinds: a branch review's staged fixes are part of
@@ -143,7 +170,7 @@ cmd_last() {
   reviewed=$(grep -E '^[0-9a-f]+	branch	' "$log" | cut -f1 | sort -u || true)
   [ -n "$reviewed" ] || return 0
   while read -r sha tree; do
-    if grep -qx "$tree" <<<"$reviewed"; then
+    if grep -qx "$tree" <<<"$reviewed" && branch_covered "$sha"; then
       printf '%s\n' "$sha"
       return
     fi
@@ -157,8 +184,10 @@ next_review() {
   local ref="${1:-HEAD}" pushed_before="${2:-}" branch
   if [ -z "$pushed_before" ]; then
     branch=$(git rev-parse --abbrev-ref "$ref" 2>/dev/null || true)
+    # A detached HEAD names no branch; refs/remotes/*/HEAD would match.
+    [ "$branch" = HEAD ] && branch=""
     if git rev-parse -q --verify "$ref@{upstream}" >/dev/null 2>&1 \
-      || [ -n "$(git for-each-ref --format=x "refs/remotes/*/$branch")" ]; then
+      || { [ -n "$branch" ] && [ -n "$(git for-each-ref --format=x "refs/remotes/*/$branch")" ]; }; then
       pushed_before=yes
     fi
   fi
@@ -191,8 +220,9 @@ commit (no -a or paths), then either:
   - for an end-of-PR commit or a trivial change, run
     review-gate defer "<reason>", then commit again; its output names the
     review to run before you push.
-If you ran this yourself outside Claude Code, this shell inherited Claude
-Code's environment; open a new terminal.
+If you ran this yourself outside Claude Code, Claude Code's environment
+leaked into this shell, for example from a tmux server a Claude session
+started; restart that tmux server or use a terminal outside it.
 EOF
   exit 1
 }
@@ -209,7 +239,7 @@ cmd_pre_push() {
     new=$(git rev-list "$local_sha" --not --remotes)
     [ -n "$new" ] || continue
 
-    if [ "$remote_sha" = "$zero" ] && ! has_record "$(git rev-parse "$local_sha^{tree}")" branch; then
+    if [ "$remote_sha" = "$zero" ] && ! branch_covered "$local_sha"; then
       printf 'review-gate: the first push of %s needs a review of the whole branch.\nRun /review branch, commit any fixes it stages, then push again.\n' \
         "${remote_ref#refs/heads/}" >&2
       exit 1
@@ -218,7 +248,7 @@ cmd_pre_push() {
     # A branch review covers its commit and every commit it is built on.
     local -a branch_reviewed=()
     for sha in $new; do
-      has_record "$(git rev-parse "$sha^{tree}")" branch && branch_reviewed+=("^$sha")
+      branch_covered "$sha" && branch_reviewed+=("^$sha")
     done
     # The ^exclusions go before --not, which would flip them into inclusions.
     # Assigned first so a rev-list failure stops the push (set -e).
@@ -227,7 +257,7 @@ cmd_pre_push() {
       local tree parent_tree
       tree=$(git rev-parse "$sha^{tree}")
       parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || printf '%s' "$EMPTY_TREE")
-      commit_covered "$tree" "$parent_tree" && continue
+      visited="" commit_covered "$tree" "$parent_tree" && continue
       uncovered+=("$(git log -1 --format='%h %s' "$sha")")
     done
   done

@@ -52,9 +52,7 @@ an open PR with no checks as CI_RUNNING.
   prior `/review` may have edited the working tree after staging. The
   review-gate git hook refuses a commit no review covers, so run `/review`
   first, or `review-gate defer "<reason>"` for a trivial change. Commit
-  per the global CLAUDE.md `## Git` rule on commit messages (`-F` with
-  `/review`'s `commit-msg.txt`, else a heredoc `-m`); the commit doesn't
-  prompt.
+  per the global CLAUDE.md `## Git` rule on commit messages.
   - Reviewed commit on a branch with an upstream: announce, then push
     (`git commit ... && git push` as one Bash call is fine).
   - Deferred commit on a branch with an upstream: a push is refused for a
@@ -309,7 +307,8 @@ any line matches PATTERN, instead of succeeding when some line doesn't.
    link — announce, then `gh pr comment`.
 3. **One attempt.** Stop (end turn; user re-invokes `/pr`) on the same
    conditions as CI_FAILED step 2.
-4. `git checkout -b fix/<branch>-ci`; apply the fix via Edit/Write.
+4. `git fetch origin` then `git switch -c fix/<branch>-ci origin/main`, so
+   the branch holds only the fix; apply the fix via Edit/Write.
 5. **Verify** (same rule as CI_FAILED step 3): `pre-commit` mandatory,
    then the Local Checks.
 6. Post the summary block (same format as CI_FAILED step 4).

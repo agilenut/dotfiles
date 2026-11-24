@@ -37,8 +37,8 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
   overwrite a changed file, git won't discard uncommitted work). Don't
   get the same result another way or force past it. If you can't tell a
   failure from a refusal, treat it as a refusal. The Git section has two
-  exceptions: a review-gate refusal that names a review, and a commit
-  denied for its message text.
+  exceptions: a review-gate refusal, and a commit denied for its message
+  text.
 
 ## Language
 
@@ -618,9 +618,12 @@ _Branching, committing, PRs._
   the review-gate git hook refuses one that no review covers, so a commit
   doesn't need my approval; a push changes what others see. After each
   commit, tell me in one line what it changed, and keep going without
-  waiting for a reply. A review-gate refusal that names a review means
-  the review is missing, not a decision for me: run that review, commit
-  any fixes it staged, then retry. Only `/review` runs `review-gate mark`.
+  waiting for a reply. A review-gate refusal means a review is missing,
+  not a decision for me. A commit refusal: run `/review`, or defer when
+  the commit qualifies (below), then commit again. A push refusal: run
+  the review it names, commit any fixes it staged, then push again. Only
+  `/review` runs `review-gate mark`: a mark claims reviewers saw the
+  tree, so a false one lets unreviewed work be pushed.
 - When the user signals PR-lifecycle work (creating, merging, "is CI
   done", "open the PR", bare "pr"), invoke `/pr` first — don't run
   free-form `gh pr create` / `gh pr merge` / `gh pr checks` ahead of
@@ -653,12 +656,12 @@ _Branching, committing, PRs._
   is deliberately unstaged — leave it.
 
 - Every commit needs a review or a deferral, or the review-gate git hook
-  refuses it. A deferral is fine whenever a review that covers the commit
-  runs before the next push. If a plan governs the work, follow its
-  review tag. Otherwise, run `/review` for non-trivial changes (new
-  behavior, multi-file refactors), and defer truly trivial ones (typo,
-  dep bump, a one-line comment fix), where `/review` would cost more than
-  it finds: `review-gate defer "<reason>"`.
+  refuses it. A deferral moves the review to before the next push; it
+  doesn't replace it. If a plan governs the work, follow its review tag
+  (`end-of-PR` commits defer). Otherwise, run `/review` for non-trivial
+  changes (new behavior, multi-file refactors), and defer only truly
+  trivial ones (typo, dep bump, a one-line comment fix), where `/review`
+  would cost more than it finds: `review-gate defer "<reason>"`.
   - A branch's first push needs `/review branch`.
   - A later push needs each new commit covered by its own `/review` or
     by a later branch review. After a deferral, run the review that

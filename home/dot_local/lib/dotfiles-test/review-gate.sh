@@ -396,7 +396,9 @@ test_review_gate() {
   rg_stage "$am" n.txt reviewed-b
   rg_mark "$am"
   rg_claude "$am" git commit -q --amend -m "a and b" >/dev/null 2>&1
-  if rg_claude "$am" git push -q origin main >/dev/null 2>&1; then
+  if [ "$(git -C "$am" log -1 --format=%s)" != "a and b" ]; then
+    fail "setup: the amend didn't happen, so this case tests nothing"
+  elif rg_claude "$am" git push -q origin main >/dev/null 2>&1; then
     fail "an amend folding a reviewed change into a deferred commit was pushed unreviewed"
   else
     pass "an amend into a deferred commit isn't covered by the later review"
@@ -416,6 +418,67 @@ test_review_gate() {
     pass "a squash of commits that were each reviewed can be pushed"
   else
     fail "a squash of reviewed commits was refused"
+  fi
+  # A branch review covers the commit it ran on (or one that commits its
+  # staged fixes), not every commit that later has the same tree: a
+  # deferred commit followed by its revert has the reviewed tree again.
+  git -C "$am" reset -q --hard origin/main
+  rg_stage "$am" m.txt reviewed-tip
+  rg_mark "$am" --branch
+  rg_claude "$am" git commit -qm tip >/dev/null 2>&1
+  rg_claude "$am" git push -q origin main >/dev/null 2>&1
+  printf 'secret\n' >"$am/leak.txt"
+  git -C "$am" add leak.txt
+  rg_claude "$am" "$REVIEW_GATE" defer "adds a file" >/dev/null
+  rg_claude "$am" git commit -qm "add leak" >/dev/null 2>&1
+  git -C "$am" rm -q leak.txt
+  rg_claude "$am" git commit -qm "remove leak" >/dev/null 2>&1
+  if [ "$(git -C "$am" rev-parse 'HEAD^{tree}')" != "$(git -C "$am" rev-parse 'origin/main^{tree}')" ]; then
+    fail "setup: the revert didn't restore the reviewed tree, so this case tests nothing"
+  elif out=$(rg_claude "$am" git push -q origin main 2>&1); then
+    fail "a deferred commit hidden by a revert to a branch-reviewed tree was pushed"
+  elif grep -q ' add leak$' <<<"$out"; then
+    pass "a branch review doesn't cover a later commit that only repeats its tree"
+  else
+    fail "push refusal after a revert didn't name the deferred commit: $out"
+  fi
+
+  # A message-only amend of a branch-reviewed commit keeps its tree and
+  # parent, so the branch review still covers it.
+  local rw="$fx/reword"
+  rg_with_remote "$rw"
+  rg_stage "$rw" base.txt base
+  rg_user "$rw" git commit -qm base >/dev/null 2>&1
+  rg_stage "$rw" r.txt one
+  rg_claude "$rw" "$REVIEW_GATE" defer "branch review follows" >/dev/null
+  rg_claude "$rw" git commit -qm "first wording" >/dev/null 2>&1
+  # The branch review runs on the commit already made, then it's reworded.
+  rg_mark "$rw" --branch
+  rg_claude "$rw" git commit -q --amend -m "second wording" >/dev/null 2>&1
+  if [ "$(git -C "$rw" log -1 --format=%s)" != "second wording" ]; then
+    fail "setup: the reword didn't happen, so this case tests nothing"
+  elif rg_claude "$rw" git push -q -u origin main >/dev/null 2>&1; then
+    pass "a reworded branch-reviewed commit can still be pushed"
+  else
+    fail "a message-only amend of a branch-reviewed commit was refused"
+  fi
+
+  # A review recorded early in a long log still covers its commit (the
+  # check reads the whole log, so an early match can't break the pipe).
+  local ll="$fx/long-log"
+  rg_with_remote "$ll"
+  rg_stage "$ll" l.txt one
+  rg_mark "$ll"
+  local lf
+  lf="$(git -C "$ll" rev-parse --path-format=absolute --git-common-dir)/claude-reviews.log"
+  local i
+  for i in $(seq 4000); do
+    printf '%040d\tcommit\t2026-01-01T00:00:00Z\tmain\tfiller\t%040d\tnone\n' "$i" "$i"
+  done >>"$lf"
+  if rg_claude "$ll" git commit -qm one >/dev/null 2>&1; then
+    pass "a review early in a long log still covers its commit"
+  else
+    fail "a commit reviewed early in a long log was refused"
   fi
 
   # ---- A review recorded in a worktree ----
