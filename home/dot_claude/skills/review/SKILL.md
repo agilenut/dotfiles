@@ -50,10 +50,15 @@ Explicit arg (first non-reviewer argument wins):
   `<sha>` from `review-gate last`; if it prints nothing (no branch review
   in this history, as after a rebase), use branch mode and say so
 - follow-up round (Step 14 item 1 starts it; never chosen by default) →
-  the diff under review is the earlier rounds' fixes, uncommitted
-  (`git diff HEAD`); reviewers also get round 1's diff plus those fixes
-  as context. It drafts no new commit message (a local-mode round 1's
-  draft carries on, updated for the fixes) and records in round 1's mode.
+  earlier rounds' fixes stay uncommitted, and the diff depends on round
+  1's mode and the round:
+  - local round 1: every round reviews the whole uncommitted change
+    again (Local's diff above), since it's one commit's worth
+  - branch, unreviewed, or PR round 1: round 2 reviews the whole branch
+    again with the fixes (`git diff main`); rounds 3 and 4 review the
+    fixes so far (`git diff HEAD`), with `git diff main` as context
+    It drafts no new commit message; a local-mode round 1's draft is
+    updated for the fixes.
 
 Default precedence (no arg):
 
@@ -220,6 +225,11 @@ Each Agent prompt receives:
   reads it directly. Review-preferences are NEVER sent to reviewers as
   guidance; they live orchestrator-only. A diff that changes one still
   goes to reviewers like any other file.
+- The goal of the change, and optionally an "Also check" list: concerns
+  you know of, risky areas, or a decision whose effects need checking.
+  It adds to what reviewers look at and never limits it; a brief has no
+  "skip", "focus only on", or "don't flag" line. A settled decision goes
+  in with its reason, so reviewers know changing it needs new evidence.
 - `language-reviewer` only: commit messages as text to review. Local
   mode passes the drafted message file. Branch, unreviewed, and PR modes
   pass the messages in the diff's range
@@ -566,6 +576,10 @@ _Apply mechanical fixes; verify each via build / targeted test._
 2. **Test-fix detection**: file path contains `/test`, `_test.`,
    `.spec.`, `.test.`, `Tests/`, `tests/`, or matches project conventions
    → test fix; else non-test.
+   In a follow-up round (Step 14 item 1), and in Step 12's fix pass
+   too, apply a fix only when its finding would break something, or when
+   the fix doesn't change what the code or instructions do; log the rest
+   in the triage file. Any other change would be recorded unreviewed.
 3. For each auto-fix:
 
    - Apply via `Edit` (writes unstaged).
@@ -691,7 +705,8 @@ first; record it once it settles.
 
 ### After the last answer: apply the fixes
 
-In severity order, for each `accepted (fix pending)` entry:
+In severity order, for each `accepted (fix pending)` entry (in a
+follow-up round, with Step 10's limit on which fixes to apply):
 
 1. Re-read the target lines (an earlier fix in this pass may have moved
    or changed them), then apply via Edit.
@@ -884,24 +899,12 @@ _Silent steps first, then one combined summary as the last chat output._
      record nothing, and ask the user to talk through the churn (what
      keeps turning up, and whether the approach should change).
 
-   In a follow-up round, Steps 10 and 12 fix a finding that would break
-   something (which makes another round due), and otherwise apply only
-   fixes that don't change what the code or instructions do; the rest go
-   in the triage file. So a follow-up never records a change no reviewer
-   saw.
-
-   A follow-up round:
-
-   - keeps every round's fixes in the working tree, staged after
-     pre-commit (item 2's sub-items 1 and 2), not committed
-   - briefs the same reviewers with the goal of the change, the whole
-     change as context (round 1's diff plus every round's fixes), and
-     the previous round's fixes; they report problems in the fixes and
-     anything the fixes affect or leave inconsistent elsewhere
-   - records, when it ends the rounds, in round 1's mode:
-     `review-gate mark` after a local-mode round 1, `mark --branch`
-     after a branch, unreviewed, or PR round 1. The earlier rounds saw
-     the rest of the tree, so together the rounds cover all of it.
+   A follow-up round keeps every round's fixes uncommitted, uses the diff
+   Step 1's scope list gives for its round, and briefs the same reviewers
+   with the goal of the change and that diff. Rounds 3 and 4 of a branch
+   review get the whole branch as context and report problems in the
+   fixes and anything they affect or leave inconsistent elsewhere. When
+   a round ends the rounds, it records in round 1's mode.
 
    A round that leads to another ends its summary with:
 
@@ -911,18 +914,19 @@ _Silent steps first, then one combined summary as the last chat output._
 
 2. **Record the review.** `review-gate` refuses Claude's commits and
    pushes unless a review recorded the exact tree being committed. Record
-   a tree only when this run's reviewers saw all of it apart from this
-   run's fixes. Otherwise leave it unrecorded and give the reason in the
-   final summary. Examples of not recording:
+   a tree only when this round's reviewers, together with the earlier
+   rounds', saw all of it apart from this round's fixes. Otherwise leave
+   it unrecorded and give the reason in the final summary. Examples of
+   not recording:
 
    - another round is due (item 1)
    - a reviewer failed, so its findings are unavailable
    - the review was narrowed to some files
    - the dialog was resumed from a paused triage without re-running the
      reviewers, so the tree may have changed since they ran
-   - in branch, unreviewed, or PR mode, the starting state (Step 1) of
-     round 1 shows something already staged, or a file a fix touched had
-     uncommitted changes, which the review didn't see
+   - in branch, unreviewed, or PR mode, round 1's starting state (Step 1)
+     showed something already staged, or a file a fix later touched
+     already had uncommitted changes then, which no round saw
 
    To record:
 
@@ -936,10 +940,11 @@ _Silent steps first, then one combined summary as the last chat output._
       and say a new `/review` is needed after the fix.
    3. Check that `git diff --cached --name-only` lists only the paths from
       sub-item 1; if it lists others, don't record.
-   4. After the last edit, including any edit pre-commit made: local mode
-      `review-gate mark <triage file path>`; branch, unreviewed, and PR
-      modes `review-gate mark --branch <triage file path>`, which also
-      covers the staged fixes. Any edit after this needs a new review. If
+   4. After the last edit, including any edit pre-commit made, in round
+      1's mode: local mode `review-gate mark <triage file path>`; branch,
+      unreviewed, and PR modes
+      `review-gate mark --branch <triage file path>`, which also covers
+      the staged fixes. Any edit after this needs a new review. If
       `mark` refuses or fails, put its output in the final summary.
 
 3. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'`,
