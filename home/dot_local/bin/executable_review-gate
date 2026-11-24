@@ -111,7 +111,7 @@ cmd_mark() {
 # Only a branch review covers every commit it is built on, so a review of the
 # commits after this one plus this record covers the whole branch.
 cmd_last() {
-  local log reviewed sha tree
+  local ref="${1:-HEAD}" log reviewed sha tree
   log=$(log_file)
   [ -f "$log" ] || return 0
   reviewed=$(grep -E '^[0-9a-f]+	branch	' "$log" | cut -f1 | sort -u)
@@ -121,7 +121,7 @@ cmd_last() {
       printf '%s\n' "$sha"
       return
     fi
-  done < <(git log --max-count=500 --format='%H %T' HEAD 2>/dev/null)
+  done < <(git log --max-count=500 --format='%H %T' "$ref" 2>/dev/null)
 }
 
 cmd_defer() {
@@ -154,11 +154,12 @@ EOF
 cmd_pre_push() {
   gate_active || exit 0
   local zero=0000000000000000000000000000000000000000
-  local _local_ref local_sha remote_ref remote_sha new sha
+  local _local_ref local_sha remote_ref remote_sha new sha pushed=HEAD
   local -a uncovered=()
   while read -r _local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$zero" ] && continue
     [[ "$remote_ref" == refs/heads/* ]] || continue
+    pushed="$local_sha"
     new=$(git rev-list "$local_sha" --not --remotes)
     [ -n "$new" ] || continue
 
@@ -191,7 +192,7 @@ cmd_pre_push() {
       echo "review-gate: no review covers these commits:"
       printf '  %s\n' "${uncovered[@]}"
       # Reviewing from the last branch review costs less than the branch.
-      if [ -n "$(cmd_last)" ]; then
+      if [ -n "$(cmd_last "$pushed")" ]; then
         echo "Run /review unreviewed, then push again."
       else
         echo "Run /review branch, then push again."

@@ -34,11 +34,11 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
   If none works, give me the command to run. A refusal is different. Stop
   and ask me when I deny a prompt, when a permission rule or hook blocks
   the action, or when a tool stops to avoid losing data (chezmoi won't
-  overwrite a changed file, git won't discard uncommitted work). Two
-  exceptions, both in Git: a review-gate refusal that names a review, and
-  a commit denied for its message text.
-  Don't get the same result another way or force past it. If you can't
-  tell a failure from a refusal, treat it as a refusal.
+  overwrite a changed file, git won't discard uncommitted work). Don't
+  get the same result another way or force past it. If you can't tell a
+  failure from a refusal, treat it as a refusal. The Git section has two
+  exceptions: a review-gate refusal that names a review, and a commit
+  denied for its message text.
 
 ## Language
 
@@ -330,9 +330,9 @@ _How to scope, sequence, and pause work for non-trivial tasks._
   invoke `/plan` to scope it; tangents mid-implementation stay tangents
   unless explicitly escalated
 - Plan Commits row tags drive review cadence: `review: per-commit`
-  forces `/review` before each commit. `end-of-PR` commits run
-  `review-gate defer "<reason>"`, and a review covers them before the
-  push (Git section says which).
+  forces `/review` before each commit. For `end-of-PR` commits, run
+  `review-gate defer "<reason>"`; a review covers them before the push
+  (the Git section says which review).
 - Keep the plan current as work proceeds, not just at the start. When a
   step completes or a follow-up / discovery surfaces, update the plan in
   the same commit (tracked plans) or save immediately (gitignored).
@@ -656,16 +656,15 @@ _Branching, committing, PRs._
   refuses it. If a plan governs the work, follow its review tag.
   Otherwise, run `/review` for non-trivial changes (new behavior,
   multi-file refactors); for truly trivial ones (typo, dep bump, a
-  one-line comment fix), run `review-gate defer "<reason>"`. What a push
-  needs, as the hook checks it: a branch's first push needs
-  `/review branch`; a later push needs each new commit covered by its
-  own `/review` or by a later branch review, so after a deferral run
-  `/review unreviewed` (or `/review branch` when `review-gate last`
-  prints nothing, as after a rebase or a merge of main). Files an
-  agent or a person follows as steps (skills, agents, prompts,
-  CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs: review a change
-  to their instructions like code. A typo fix in them is still trivial; a
-  README is still docs.
+  one-line comment fix), run `review-gate defer "<reason>"`.
+  - A branch's first push needs `/review branch`.
+  - A later push needs each new commit covered by its own `/review` or
+    by a later branch review. After a deferral, run the review that
+    `review-gate defer` and the push refusal name.
+  - Files an agent or a person follows as steps (skills, agents,
+    prompts, CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs:
+    review a change to their instructions like code. A typo fix in them
+    is still trivial; a README is still docs.
 - Each commit must build, test, and pass independently, no dead code or
   forward refs
 - Commit message: title ≤70 chars, imperative summary. Body: 1-3
@@ -674,15 +673,16 @@ _Branching, committing, PRs._
   Target ~10-20 lines total. Don't enumerate files, don't recap the
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
+- Commit messages don't prompt. After a local-mode `/review`, commit with
+  `git commit -F <its commit-msg.txt>`, which keeps the exact text the
+  review checked; otherwise use a quoted heredoc with `-m`
+  (`git commit -m "$(cat <<'EOF' ... EOF)"`). Message text after `-m`
+  can match a deny rule: a message that mentions `--no-verify`, or `-n`
+  after a space, is denied, so reword it and retry.
 - Pass PR bodies and comment text inline in a quoted heredoc
   (`--body "$(cat <<'EOF' ... EOF)"`), so I read the text in the
   permission prompt before I approve it; `--body-file` shows only a path.
   The quoted `'EOF'` keeps `$` and backticks in the text as written.
-  Commit messages don't prompt. After a local-mode `/review`, commit with
-  `git commit -F <its commit-msg.txt>`, which keeps the exact text the
-  review checked; otherwise use the same heredoc with `-m`. Message text
-  after `-m` can match a deny rule: a message that mentions `--no-verify`,
-  or `-n` after a space, is denied, so reword it and retry.
 - People and models read commits and PR bodies later to trace why
   something changed. Like a commit message, a PR body states the why and
   the decisions behind the change plainly, plus whatever else its skill
@@ -914,8 +914,8 @@ Worktree).
 
 All review output goes to `.reviews/` relative to main worktree's
 project root: `.reviews/code/` for code reviews, `.reviews/plans/` for
-plan reviews. `/review` records each tree it covered with `review-gate`.
-That log lives in the git dir, so all worktrees share it. An isolated
+plan reviews. `/review` records each tree it covered in `review-gate`'s
+log, which lives in the git common dir, so all worktrees share it. An isolated
 worktree session uses the worktree's own `.reviews/` (see Worktree).
 
 ## Database

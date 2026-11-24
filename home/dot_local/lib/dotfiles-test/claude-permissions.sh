@@ -61,8 +61,8 @@ CLAUDE_PERMISSIONS_ASK=(
 #   `reviewHook`, since git config keys ignore case; other spellings, such
 #   as `Hook.`, aren't matched). No allow rule approves those config
 #   writes; the deny rules stop them in auto mode too. A combined short
-#   flag such as `-an` isn't matched, and message text after `-m` can
-#   match: a commit message that mentions `--no-verify` is denied.
+#   flag such as `-an` isn't matched. Message text after `-m` can match a
+#   deny rule, so a commit message that mentions `--no-verify` is denied.
 CLAUDE_PERMISSIONS_DENY=(
   'Bash(gh api *-X*-X*)'
   'Bash(gh api *--method*--method*)'

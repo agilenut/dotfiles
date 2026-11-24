@@ -246,5 +246,5 @@ Before starting PR N (N > 1):
 ## Reference: Review & Test Defaults
 
 - Review timing: `per-commit` for non-trivial; `end-of-PR` for a series of small mechanical commits in one PR
-- Default toward review; defer it (`review-gate defer`) only for truly trivial changes (typo, dep bump, a one-line comment fix). A change to the instructions in files an agent or a person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md, runbooks) is never trivial; a typo fix in them still is.
+- Default toward review. Outside `end-of-PR`, defer it (`review-gate defer`) only for truly trivial changes (typo, dep bump, a one-line comment fix). A change to the instructions in files an agent or a person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md, runbooks) is never trivial; a typo fix in them still is.
 - Manual test: only when something can't be fully automated (UX/CSS/runtime behavior). Distinguish "testable in CI" from "I can't verify without you"

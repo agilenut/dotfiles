@@ -779,6 +779,7 @@ plan-file: <path or null>
 timestamp: <iso>
 start-status: |
   <Step 1's `git status --short` output, or empty>
+rerun-of: <the triage path this run re-runs, or null> # Step 14 item 1
 ---
 ```
 
@@ -866,10 +867,18 @@ _Silent steps first, then one combined summary as the last chat output._
      fence repairs, formatting).
 
    Otherwise don't record this review (item 2). Finish this run's
-   summary, then run `/review` again on the updated state without
-   asking; that run records the review. If the re-run's own fixes fire
-   the trigger again, stop and ask the user instead of re-running a
-   third time. The summary says:
+   summary, then re-run without asking, in the same mode:
+
+   - Local mode: `/review` again; the fixes are part of the local diff.
+   - Branch, unreviewed, or PR mode: the fixes aren't in that diff yet,
+     so stage them, run `review-gate defer "<reason>"`, commit them, and
+     run `/review` in the same mode on the new HEAD.
+
+   The re-run records the review if item 2's conditions hold. Its triage
+   frontmatter sets `rerun-of: <this triage file's path>`. When a run
+   with `rerun-of` set fires the trigger again, don't re-run: ask the
+   user whether to re-run once more or stop with the review unrecorded.
+   The summary says:
 
    ```text
    Fixes introduced [<one-line summary of new surface or approach
@@ -903,18 +912,19 @@ _Silent steps first, then one combined summary as the last chat output._
       and say a new `/review` is needed after the fix.
    3. Check that `git diff --cached --name-only` lists only the paths from
       sub-item 1; if it lists others, don't record.
-   4. After the last edit, including any pre-commit made: local mode
+   4. After the last edit, including any edit pre-commit made: local mode
       `review-gate mark <triage file path>`; branch, unreviewed, and PR
       modes `review-gate mark --branch <triage file path>`, which also
       covers the staged fixes. Any edit after this needs a new review. If
       `mark` refuses or fails, put its output in the final summary.
 
-3. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'` —
-   note any failures for the summary.
+3. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'`,
+   and note any failures for the summary.
 
 4. Print the final summary as the LAST chat output (no further chat from
    this skill after this, except the status line that the global
-   CLAUDE.md requires at the end of a reply that waits on the user).
+   CLAUDE.md requires at the end of a reply that waits on the user, and
+   item 1's re-run, which starts after this summary).
    Per-item enriched format with counts and item
    numbers so the user can reference items by number for follow-up (e.g.,
    "actually fix #4"):
@@ -965,7 +975,7 @@ _Silent steps first, then one combined summary as the last chat output._
    PR mode appends:
 
    ```text
-   Auto-fixes applied locally and staged. A commit and a push update the
-   PR, and CI re-runs.
+   Auto-fixes applied locally (staged when the review was recorded). A
+   commit and a push update the PR, and CI re-runs.
    Failed checks: <list> (or "none")
    ```

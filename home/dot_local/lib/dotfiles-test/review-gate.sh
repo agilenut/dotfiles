@@ -90,8 +90,9 @@ test_review_gate() {
   local probe="$fx/probe"
   rg_with_remote "$probe"
   rg_stage "$probe" p.txt one
-  if rg_claude "$probe" git commit -qm probe >/dev/null 2>&1; then
-    fail "$(git --version) doesn't run config hooks, so the review gate is off; skipping the gate tests"
+  out=$(rg_claude "$probe" git commit -qm probe 2>&1) || true
+  if ! grep -q 'review-gate: no review covers this commit' <<<"$out"; then
+    fail "$(git --version) didn't run the review gate on a Claude commit, so the gate is off; skipping the gate tests"
     trap - EXIT
     review_gate_cleanup
     return
