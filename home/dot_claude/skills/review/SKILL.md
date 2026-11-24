@@ -47,7 +47,8 @@ Explicit arg (first non-reviewer argument wins):
 - `branch` → branch mode: `main..HEAD`
 - `pr` → PR mode: PR diff
 - `unreviewed` → diff since the newest commit a branch review covered,
-  `<sha>` from `review-gate last` (fail if it prints nothing)
+  `<sha>` from `review-gate last`; if it prints nothing (no branch review
+  in this history, as after a rebase), use branch mode and say so
 
 Default precedence (no arg):
 
@@ -870,13 +871,16 @@ _Silent steps first, then one combined summary as the last chat output._
    summary, then re-run without asking, in the same mode:
 
    - Local mode: `/review` again; the fixes are part of the local diff.
-   - Branch, unreviewed, or PR mode: the fixes aren't in that diff yet,
-     so stage them, run `review-gate defer "<reason>"`, commit them, and
-     run `/review` in the same mode on the new HEAD.
+   - Branch, unreviewed, or PR mode: the fixes aren't in that diff yet.
+     Stage them, run pre-commit and re-stage until clean, run
+     `review-gate defer "<reason>"`, commit them, and run `/review` in
+     the same mode on the new HEAD. PR mode re-runs as branch mode, since
+     the fix commit isn't pushed yet.
 
-   The re-run records the review if item 2's conditions hold. Its triage
-   frontmatter sets `rerun-of: <this triage file's path>`. When a run
-   with `rerun-of` set fires the trigger again, don't re-run: ask the
+   The re-run records the review if item 2's conditions hold. Any re-run,
+   automatic or one the user approved, sets
+   `rerun-of: <the triage file it re-runs>` in its frontmatter. When a
+   run with `rerun-of` set fires the trigger again, don't re-run: ask the
    user whether to re-run once more or stop with the review unrecorded.
    The summary says:
 
@@ -948,6 +952,8 @@ _Silent steps first, then one combined summary as the last chat output._
    a new review before it can be committed.
    Local mode: commit with the reviewed message in
    <absolute path to the commit-msg.txt file>.
+   Other modes, with staged fixes: commit them before the push; the
+   recorded review covers that commit.
    ```
 
    Print the `Recorded:` line only when item 2 recorded the review;
@@ -969,8 +975,9 @@ _Silent steps first, then one combined summary as the last chat output._
    `missing using directive`, `matches review-preference`,
    `parameterize SqlCommand`, `covered by middleware upstream`.
 
-   This skill doesn't commit. In local mode the caller commits with the
-   commit-msg.txt file (Step 2).
+   This skill commits only for item 1's re-run. Otherwise the caller
+   commits: in local mode with the commit-msg.txt file (Step 2); in other
+   modes, the staged fixes with a heredoc `-m` message, before the push.
 
    PR mode appends:
 

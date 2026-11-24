@@ -293,7 +293,7 @@ test_review_gate() {
   rg_claude "$p" git commit -qm one >/dev/null 2>&1
   if out=$(rg_claude "$p" git push -q origin main 2>&1); then
     fail "first push without a branch review was allowed"
-  elif grep -q 'Run /review branch, then push again' <<<"$out"; then
+  elif grep -q 'Run /review branch, commit any fixes it stages, then push again' <<<"$out"; then
     pass "first push needs a branch review"
   else
     fail "first-push refusal doesn't say what to run: $out"
@@ -323,7 +323,7 @@ test_review_gate() {
   if out=$(rg_claude "$p" git push -q origin main 2>&1); then
     fail "push of a deferred commit without a branch review was allowed"
   elif grep -q ' three$' <<<"$out" && ! grep -q ' four$' <<<"$out" \
-    && grep -q 'Run /review unreviewed, then push again' <<<"$out"; then
+    && grep -q 'Run /review unreviewed, commit any fixes it stages, then push again' <<<"$out"; then
     pass "push refuses a deferred commit that a reviewed one is built on, names only it, and names /review unreviewed"
   else
     fail "push refusal doesn't name just the uncovered commit: $out"
@@ -447,6 +447,54 @@ test_review_gate() {
     pass "last prints nothing when no commit was reviewed"
   else
     fail "last printed a commit in a repo with no reviews"
+  fi
+
+  # A log with only commit reviews: no branch review yet, which is normal.
+  local cr="$fx/commit-only"
+  rg_with_remote "$cr"
+  rg_stage "$cr" c.txt one
+  rg_mark "$cr"
+  rg_claude "$cr" git commit -qm one >/dev/null 2>&1
+  if out=$(rg_claude "$cr" "$REVIEW_GATE" last 2>&1) && [ -z "$out" ]; then
+    pass "last prints nothing and succeeds when the log has only commit reviews"
+  else
+    fail "last failed or printed '$out' with only commit reviews in the log"
+  fi
+
+  # ---- The review each hint names ----
+  # No upstream, or no branch review in the pushed history: /review branch.
+  rg_stage "$cr" c.txt two
+  out=$(rg_claude "$cr" "$REVIEW_GATE" defer "no upstream yet" 2>&1)
+  if grep -q 'run /review branch' <<<"$out" && ! grep -q 'unreviewed' <<<"$out"; then
+    pass "defer names /review branch on a branch with no upstream"
+  else
+    fail "defer hint on a branch with no upstream: $out"
+  fi
+  rg_claude "$cr" git commit -qm two >/dev/null 2>&1
+  rg_mark "$cr" --branch
+  rg_claude "$cr" git push -q -u origin main >/dev/null 2>&1
+  rg_stage "$cr" c.txt three
+  out=$(rg_claude "$cr" "$REVIEW_GATE" defer "after a pushed branch review" 2>&1)
+  if grep -q 'run /review unreviewed' <<<"$out"; then
+    pass "defer names /review unreviewed after a pushed branch review"
+  else
+    fail "defer hint after a pushed branch review: $out"
+  fi
+  rg_claude "$cr" git commit -qm three >/dev/null 2>&1
+  # Push a branch that isn't checked out: the hint follows the pushed
+  # branch, which has no branch review, not HEAD's history, which does.
+  git -C "$cr" branch side "$(git -C "$cr" rev-list --max-parents=0 HEAD)"
+  git -C "$cr" switch -q side
+  rg_stage "$cr" s.txt side
+  rg_claude "$cr" "$REVIEW_GATE" defer "side" >/dev/null
+  rg_claude "$cr" git commit -qm side-one >/dev/null 2>&1
+  git -C "$cr" switch -q main
+  git -C "$cr" push -q origin "$(git -C "$cr" rev-list --max-parents=0 HEAD):refs/heads/side" >/dev/null 2>&1
+  out=$(rg_claude "$cr" git push -q origin side 2>&1) || true
+  if grep -q 'Run /review branch, commit any fixes it stages, then push again' <<<"$out"; then
+    pass "a later push's hint follows the pushed branch, not HEAD"
+  else
+    fail "later-push hint for a branch that isn't checked out: $out"
   fi
 
   trap - EXIT

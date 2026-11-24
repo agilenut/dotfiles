@@ -619,8 +619,8 @@ _Branching, committing, PRs._
   doesn't need my approval; a push changes what others see. After each
   commit, tell me in one line what it changed, and keep going without
   waiting for a reply. A review-gate refusal that names a review means
-  the review is missing, not a decision for me: run that review, then
-  retry. Only `/review` runs `review-gate mark`.
+  the review is missing, not a decision for me: run that review, commit
+  any fixes it staged, then retry. Only `/review` runs `review-gate mark`.
 - When the user signals PR-lifecycle work (creating, merging, "is CI
   done", "open the PR", bare "pr"), invoke `/pr` first — don't run
   free-form `gh pr create` / `gh pr merge` / `gh pr checks` ahead of
@@ -653,10 +653,12 @@ _Branching, committing, PRs._
   is deliberately unstaged — leave it.
 
 - Every commit needs a review or a deferral, or the review-gate git hook
-  refuses it. If a plan governs the work, follow its review tag.
-  Otherwise, run `/review` for non-trivial changes (new behavior,
-  multi-file refactors); for truly trivial ones (typo, dep bump, a
-  one-line comment fix), run `review-gate defer "<reason>"`.
+  refuses it. A deferral is fine whenever a review that covers the commit
+  runs before the next push. If a plan governs the work, follow its
+  review tag. Otherwise, run `/review` for non-trivial changes (new
+  behavior, multi-file refactors), and defer truly trivial ones (typo,
+  dep bump, a one-line comment fix), where `/review` would cost more than
+  it finds: `review-gate defer "<reason>"`.
   - A branch's first push needs `/review branch`.
   - A later push needs each new commit covered by its own `/review` or
     by a later branch review. After a deferral, run the review that

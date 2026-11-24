@@ -74,7 +74,8 @@ an open PR with no checks as CI_RUNNING.
   `/review branch`, so the PR gets one review of the whole branch; it
   records the review the first push needs. Commit any fixes it stages
   (a heredoc `-m` message); the branch review's record already covers
-  that commit. Re-run the local checks if it staged fixes.
+  that commit. Re-run the local checks if the review changed any file,
+  whether it committed or staged the change.
 - **The issue.** Take its number from the plan's `stories:` or PR table,
   the branch name, or the commits; if none, ask. A PR the global rules
   exempt from needing an issue (small doc or text fix, security patch,

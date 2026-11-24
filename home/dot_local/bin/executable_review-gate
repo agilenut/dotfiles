@@ -114,7 +114,7 @@ cmd_last() {
   local ref="${1:-HEAD}" log reviewed sha tree
   log=$(log_file)
   [ -f "$log" ] || return 0
-  reviewed=$(grep -E '^[0-9a-f]+	branch	' "$log" | cut -f1 | sort -u)
+  reviewed=$(grep -E '^[0-9a-f]+	branch	' "$log" | cut -f1 | sort -u || true)
   [ -n "$reviewed" ] || return 0
   while read -r sha tree; do
     if grep -qx "$tree" <<<"$reviewed"; then
@@ -124,10 +124,29 @@ cmd_last() {
   done < <(git log --max-count=500 --format='%H %T' "$ref" 2>/dev/null)
 }
 
+# The review that covers <ref>'s unpushed commits at its next push: a branch
+# with no upstream, or with no branch review in its history, needs a review
+# of the whole branch; otherwise reviewing from the last one is enough.
+next_review() {
+  local ref="${1:-HEAD}" pushed_before="${2:-}" branch
+  if [ -z "$pushed_before" ]; then
+    branch=$(git rev-parse --abbrev-ref "$ref" 2>/dev/null || true)
+    if git rev-parse -q --verify "$ref@{upstream}" >/dev/null 2>&1 \
+      || [ -n "$(git for-each-ref --format=x "refs/remotes/*/$branch")" ]; then
+      pushed_before=yes
+    fi
+  fi
+  if [ -n "$pushed_before" ] && [ -n "$(cmd_last "$ref")" ]; then
+    printf '/review unreviewed'
+  else
+    printf '/review branch'
+  fi
+}
+
 cmd_defer() {
   [ -n "${*// /}" ] || die 'usage: review-gate defer "<reason>"'
   record "$(git write-tree)" defer "$*"
-  printf 'Deferred review of the staged changes. Before you push, run /review branch (first push) or /review unreviewed (later push).\n'
+  printf 'Deferred review of the staged changes. Before you push, run %s and commit any fixes it stages.\n' "$(next_review)"
 }
 
 cmd_pre_commit() {
@@ -144,8 +163,8 @@ review-gate: no review covers this commit. Stage everything you mean to
 commit (no -a or paths), then either:
   - run /review, then commit again, or
   - for an end-of-PR commit or a trivial change, run
-    review-gate defer "<reason>", then commit again. Before you push, run
-    /review branch (first push) or /review unreviewed (later push).
+    review-gate defer "<reason>", then commit again; its output names the
+    review to run before you push.
 (Not Claude Code? CLAUDECODE=1 leaked into this shell; unset it.)
 EOF
   exit 1
@@ -154,17 +173,17 @@ EOF
 cmd_pre_push() {
   gate_active || exit 0
   local zero=0000000000000000000000000000000000000000
-  local _local_ref local_sha remote_ref remote_sha new sha pushed=HEAD
+  local local_ref local_sha remote_ref remote_sha new sha pushed=HEAD
   local -a uncovered=()
-  while read -r _local_ref local_sha remote_ref remote_sha; do
+  while read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$zero" ] && continue
     [[ "$remote_ref" == refs/heads/* ]] || continue
-    pushed="$local_sha"
+    pushed="$local_ref"
     new=$(git rev-list "$local_sha" --not --remotes)
     [ -n "$new" ] || continue
 
     if [ "$remote_sha" = "$zero" ] && ! has_record "$(git rev-parse "$local_sha^{tree}")" branch; then
-      printf 'review-gate: the first push of %s needs a review of the whole branch.\nRun /review branch, then push again.\n' \
+      printf 'review-gate: the first push of %s needs a review of the whole branch.\nRun /review branch, commit any fixes it stages, then push again.\n' \
         "${remote_ref#refs/heads/}" >&2
       exit 1
     fi
@@ -191,12 +210,8 @@ cmd_pre_push() {
     {
       echo "review-gate: no review covers these commits:"
       printf '  %s\n' "${uncovered[@]}"
-      # Reviewing from the last branch review costs less than the branch.
-      if [ -n "$(cmd_last "$pushed")" ]; then
-        echo "Run /review unreviewed, then push again."
-      else
-        echo "Run /review branch, then push again."
-      fi
+      # A later push: the first-push check above already passed.
+      echo "Run $(next_review "$pushed" yes), commit any fixes it stages, then push again."
     } >&2
     exit 1
   fi
