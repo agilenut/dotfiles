@@ -8,6 +8,9 @@
 #                                               through unreviewed; push checks it
 #   review-gate last                            print the newest commit in HEAD's
 #                                               history a branch review covered
+#   review-gate covered                         exit 0 if pushing HEAD as a new
+#                                               branch would pass; else print
+#                                               the review it needs
 #   review-gate pre-commit                      git hook (global git config)
 #   review-gate pre-push <remote> <url>         git hook (global git config)
 #
@@ -15,14 +18,16 @@
 # edit needs a new review. The log lives in the git common dir, shared by all
 # worktrees and never tracked.
 #
-# The hooks gate only commands run by Claude Code (CLAUDECODE=1), and only in
-# repos with a remote; `git config claude.reviewHook true` opts a repo in and
-# `false` opts it out. A branch's first push needs a branch review of HEAD, so
-# every PR gets one branch review. Later pushes need each new commit covered by
+# The hooks gate only commands run by Claude Code (CLAUDECODE=1). Commits are
+# gated only in repos with a remote; `git config claude.reviewHook true` opts
+# a repo in and `false` opts it out of both hooks. A branch's first push needs
+# a branch review of one of its unpushed commits, with reviewed commits
+# chaining from it to HEAD, so every PR gets one branch review of its own.
+# Later pushes need each new commit covered by
 # reviews that chain from its parent's tree to its own (so an amend or squash
 # whose reviews don't chain back to its new parent isn't covered), or by a
-# branch review of it or a commit built on it. Tag pushes aren't checked; the
-# push prompt still covers them.
+# branch review of it or a commit built on it. Every pushed ref is checked,
+# tags included, and a push is checked even from a repo with no remote.
 
 set -euo pipefail
 
@@ -52,8 +57,12 @@ record() {
 
 # branch_covered <commit>: a branch review ran on this commit, or on its
 # parent with this commit's tree staged (the review's fixes, committed after),
-# or on a commit with the same tree and parent (an amend that only rewords
-# it). A later commit that only repeats the tree, as a revert can, isn't.
+# or recorded this commit's tree while on a sibling (same parent): an amend
+# that rewords the reviewed commit or folds the review's staged fixes into
+# it. A later commit that only repeats the tree, as a revert can, isn't
+# covered. A merge commit can pass the parent or sibling rule, which then
+# leaves its second parent's commits out of the push check; merges need
+# the user's approval, so this isn't guarded.
 branch_covered() {
   local sha="$1" tree parent log head
   log=$(log_file)
@@ -64,8 +73,7 @@ branch_covered() {
   # pipefail would then report a match as a failure.
   while read -r head; do
     [ "$head" = "$sha" ] || [ "$head" = "$parent" ] && return 0
-    [ "$(git rev-parse -q --verify "$head^" || printf none)" = "$parent" ] \
-      && [ "$(git rev-parse -q --verify "$head^{tree}" || true)" = "$tree" ] && return 0
+    [ "$(git rev-parse -q --verify "$head^" || printf none)" = "$parent" ] && return 0
   done < <(grep -E "^$tree	branch	" "$log" | cut -f7 | sort -u || true)
   return 1
 }
@@ -99,7 +107,29 @@ commit_covered() {
   return 1
 }
 
+# tip_covered <commit>: the commit has a branch review, or its own review
+# chains from its parent and the parent is tip_covered. A polish commit after
+# a branch review passes this way. A branch's first push needs this: one
+# review of the whole branch, plus reviews of what came after. The walk stays
+# on unpushed commits, since a branch review in pushed history covered
+# another branch.
+tip_covered() {
+  local sha="$1" tree parent_tree
+  while [ -n "$sha" ]; do
+    [ -n "$(git rev-list -1 "$sha" --not --remotes)" ] || return 1
+    branch_covered "$sha" && return 0
+    tree=$(git rev-parse "$sha^{tree}")
+    parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || printf '%s' "$EMPTY_TREE")
+    visited="" commit_covered "$tree" "$parent_tree" || return 1
+    sha=$(git rev-parse -q --verify "$sha^" || true)
+  done
+  return 1
+}
+
+# gate_active [push]: a push proves there's a remote, so it's checked even in
+# a repo with none configured; only an explicit opt-out skips it.
 gate_active() {
+  local for_push="${1:-}"
   [ "${CLAUDECODE:-}" = 1 ] || return 1
   local setting
   if ! setting=$(git config --type=bool --get claude.reviewHook); then
@@ -111,7 +141,7 @@ gate_active() {
     true) return 0 ;;
     false) return 1 ;;
   esac
-  [ -n "$(git remote)" ]
+  [ -n "$for_push" ] || [ -n "$(git remote)" ]
 }
 
 # A triage file /review wrote for this branch: <timestamp>-<branch>-triage.md
@@ -198,6 +228,15 @@ next_review() {
   fi
 }
 
+# Whether pushing HEAD as a new branch would pass the first-push check, so
+# /pr runs a branch review only when the push needs one.
+cmd_covered() {
+  [ -z "$(git rev-list -1 HEAD --not --remotes)" ] && return 0
+  tip_covered "$(git rev-parse HEAD)" && return 0
+  printf '/review branch\n'
+  return 1
+}
+
 cmd_defer() {
   [ -n "${*// /}" ] || die 'usage: review-gate defer "<reason>"'
   record "$(git write-tree)" defer "$*"
@@ -228,18 +267,18 @@ EOF
 }
 
 cmd_pre_push() {
-  gate_active || exit 0
+  gate_active push || exit 0
   local zero=0000000000000000000000000000000000000000
   local local_ref local_sha remote_ref remote_sha new sha pushed=HEAD
   local -a uncovered=()
   while read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$zero" ] && continue
-    [[ "$remote_ref" == refs/heads/* ]] || continue
-    pushed="$local_ref"
+    # Every ref is checked, tags included: a tag publishes the commits under
+    # it. Only a branch's first push also needs a branch review.
     new=$(git rev-list "$local_sha" --not --remotes)
     [ -n "$new" ] || continue
 
-    if [ "$remote_sha" = "$zero" ] && ! branch_covered "$local_sha"; then
+    if [[ "$remote_ref" == refs/heads/* ]] && [ "$remote_sha" = "$zero" ] && ! tip_covered "$local_sha"; then
       printf 'review-gate: the first push of %s needs a review of the whole branch.\nRun /review branch, commit any fixes it stages, then push again.\n' \
         "${remote_ref#refs/heads/}" >&2
       exit 1
@@ -259,6 +298,8 @@ cmd_pre_push() {
       parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || printf '%s' "$EMPTY_TREE")
       visited="" commit_covered "$tree" "$parent_tree" && continue
       uncovered+=("$(git log -1 --format='%h %s' "$sha")")
+      # The hint names the review for a ref that has uncovered commits.
+      pushed="$local_ref"
     done
   done
 
@@ -277,7 +318,8 @@ case "${1:-}" in
   mark) shift && cmd_mark "$@" ;;
   defer) shift && cmd_defer "$@" ;;
   last) cmd_last ;;
+  covered) cmd_covered ;;
   pre-commit) cmd_pre_commit ;;
   pre-push) cmd_pre_push ;;
-  *) die 'usage: review-gate mark [--branch] <triage file> | defer "<reason>" | last | pre-commit | pre-push' ;;
+  *) die 'usage: review-gate mark [--branch] <triage file> | defer "<reason>" | last | covered | pre-commit | pre-push' ;;
 esac

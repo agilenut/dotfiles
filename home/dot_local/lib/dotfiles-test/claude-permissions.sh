@@ -83,6 +83,9 @@ CLAUDE_PERMISSIONS_DENY=(
   'Bash(git -C * config *claude.reviewHook*)'
   'Bash(git config *claude.reviewhook*)'
   'Bash(git -C * config *claude.reviewhook*)'
+  # An included config file can override the hook command.
+  'Bash(git config *include*)'
+  'Bash(git -C * config *include*)'
   # The hook runs only when CLAUDECODE=1, so clearing or changing it in
   # the same command turns the gate off (`unset` has an allow rule).
   # Claude Code matches each part of a compound command on its own, so a
@@ -93,6 +96,12 @@ CLAUDE_PERMISSIONS_DENY=(
   'Bash(env -u*CLAUDECODE*)'
   'Bash(env *CLAUDECODE=*)'
   'Bash(CLAUDECODE=*)'
+  # Unsetting HOME or XDG_CONFIG_HOME hides the global git config that
+  # registers the hook. The rules name the variables, so `unset JAVA_HOME`
+  # still runs.
+  'Bash(unset HOME*)'
+  'Bash(unset * HOME*)'
+  'Bash(unset *XDG_CONFIG_HOME*)'
 )
 
 test_claude_permissions() {
@@ -162,7 +171,8 @@ test_claude_permissions() {
       and (.permissions.ask | map(select(test("^Bash\\(git (-C \\* )?commit"))) | length == 0)
       and (.permissions.allow | index("Bash(review-gate mark *)") != null)
       and (.permissions.allow | index("Bash(review-gate defer *)") != null)
-      and (.permissions.allow | index("Bash(review-gate last)") != null)' \
+      and (.permissions.allow | index("Bash(review-gate last)") != null)
+      and (.permissions.allow | index("Bash(review-gate covered)") != null)' \
     "$settings" >/dev/null 2>&1; then
     pass "git commit and review-gate run without a prompt"
   else

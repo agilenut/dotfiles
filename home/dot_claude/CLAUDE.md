@@ -330,9 +330,8 @@ _How to scope, sequence, and pause work for non-trivial tasks._
   invoke `/plan` to scope it; tangents mid-implementation stay tangents
   unless explicitly escalated
 - Plan Commits row tags drive review cadence: `review: per-commit`
-  forces `/review` before each commit. For `end-of-PR` commits, run
-  `review-gate defer "<reason>"`; a review covers them before the push
-  (the Git section says which review).
+  forces `/review` before each commit, and `end-of-PR` commits are
+  deferred and reviewed before the push (Git section).
 - Keep the plan current as work proceeds, not just at the start. When a
   step completes or a follow-up / discovery surfaces, update the plan in
   the same commit (tracked plans) or save immediately (gitignored).
@@ -618,12 +617,7 @@ _Branching, committing, PRs._
   the review-gate git hook refuses one that no review covers, so a commit
   doesn't need my approval; a push changes what others see. After each
   commit, tell me in one line what it changed, and keep going without
-  waiting for a reply. A review-gate refusal means a review is missing,
-  not a decision for me. A commit refusal: run `/review`, or defer when
-  the commit qualifies (below), then commit again. A push refusal: run
-  the review it names, commit any fixes it staged, then push again. Only
-  `/review` runs `review-gate mark`: a mark claims reviewers saw the
-  tree, so a false one lets unreviewed work be pushed.
+  waiting for a reply.
 - When the user signals PR-lifecycle work (creating, merging, "is CI
   done", "open the PR", bare "pr"), invoke `/pr` first — don't run
   free-form `gh pr create` / `gh pr merge` / `gh pr checks` ahead of
@@ -656,20 +650,35 @@ _Branching, committing, PRs._
   is deliberately unstaged — leave it.
 
 - Every commit needs a review or a deferral, or the review-gate git hook
-  refuses it. A deferral moves the review to before the next push; it
-  doesn't replace it. If a plan governs the work, follow its review tag
-  (`end-of-PR` commits defer). Otherwise, run `/review` for non-trivial
-  changes (new behavior, multi-file refactors), and defer only truly
-  trivial ones (typo, dep bump, a one-line comment fix), where `/review`
-  would cost more than it finds: `review-gate defer "<reason>"`.
-  - A branch's first push needs `/review branch`.
-  - A later push needs each new commit covered by its own `/review` or
-    by a later branch review. After a deferral, run the review that
-    `review-gate defer` and the push refusal name.
-  - Files an agent or a person follows as steps (skills, agents,
-    prompts, CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs:
-    review a change to their instructions like code. A typo fix in them
-    is still trivial; a README is still docs.
+  refuses it. If a plan governs the work, follow its review tag.
+  Otherwise, run `/review` for non-trivial changes (new behavior,
+  multi-file refactors), and defer only truly trivial ones (typo, dep
+  bump, a one-line comment fix), where `/review` would cost more than it
+  finds. Files an agent or a person follows as steps (skills, agents,
+  prompts, CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs:
+  review a change to their instructions like code. A typo fix in them is
+  still trivial; a README is still docs.
+  - A commit holds only its own work, since nobody approves it. Stage
+    only that work's files, leave other changes unstaged, and name them
+    in the one-line note after the commit. Ask only when other work is
+    already staged or shares a file with this work. `/review` stages what
+    it reviewed. For a deferral, stage, run pre-commit, and pass the
+    stale-index gate first: `review-gate defer "<reason>"` records
+    exactly what is staged.
+  - A deferral moves the review to before the next push. A branch's
+    first push needs a review of the whole branch (`/review branch`); a
+    later push needs each new commit covered by its own `/review` or by
+    a later branch review. A refused push costs me another approval, so
+    before pushing deferred commits, run the review the latest deferral
+    printed, once, and commit what it stages.
+  - A review-gate refusal means a review is missing, not a decision for
+    me. After a refused commit, run `/review`, or defer if the commit
+    qualifies, then commit again. After a refused push, run the review
+    the refusal names, commit what it stages, then push again.
+  - When a review prints `Not recorded`, stop and tell me its reason;
+    don't commit, defer, or push around it. Only `/review` runs
+    `review-gate mark`: a mark claims reviewers saw the tree, so a false
+    one lets unreviewed work be pushed.
 - Each commit must build, test, and pass independently, no dead code or
   forward refs
 - Commit message: title ≤70 chars, imperative summary. Body: 1-3
@@ -920,8 +929,9 @@ Worktree).
 All review output goes to `.reviews/` relative to main worktree's
 project root: `.reviews/code/` for code reviews, `.reviews/plans/` for
 plan reviews. `/review` records each tree it covered in `review-gate`'s
-log, which lives in the git common dir, so all worktrees share it. An isolated
-worktree session uses the worktree's own `.reviews/` (see Worktree).
+log, which lives in the git common dir, so all worktrees share it. An
+isolated worktree session uses the worktree's own `.reviews/` (see
+Worktree).
 
 ## Database
 

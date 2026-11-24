@@ -235,6 +235,15 @@ test_review_gate() {
   else
     fail "repo with no remote was gated"
   fi
+  # A push to a URL from that repo is checked: the push proves a remote.
+  git init -q --bare "$nr.url-remote.git"
+  if out=$(rg_claude "$nr" git push -q "$nr.url-remote.git" HEAD:refs/heads/main 2>&1); then
+    fail "a push to a URL from a repo with no configured remote wasn't checked"
+  elif grep -q 'review-gate' <<<"$out"; then
+    pass "a push to a URL from a repo with no configured remote is checked"
+  else
+    fail "push to a URL failed for another reason: $out"
+  fi
   git -C "$nr" config claude.reviewHook true
   rg_stage "$nr" n.txt two
   if rg_claude "$nr" git commit -qm "opted in" >/dev/null 2>&1; then
@@ -306,6 +315,82 @@ test_review_gate() {
     fail "first-push refusal doesn't say what to run: $out"
   fi
   rg_mark "$p" --branch
+  # A commit on top with its own review (a polish commit after the branch
+  # review) keeps the first push covered: its review chains to the
+  # branch-reviewed commit.
+  local pp="$fx/polish"
+  rg_with_remote "$pp"
+  rg_stage "$pp" q.txt one
+  rg_mark "$pp" --branch
+  rg_claude "$pp" git commit -qm one >/dev/null 2>&1
+  rg_stage "$pp" q.txt one-polished
+  rg_mark "$pp"
+  rg_claude "$pp" git commit -qm polish >/dev/null 2>&1
+  if rg_claude "$pp" git push -q -u origin main >/dev/null 2>&1; then
+    pass "first push of a branch review plus a reviewed polish commit is allowed"
+  else
+    fail "first push refused a reviewed polish commit on top of a branch review"
+  fi
+  rg_stage "$pp" q.txt unreviewed-on-top
+  rg_claude "$pp" "$REVIEW_GATE" defer "x" >/dev/null
+  rg_claude "$pp" git commit -qm unreviewed >/dev/null 2>&1
+  # A first push to a new branch name, so the check is the first-push one.
+  # The later-push check refuses a deferred commit too, so check the message.
+  if out=$(rg_claude "$pp" git push -q origin HEAD:refs/heads/second 2>&1); then
+    fail "first push accepted a deferred commit on top of a branch review"
+  elif grep -q 'needs a review of the whole branch' <<<"$out"; then
+    pass "first push still refuses a deferred commit on top of a branch review"
+  else
+    fail "first push refused a deferred commit, but not as a first push: $out"
+  fi
+
+  # A branch cut from a pushed, branch-reviewed branch needs its own branch
+  # review: the review in pushed history covers the other branch's PR.
+  local sb="$fx/stacked"
+  rg_with_remote "$sb"
+  rg_stage "$sb" s.txt one
+  rg_mark "$sb" --branch
+  rg_claude "$sb" git commit -qm one >/dev/null 2>&1
+  rg_claude "$sb" git push -q -u origin main >/dev/null 2>&1
+  git -C "$sb" switch -q -c feat-b
+  rg_stage "$sb" s.txt two
+  rg_mark "$sb"
+  rg_claude "$sb" git commit -qm two >/dev/null 2>&1
+  if out=$(rg_claude "$sb" git push -q origin feat-b 2>&1); then
+    fail "first push of a stacked branch was allowed with no branch review of its own"
+  elif grep -q 'needs a review of the whole branch' <<<"$out"; then
+    pass "first push of a stacked branch needs its own branch review"
+  else
+    fail "stacked-branch push refused for the wrong reason: $out"
+  fi
+
+  # covered answers what a branch's first push of HEAD would answer.
+  if out=$(rg_claude "$sb" "$REVIEW_GATE" covered 2>&1); then
+    fail "covered accepted a stacked branch with no branch review"
+  elif [ "$out" = "/review branch" ]; then
+    pass "covered refuses a branch with no branch review and names the review"
+  else
+    fail "covered printed '$out', expected '/review branch'"
+  fi
+  rg_mark "$sb" --branch
+  if rg_claude "$sb" "$REVIEW_GATE" covered >/dev/null 2>&1; then
+    pass "covered accepts a branch-reviewed HEAD"
+  else
+    fail "covered refused a branch-reviewed HEAD"
+  fi
+  git -C "$sb" switch -q main
+  if rg_claude "$sb" "$REVIEW_GATE" covered >/dev/null 2>&1; then
+    pass "covered accepts a HEAD that is already pushed"
+  else
+    fail "covered refused a HEAD that is already pushed"
+  fi
+  # The reviewed polish commit on a pushed branch: covered matches the push.
+  git -C "$pp" reset -q --hard HEAD^
+  if rg_claude "$pp" "$REVIEW_GATE" covered >/dev/null 2>&1; then
+    pass "covered accepts a reviewed polish commit on top of a branch review"
+  else
+    fail "covered refused a reviewed polish commit on top of a branch review"
+  fi
   if rg_claude "$p" git push -q origin main >/dev/null 2>&1; then
     pass "first push after a branch review is allowed"
   else
@@ -376,10 +461,38 @@ test_review_gate() {
 
   git -C "$p" tag v1 HEAD~1
   if rg_claude "$p" git push -q origin v1 >/dev/null 2>&1; then
-    pass "pushing a tag is not gated"
+    pass "a tag on an already-pushed commit can be pushed"
   else
-    fail "pushing a tag was refused"
+    fail "a tag on an already-pushed commit was refused"
   fi
+  # A tag publishes the commits under it, so a tag on an unreviewed
+  # commit gets the same check as a branch push.
+  rg_stage "$p" p.txt tagged
+  rg_claude "$p" "$REVIEW_GATE" defer "tagged" >/dev/null
+  rg_claude "$p" git commit -qm tagged >/dev/null 2>&1
+  git -C "$p" tag v2
+  if out=$(rg_claude "$p" git push -q origin v2 2>&1); then
+    fail "a tag on an unreviewed commit was pushed"
+  elif grep -q ' tagged$' <<<"$out"; then
+    pass "a tag on an unreviewed commit is refused and names it"
+  else
+    fail "tag push refusal didn't name the commit: $out"
+  fi
+  git -C "$p" tag -d v2 >/dev/null
+  git -C "$p" reset -q --hard origin/main
+  # Any other ref (not a branch, not a tag) gets the same check as a
+  # later branch push, so unreviewed commits can't go out that way.
+  rg_stage "$p" p.txt custom-ref
+  rg_claude "$p" "$REVIEW_GATE" defer "custom ref" >/dev/null
+  rg_claude "$p" git commit -qm custom-ref >/dev/null 2>&1
+  if out=$(rg_claude "$p" git push -q origin HEAD:refs/review/x 2>&1); then
+    fail "an unreviewed commit was pushed to a custom ref"
+  elif grep -q ' custom-ref$' <<<"$out"; then
+    pass "a push to a custom ref is checked like a branch push"
+  else
+    fail "custom-ref push refusal didn't name the commit: $out"
+  fi
+  git -C "$p" reset -q --hard origin/main
 
   # ---- A commit review covers the change from its base, not just a tree ----
   local am="$fx/amend"
@@ -461,6 +574,21 @@ test_review_gate() {
     pass "a reworded branch-reviewed commit can still be pushed"
   else
     fail "a message-only amend of a branch-reviewed commit was refused"
+  fi
+  # A branch review's staged fixes amended into the reviewed commit (not
+  # committed on top) are covered too: same parent, the recorded tree.
+  rg_stage "$rw" r.txt two
+  rg_claude "$rw" "$REVIEW_GATE" defer "branch review follows" >/dev/null
+  rg_claude "$rw" git commit -qm "needs a fix" >/dev/null 2>&1
+  rg_stage "$rw" r.txt two-fixed
+  rg_mark "$rw" --branch
+  rg_claude "$rw" git commit -q --amend --no-edit >/dev/null 2>&1
+  if [ "$(git -C "$rw" show HEAD:r.txt)" != "two-fixed" ]; then
+    fail "setup: the fix wasn't amended in, so this case tests nothing"
+  elif rg_claude "$rw" git push -q origin main >/dev/null 2>&1; then
+    pass "a branch review's fixes amended into the reviewed commit can be pushed"
+  else
+    fail "a branch review's fixes amended into the reviewed commit were refused"
   fi
 
   # A review recorded early in a long log still covers its commit (the
