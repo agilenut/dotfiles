@@ -113,8 +113,10 @@ _Read everything the orchestrator AND reviewers need before spawning._
   - Branch: `git diff main..HEAD`
   - PR: `gh pr diff <number>`
 
-  If the diff is >500 lines, tell the user and offer to focus on specific
-  files before continuing.
+  If the diff is >500 lines, say so in one line and continue with the
+  whole diff. A review narrowed to some files isn't recorded (Step 14),
+  so the commit or push it was meant to clear would still be refused;
+  narrow it only when the user asks.
 
 - **Commit message** (local mode): draft the message for the commit that
   follows this review, per the Git rules in CLAUDE.md, and save it to
@@ -863,13 +865,15 @@ _Silent steps first, then one combined summary as the last chat output._
    - All fixes were mechanical (deletions, renames, typos, imports,
      fence repairs, formatting).
 
-   Otherwise, append to the final summary block (recommend `y`):
+   Otherwise don't record this review (item 2). Finish this run's
+   summary, then run `/review` again on the updated state without
+   asking; that run records the review. If the re-run's own fixes fire
+   the trigger again, stop and ask the user instead of re-running a
+   third time. The summary says:
 
    ```text
    Fixes introduced [<one-line summary of new surface or approach
-   change>] - re-run `/review` on the updated state before committing?
-   The review isn't recorded, so a commit is refused until the re-run
-   records it. y/n
+   change>]; re-running /review on the updated state.
    ```
 
 2. **Record the review.** `review-gate` refuses Claude's commits and
@@ -937,10 +941,13 @@ _Silent steps first, then one combined summary as the last chat output._
    ```
 
    Print the `Recorded:` line only when item 2 recorded the review;
-   otherwise print `Not recorded: <reason, or mark's output>. A commit of
-this tree will be refused until a review records it.` When pre-commit
-   changed code after the build, add `Pre-commit changed code after the
-build: re-run the build and tests.`
+   otherwise print:
+
+   `Not recorded: <reason, or mark's output>. A commit of this tree will be refused until a review records it.`
+
+   When pre-commit changed code after the build, add:
+
+   `Pre-commit changed code after the build: re-run the build and tests.`
 
    `<total>` is the total count of findings across all buckets, plus
    the commit-message findings that weren't applied. Omit a
@@ -952,13 +959,13 @@ build: re-run the build and tests.`
    `missing using directive`, `matches review-preference`,
    `parameterize SqlCommand`, `covered by middleware upstream`.
 
-   This skill doesn't commit. The caller commits with
-   `git commit -F <commit-msg.txt path>`, so the commit carries the
-   message as the review left it.
+   This skill doesn't commit. In local mode the caller commits with the
+   commit-msg.txt file (Step 2).
 
    PR mode appends:
 
    ```text
-   Auto-fixes applied locally. Commit+push to update PR; CI will re-run.
+   Auto-fixes applied locally and staged. A commit and a push update the
+   PR, and CI re-runs.
    Failed checks: <list> (or "none")
    ```

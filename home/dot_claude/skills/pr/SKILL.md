@@ -57,9 +57,10 @@ an open PR with no checks as CI_RUNNING.
   prompt.
   - Reviewed commit on a branch with an upstream: announce, then push
     (`git commit ... && git push` as one Bash call is fine).
-  - Deferred commit on a branch with an upstream: run
-    `/review unreviewed` first, since a push is refused for a commit with
-    only a deferral, commit any fixes it stages, then announce and push.
+  - Deferred commit on a branch with an upstream: a push is refused for a
+    commit with only a deferral, so run the review the global CLAUDE.md
+    `## Git` rule names for a later push, commit any fixes it stages,
+    then announce and push.
   - No upstream: commit only; NO_PR pushes after its branch review.
 - Re-run state detection.
 
@@ -73,8 +74,7 @@ an open PR with no checks as CI_RUNNING.
   `/review branch`, so the PR gets one review of the whole branch; it
   records the review the first push needs. Commit any fixes it stages
   (a heredoc `-m` message); the branch review's record already covers
-  that commit. Re-run the local
-  checks if it staged fixes.
+  that commit. Re-run the local checks if it staged fixes.
 - **The issue.** Take its number from the plan's `stories:` or PR table,
   the branch name, or the commits; if none, ask. A PR the global rules
   exempt from needing an issue (small doc or text fix, security patch,

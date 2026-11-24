@@ -33,9 +33,10 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
   read the error and try one or two other ways to get the same result.
   If none works, give me the command to run. A refusal is different. Stop
   and ask me when I deny a prompt, when a permission rule or hook blocks
-  the action (a review-gate refusal is the exception; see Git), or when a
-  tool stops to avoid losing data (chezmoi
-  won't overwrite a changed file, git won't discard uncommitted work).
+  the action, or when a tool stops to avoid losing data (chezmoi won't
+  overwrite a changed file, git won't discard uncommitted work). Two
+  exceptions, both in Git: a review-gate refusal that names a review, and
+  a commit denied for its message text.
   Don't get the same result another way or force past it. If you can't
   tell a failure from a refusal, treat it as a refusal.
 
@@ -300,8 +301,10 @@ _Permission prompting, preferred commands, and command shapes._
   - run `git` from the working directory, with no `cd <dir> &&` before
     it and no `git -C`
   - no `$(...)` or backticks: run the inner command first and use its
-    output. The quoted-heredoc message form in the Git section is the
-    exception, since that text is meant to be read before approval.
+    output. The quoted-heredoc form in the Git section (PR bodies,
+    comments, and `git commit -m` messages) is the exception: the
+    `--body` text is read before approval, and Claude Code approves the
+    commit form under the `git commit` allow rule.
   - no loops: pass all the items to one command, or run one command each
   - a pipe instead of `<(...)`, no `&` to run a command in the background,
     at most one `cd`
@@ -328,8 +331,8 @@ _How to scope, sequence, and pause work for non-trivial tasks._
   unless explicitly escalated
 - Plan Commits row tags drive review cadence: `review: per-commit`
   forces `/review` before each commit. `end-of-PR` commits run
-  `review-gate defer "<reason>"`, and one `/review branch` covers them
-  before pushing (typically before `gh pr create`).
+  `review-gate defer "<reason>"`, and a review covers them before the
+  push (Git section says which).
 - Keep the plan current as work proceeds, not just at the start. When a
   step completes or a follow-up / discovery surfaces, update the plan in
   the same commit (tracked plans) or save immediately (gitignored).
@@ -653,9 +656,12 @@ _Branching, committing, PRs._
   refuses it. If a plan governs the work, follow its review tag.
   Otherwise, run `/review` for non-trivial changes (new behavior,
   multi-file refactors); for truly trivial ones (typo, dep bump, a
-  one-line comment fix), run `review-gate defer "<reason>"`. A deferred
-  commit needs a review before the next push: `/review branch` before a
-  branch's first push, `/review unreviewed` before a later one. Files an
+  one-line comment fix), run `review-gate defer "<reason>"`. What a push
+  needs, as the hook checks it: a branch's first push needs
+  `/review branch`; a later push needs each new commit covered by its
+  own `/review` or by a later branch review, so after a deferral run
+  `/review unreviewed` (or `/review branch` when `review-gate last`
+  prints nothing, as after a rebase or a merge of main). Files an
   agent or a person follows as steps (skills, agents, prompts,
   CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs: review a change
   to their instructions like code. A typo fix in them is still trivial; a
@@ -672,11 +678,11 @@ _Branching, committing, PRs._
   (`--body "$(cat <<'EOF' ... EOF)"`), so I read the text in the
   permission prompt before I approve it; `--body-file` shows only a path.
   The quoted `'EOF'` keeps `$` and backticks in the text as written.
-  Commit messages don't prompt. After `/review`, commit with
+  Commit messages don't prompt. After a local-mode `/review`, commit with
   `git commit -F <its commit-msg.txt>`, which keeps the exact text the
   review checked; otherwise use the same heredoc with `-m`. Message text
   after `-m` can match a deny rule: a message that mentions `--no-verify`,
-  or `-n` after a space, is denied, so reword it.
+  or `-n` after a space, is denied, so reword it and retry.
 - People and models read commits and PR bodies later to trace why
   something changed. Like a commit message, a PR body states the why and
   the decisions behind the change plainly, plus whatever else its skill

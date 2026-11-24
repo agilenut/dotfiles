@@ -85,6 +85,19 @@ test_review_gate() {
 
   local r="$fx/repo" out
 
+  # Git that predates config hooks ignores hook.<name>.event, so the gate
+  # silently doesn't run while commits no longer prompt.
+  local probe="$fx/probe"
+  rg_with_remote "$probe"
+  rg_stage "$probe" p.txt one
+  if rg_claude "$probe" git commit -qm probe >/dev/null 2>&1; then
+    fail "$(git --version) doesn't run config hooks, so the review gate is off; skipping the gate tests"
+    trap - EXIT
+    review_gate_cleanup
+    return
+  fi
+  pass "git runs config hooks, so the gate is active"
+
   # ---- Commit gate ----
   rg_with_remote "$r"
   printf '.reviews/\n' >"$r/.gitignore"
@@ -310,7 +323,7 @@ test_review_gate() {
     fail "push of a deferred commit without a branch review was allowed"
   elif grep -q ' three$' <<<"$out" && ! grep -q ' four$' <<<"$out" \
     && grep -q 'Run /review unreviewed, then push again' <<<"$out"; then
-    pass "push refuses a deferred commit below a reviewed one, names only it, and names /review unreviewed"
+    pass "push refuses a deferred commit that a reviewed one is built on, names only it, and names /review unreviewed"
   else
     fail "push refusal doesn't name just the uncovered commit: $out"
   fi

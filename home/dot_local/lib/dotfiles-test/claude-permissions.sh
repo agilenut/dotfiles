@@ -57,8 +57,9 @@ CLAUDE_PERMISSIONS_ASK=(
 # - `git commit` is allowed because the review-gate git hook checks it, so
 #   the ways to skip or turn off that hook are denied: `--no-verify`
 #   (`--no-veri` is its shortest unique prefix), `git commit -n`, and
-#   config changes to `hook.*` or `claude.reviewHook`, in both cases since
-#   git config keys ignore case. No allow rule approves those config
+#   config changes to `hook.*` or `claude.reviewHook` (both spellings of
+#   `reviewHook`, since git config keys ignore case; other spellings, such
+#   as `Hook.`, aren't matched). No allow rule approves those config
 #   writes; the deny rules stop them in auto mode too. A combined short
 #   flag such as `-an` isn't matched, and message text after `-m` can
 #   match: a commit message that mentions `--no-verify` is denied.

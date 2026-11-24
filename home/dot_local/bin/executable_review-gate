@@ -108,7 +108,7 @@ cmd_mark() {
   printf 'Recorded %s review of tree %s\n' "$kind" "${tree:0:12}"
 }
 
-# Only a branch review covers every commit below it, so a review of the
+# Only a branch review covers every commit it is built on, so a review of the
 # commits after this one plus this record covers the whole branch.
 cmd_last() {
   local log reviewed sha tree
