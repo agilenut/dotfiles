@@ -102,4 +102,6 @@ path=(
   "$XDG_STATE_HOME/dotnet/.dotnet/tools"
   "$XDG_DATA_HOME/mise/shims"
   $path
+  # Last, so a Composer package's bin can't shadow a system or Homebrew tool
+  "$XDG_CONFIG_HOME/composer/vendor/bin"
 )
