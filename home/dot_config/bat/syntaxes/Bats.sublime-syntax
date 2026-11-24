@@ -1,0 +1,17 @@
+%YAML 1.2
+---
+# Bats test files: bat's Bash syntax plus @test. bat's Bash syntax doesn't
+# claim the .bats extension, and delta (the diff pager for git and lazygit)
+# has no setting to map an extension to a syntax, so without this both show
+# .bats files uncolored. delta reads bat's compiled cache, which
+# run_onchange_after_build-bat-cache rebuilds when this changes.
+name: Bats
+file_extensions: [bats]
+first_line_match: ^#!.*\bbats\b
+scope: source.shell.bash.bats
+contexts:
+  main:
+    - match: ^\s*(@test)\b
+      captures:
+        1: keyword.declaration.function.bats
+    - include: scope:source.shell.bash

@@ -30,6 +30,7 @@ test_commands_installed() {
   # that may or may not be present on a Linux runner.
   if [[ "$(uname)" == "Darwin" ]]; then
     commands+=(
+      "bats"
       "chezmoi"
       "claude"
       "composer"

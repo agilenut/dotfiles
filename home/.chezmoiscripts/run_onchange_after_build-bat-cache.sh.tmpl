@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Rebuild bat's theme cache when the custom theme changes. bat reads a compiled
-# cache (~/.cache/bat/themes.bin), not the .tmTheme directly, so a chezmoi apply
-# that updates the theme needs this to take effect. delta reads bat's cached
-# themes too, so this also refreshes git/lazygit diffs.
+# Rebuild bat's cache when a custom theme or syntax changes. bat reads a
+# compiled cache (~/.cache/bat/themes.bin and syntaxes.bin), not the .tmTheme
+# and .sublime-syntax files directly, so a chezmoi apply that updates a theme
+# or syntax file needs this to take effect. delta reads bat's cache too, so
+# this also refreshes git/lazygit diffs.
 #
-# Runtime theme selection is via $BAT_THEME (and delta reads bat's cache), so
-# every theme must be cached, not just the active one. The hash below re-runs
-# this whenever any generated per-theme bat output changes (a palette or template
-# edit regenerates them via theme-gen):
+# Runtime theme selection is via $BAT_THEME, so every theme must be
+# cached, not just the active one. The hashes below re-run this whenever
+# any generated per-theme bat output changes (a palette or template edit
+# regenerates them via theme-gen), or any file under bat/syntaxes changes:
 # {{ range $name, $_ := (include "../themes/palette.toml" | fromToml).themes }}{{ include (printf "dot_config/bat/themes/%s.tmTheme" $name) | sha256sum }}{{ end }}
+# {{ range glob (joinPath .chezmoi.sourceDir "dot_config/bat/syntaxes/*") }}{{ include . | sha256sum }}{{ end }}
 
 set -euo pipefail
 
 # bat is `batcat` on Debian/Ubuntu (binary-name clash). Skip silently if neither
-# is installed — the cache is only relevant where bat exists.
+# is installed: the cache is only relevant where bat exists.
 if command -v bat >/dev/null 2>&1; then
   bat cache --build
 elif command -v batcat >/dev/null 2>&1; then
