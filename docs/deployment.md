@@ -129,12 +129,12 @@ harder to see.
   and back, or run its setup step), then confirm `chezmoi diff <target>`
   is empty.
 
-| File                                 | Written by                                                         | What the source matches                                                                                                          |
-| ------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                                  | Karabiner's own format, byte for byte, and 600 mode                                                                              |
-| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`)               | On macOS, GCM's full path as the credential helper, in the layout git writes                                                     |
-| `~/.config/lazygit/themes/*.yml`     | lazygit, when it migrates renamed config keys                      | The current key names, set in `themes/templates/lazygit.yml.tmpl`                                                                |
-| `~/.config/composer/composer.json`   | Composer, on `composer global require` or `composer global remove` | `"*"` as the Laravel Cloud CLI's version; a `composer global require laravel/cloud-cli` with no version rewrites it as a `^` pin |
+| File                                 | Written by                                                         | What the source matches                                                                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.config/karabiner/karabiner.json` | Karabiner, on any settings change                                  | Karabiner's own format, byte for byte, and 600 mode                                                                                                                                           |
+| `~/.config/git/config`               | GCM's installer (`git-credential-manager configure`)               | On macOS, GCM's full path as the credential helper, in the layout git writes                                                                                                                  |
+| `~/.config/lazygit/themes/*.yml`     | lazygit, when it migrates renamed config keys                      | The current key names, set in `themes/templates/lazygit.yml.tmpl`                                                                                                                             |
+| `~/.config/composer/composer.json`   | Composer, on `composer global require` or `composer global remove` | `"*"` as the Laravel Cloud CLI's version; a `composer global require laravel/cloud-cli` with no version rewrites it as a `^` pin; run `composer global require 'laravel/cloud-cli:*'` instead |
 
 ## When an apply isn't enough
 
