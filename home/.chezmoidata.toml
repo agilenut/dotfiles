@@ -124,7 +124,7 @@
   signingkey = "~/.ssh/id_ed25519_git_signing_key_personal.pub"
 
 [profiles.personal.packages.darwin]
-  dev       = [ "git-ignore", "go", "shellcheck", "shfmt" ]
+  dev       = [ "composer", "git-ignore", "go", "php", "shellcheck", "shfmt" ]
   quicklook = [ "qlmarkdown", "syntax-highlight" ]
 
 [[profiles.personal.apps.casks]]

@@ -32,6 +32,7 @@ test_commands_installed() {
     commands+=(
       "chezmoi"
       "claude"
+      "composer"
       "dotnet" # installed by mise from its global config
       "fd"
       "git-credential-manager"
@@ -41,6 +42,7 @@ test_commands_installed() {
       "mas"
       "oh-my-posh"
       "op"
+      "php"
       "pwsh"
       "shellcheck"
       "shfmt"

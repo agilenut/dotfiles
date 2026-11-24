@@ -23,6 +23,11 @@
 # it in the dotfiles repo.
 .claude/skills/recap/recap.toml
 
+# Composer's auth.json holds credentials (tokens, passwords) and sits next
+# to the tracked composer.json. Ignored so `chezmoi add ~/.config/composer`
+# can't add the credentials.
+.config/composer/auth.json
+
 # Repos where /pr asks before merging. Local-only: it names client repos.
 .claude/skills/pr/ask-before-merge.txt
 

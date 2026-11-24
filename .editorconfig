@@ -27,6 +27,10 @@ function_next_line = false
 [home/dot_config/git/config.tmpl]
 trim_trailing_whitespace = false
 
+# Kept in the format Composer writes (see .prettierignore)
+[home/dot_config/composer/composer.json]
+indent_size = 4
+
 # Kept in the format Karabiner writes (see .prettierignore)
 [home/dot_config/private_karabiner/private_karabiner.json]
 indent_size = 4
