@@ -96,6 +96,19 @@
 {{- end }}
 {{- end }}
 
+; Refuses Claude Code's commits and pushes that no review covers. The
+; CLAUDECODE check sits here, not only in the script, so the user's own
+; commits never depend on the script being installed. Config hooks run before
+; a repo's own hooks, so the gate sees the tree before a pre-commit framework
+; runs; a framework that changes files fails the commit anyway.
+[hook "claude-review-commit"]
+	event = pre-commit
+	command = "[ \"$CLAUDECODE\" = 1 ] || exit 0; exec ~/.local/bin/review-gate pre-commit"
+
+[hook "claude-review-push"]
+	event = pre-push
+	command = "[ \"$CLAUDECODE\" = 1 ] || exit 0; exec ~/.local/bin/review-gate pre-push"
+
 [merge]
 	conflictstyle = zdiff3
 

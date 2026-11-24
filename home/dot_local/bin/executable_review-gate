@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+# Refuses Claude's commits and pushes that no review covers.
+#
+#   review-gate mark [--branch] <triage file>   record a review of the staged
+#                                               tree (or, with --branch, of HEAD)
+#   review-gate defer "<reason>"                let a commit of the staged tree
+#                                               through unreviewed; push checks it
+#   review-gate pre-commit                      git hook (global git config)
+#   review-gate pre-push <remote> <url>         git hook (global git config)
+#
+# A review is recorded as the hash of the exact tree it approved, so any later
+# edit needs a new review. The log lives in the git common dir, shared by all
+# worktrees and never tracked.
+#
+# The hooks gate only commands run by Claude Code (CLAUDECODE=1), and only in
+# repos with a remote; `git config claude.reviewHook true` opts a repo in and
+# `false` opts it out. A branch's first push needs a branch review of HEAD, so
+# every PR gets one branch review. Later pushes need each new commit covered by
+# its own review or by a branch review of it or a commit built on it.
+
+set -euo pipefail
+
+die() {
+  printf 'review-gate: %s\n' "$*" >&2
+  exit 1
+}
+
+log_file() {
+  printf '%s/claude-reviews.log' "$(git rev-parse --path-format=absolute --git-common-dir)"
+}
+
+record() {
+  local tree="$1" kind="$2" note="${3//[$'\t\n']/ }" branch
+  branch=$(git branch --show-current)
+  printf '%s\t%s\t%s\t%s\t%s\n' "$tree" "$kind" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "${branch:-detached}" "$note" >>"$(log_file)"
+}
+
+# has_record <tree> <kind regex>
+has_record() {
+  local log
+  log=$(log_file)
+  [ -f "$log" ] && cut -f1,2 "$log" | grep -qE "^$1	($2)\$"
+}
+
+gate_active() {
+  [ "${CLAUDECODE:-}" = 1 ] || return 1
+  local setting
+  if ! setting=$(git config --type=bool --get claude.reviewHook); then
+    # Exit 1 means unset; anything else is a value git can't read as a bool.
+    [ -z "$(git config --get claude.reviewHook)" ] \
+      || die "claude.reviewHook must be true or false"
+  fi
+  case "$setting" in
+    true) return 0 ;;
+    false) return 1 ;;
+  esac
+  [ -n "$(git remote)" ]
+}
+
+# A triage file /review wrote for this branch: <timestamp>-<branch>-triage.md
+# in .reviews/code/ at the main checkout's root or this worktree's root.
+check_triage_file() {
+  local file="$1" dir branch main_root
+  [ -f "$file" ] || die "triage file not found: $file"
+  dir=$(cd "$(dirname "$file")" && pwd -P)
+  branch=$(git branch --show-current)
+  [ -n "$branch" ] || die "HEAD is detached; check out the reviewed branch first"
+  main_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+  case "$dir" in
+    "$(cd "$main_root" && pwd -P)/.reviews/code" | \
+      "$(cd "$(git rev-parse --show-toplevel)" && pwd -P)/.reviews/code") ;;
+    *) die "triage file must be in the repo's .reviews/code/: $file" ;;
+  esac
+  # The whole slug must match, so feat/x doesn't accept chore/feat-x's file.
+  [[ "$(basename "$file")" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}-(.+)-triage\.md$ ]] \
+    && [ "${BASH_REMATCH[1]}" = "${branch//\//-}" ] \
+    || die "triage file must be this branch's (<timestamp>-${branch//\//-}-triage.md): $file"
+}
+
+cmd_mark() {
+  local kind=commit tree
+  if [ "${1:-}" = --branch ]; then
+    kind=branch
+    shift
+  fi
+  [ $# -eq 1 ] || die "usage: review-gate mark [--branch] <triage file>"
+  check_triage_file "$1"
+  if [ "$kind" = branch ]; then
+    tree=$(git rev-parse 'HEAD^{tree}')
+  else
+    tree=$(git write-tree)
+  fi
+  record "$tree" "$kind" "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+  printf 'Recorded %s review of tree %s\n' "$kind" "${tree:0:12}"
+}
+
+cmd_defer() {
+  [ -n "${*// /}" ] || die 'usage: review-gate defer "<reason>"'
+  record "$(git write-tree)" defer "$*"
+  printf 'Deferred review of the staged changes; run /review branch before you push.\n'
+}
+
+cmd_pre_commit() {
+  gate_active || exit 0
+  # GIT_INDEX_FILE points at the index being committed, so `commit -a` and
+  # `commit <paths>` are checked as committed, not as staged.
+  local tree head_tree
+  tree=$(git write-tree)
+  head_tree=$(git rev-parse -q --verify 'HEAD^{tree}' || true)
+  [ "$tree" = "$head_tree" ] && exit 0
+  has_record "$tree" 'commit|branch|defer' && exit 0
+  cat >&2 <<'EOF'
+review-gate: no review covers this commit. Stage everything you mean to
+commit (no -a or paths), then either:
+  - run /review, then commit again, or
+  - for an end-of-PR commit or a trivial change, run
+    review-gate defer "<reason>", then commit again. Run /review branch
+    before you push.
+(Not Claude Code? CLAUDECODE=1 leaked into this shell; unset it.)
+EOF
+  exit 1
+}
+
+cmd_pre_push() {
+  gate_active || exit 0
+  local zero=0000000000000000000000000000000000000000
+  local _local_ref local_sha remote_ref remote_sha new sha
+  local -a uncovered=()
+  while read -r _local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue
+    [[ "$remote_ref" == refs/heads/* ]] || continue
+    new=$(git rev-list "$local_sha" --not --remotes)
+    [ -n "$new" ] || continue
+
+    if [ "$remote_sha" = "$zero" ] && ! has_record "$(git rev-parse "$local_sha^{tree}")" branch; then
+      printf 'review-gate: the first push of %s needs a review of the whole branch.\nRun /review branch, then push again.\n' \
+        "${remote_ref#refs/heads/}" >&2
+      exit 1
+    fi
+
+    # A branch review covers its commit and every commit it is built on.
+    local -a branch_reviewed=()
+    for sha in $new; do
+      has_record "$(git rev-parse "$sha^{tree}")" branch && branch_reviewed+=("^$sha")
+    done
+    # The ^exclusions go before --not, which would flip them into inclusions.
+    # Assigned first so a rev-list failure stops the push (set -e).
+    new=$(git rev-list "$local_sha" ${branch_reviewed[@]+"${branch_reviewed[@]}"} --not --remotes)
+    for sha in $new; do
+      local tree parent_tree
+      tree=$(git rev-parse "$sha^{tree}")
+      has_record "$tree" commit && continue
+      parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || true)
+      [ "$tree" = "$parent_tree" ] && continue
+      uncovered+=("$(git log -1 --format='%h %s' "$sha")")
+    done
+  done
+
+  if [ ${#uncovered[@]} -gt 0 ]; then
+    {
+      echo "review-gate: no review covers these commits:"
+      printf '  %s\n' "${uncovered[@]}"
+      echo "Run /review branch, then push again."
+    } >&2
+    exit 1
+  fi
+}
+
+case "${1:-}" in
+  mark) shift && cmd_mark "$@" ;;
+  defer) shift && cmd_defer "$@" ;;
+  pre-commit) cmd_pre_commit ;;
+  pre-push) cmd_pre_push ;;
+  *) die 'usage: review-gate mark [--branch] <triage file> | defer "<reason>" | pre-commit | pre-push' ;;
+esac

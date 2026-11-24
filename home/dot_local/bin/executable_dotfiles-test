@@ -24,6 +24,7 @@ source "$LIB_DIR/tmux-claude.sh"
 source "$LIB_DIR/tmux-continuum.sh"
 source "$LIB_DIR/claude-permissions.sh"
 source "$LIB_DIR/reply-check.sh"
+source "$LIB_DIR/review-gate.sh"
 source "$LIB_DIR/nvim-tooling.sh"
 source "$LIB_DIR/open-path.sh"
 source "$LIB_DIR/theme-palette.sh"
@@ -137,6 +138,9 @@ main() {
 
   # Reply-check Stop hook tests
   test_reply_check
+
+  # Review gate git hook tests
+  test_review_gate
 
   # nvim project-aware tooling tests
   test_nvim_tooling
