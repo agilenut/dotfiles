@@ -93,10 +93,18 @@ cmd_mark() {
   fi
   [ $# -eq 1 ] || die "usage: review-gate mark [--branch] <triage file>"
   check_triage_file "$1"
+  local triage log
+  triage="$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+  log=$(log_file)
+  # One triage file per review run: reusing an old one would record edits
+  # made after that review.
+  if [ -f "$log" ] && cut -f5 "$log" | grep -Fxq "$triage"; then
+    die "this triage file already recorded a review; run /review again for the current changes"
+  fi
   # The staged tree in both kinds: a branch review's staged fixes are part of
   # what it approved, and with nothing staged this is HEAD's tree.
   tree=$(git write-tree)
-  record "$tree" "$kind" "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+  record "$tree" "$kind" "$triage"
   printf 'Recorded %s review of tree %s\n' "$kind" "${tree:0:12}"
 }
 
@@ -119,7 +127,7 @@ cmd_last() {
 cmd_defer() {
   [ -n "${*// /}" ] || die 'usage: review-gate defer "<reason>"'
   record "$(git write-tree)" defer "$*"
-  printf 'Deferred review of the staged changes; run /review branch before you push.\n'
+  printf 'Deferred review of the staged changes. Before you push, run /review branch (first push) or /review unreviewed (later push).\n'
 }
 
 cmd_pre_commit() {
@@ -136,8 +144,8 @@ review-gate: no review covers this commit. Stage everything you mean to
 commit (no -a or paths), then either:
   - run /review, then commit again, or
   - for an end-of-PR commit or a trivial change, run
-    review-gate defer "<reason>", then commit again. Run /review branch
-    before you push.
+    review-gate defer "<reason>", then commit again. Before you push, run
+    /review branch (first push) or /review unreviewed (later push).
 (Not Claude Code? CLAUDECODE=1 leaked into this shell; unset it.)
 EOF
   exit 1
@@ -182,7 +190,12 @@ cmd_pre_push() {
     {
       echo "review-gate: no review covers these commits:"
       printf '  %s\n' "${uncovered[@]}"
-      echo "Run /review branch, then push again."
+      # Reviewing from the last branch review costs less than the branch.
+      if [ -n "$(cmd_last)" ]; then
+        echo "Run /review unreviewed, then push again."
+      else
+        echo "Run /review branch, then push again."
+      fi
     } >&2
     exit 1
   fi

@@ -121,8 +121,8 @@ _Read everything the orchestrator AND reviewers need before spawning._
   `.reviews/code/<timestamp>-<branch>-commit-msg.txt` (run
   `date +%Y-%m-%d-%H%M%S` now; every file this review writes uses that
   timestamp). The file is the reviewed draft and holds only the
-  message; at commit time, Step 14 pastes its current text verbatim
-  into the commit command. Fixes to the message edit that file. When other fixes change
+  message; the commit uses this file (`git commit -F`). Fixes to the
+  message edit that file. When other fixes change
   what the commit does, update the message to match. Reviewing it before
   it is in history lets its fixes apply like any other.
 
@@ -952,9 +952,9 @@ build: re-run the build and tests.`
    `missing using directive`, `matches review-preference`,
    `parameterize SqlCommand`, `covered by middleware upstream`.
 
-   When the user approves the commit, read the commit-msg.txt file then
-   (its text may have changed during the review) and pass it inline per
-   the global CLAUDE.md `## Git` rule.
+   This skill doesn't commit. The caller commits with
+   `git commit -F <commit-msg.txt path>`, so the commit carries the
+   message as the review left it.
 
    PR mode appends:
 

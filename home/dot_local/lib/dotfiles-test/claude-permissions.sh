@@ -38,6 +38,14 @@ CLAUDE_PERMISSIONS_ASK=(
   'Bash(az webapp config appsettings list *)'
   'Bash(az webapp config connection-string list *)'
   'Bash(az webapp deployment list-publishing-profiles *)'
+  # Pushes, merges, and PR creation need the user's approval; local commits
+  # don't, since the review-gate git hook checks them.
+  'Bash(git push *)'
+  'Bash(git -C * push *)'
+  'Bash(git merge *)'
+  'Bash(git -C * merge *)'
+  'Bash(gh pr create *)'
+  'Bash(gh pr merge *)'
 )
 
 # Deny rules for shapes an allow rule would otherwise approve:
@@ -46,12 +54,31 @@ CLAUDE_PERMISSIONS_ASK=(
 #   match too.
 # - git accepts any unique prefix of a long option, so `git fetch
 #   --upl=<cmd>` is `--upload-pack=<cmd>`.
+# - `git commit` is allowed because the review-gate git hook checks it, so
+#   the ways to skip or turn off that hook are denied: `--no-verify`
+#   (`--no-veri` is its shortest unique prefix), `git commit -n`, and
+#   config changes to `hook.*` or `claude.reviewHook`, in both cases since
+#   git config keys ignore case. No allow rule approves those config
+#   writes; the deny rules stop them in auto mode too. A combined short
+#   flag such as `-an` isn't matched, and message text after `-m` can
+#   match: a commit message that mentions `--no-verify` is denied.
 CLAUDE_PERMISSIONS_DENY=(
   'Bash(gh api *-X*-X*)'
   'Bash(gh api *--method*--method*)'
   'Bash(gh api *-X*--method*)'
   'Bash(gh api *--method*-X*)'
   'Bash(git *--upl*)'
+  'Bash(git *--no-veri*)'
+  'Bash(git commit -n*)'
+  'Bash(git commit * -n*)'
+  'Bash(git -C * commit -n*)'
+  'Bash(git -C * commit * -n*)'
+  'Bash(git config *hook.*)'
+  'Bash(git -C * config *hook.*)'
+  'Bash(git config *claude.reviewHook*)'
+  'Bash(git -C * config *claude.reviewHook*)'
+  'Bash(git config *claude.reviewhook*)'
+  'Bash(git -C * config *claude.reviewhook*)'
 )
 
 test_claude_permissions() {
@@ -113,6 +140,19 @@ test_claude_permissions() {
     pass "autoMode lists keep the built-in entries"
   else
     fail "an autoMode list has no \"\$defaults\" entry, so it drops the built-in entries"
+  fi
+
+  # Claude commits and records reviews without a prompt in every mode; the
+  # review-gate git hook refuses commits no review covers.
+  if jq -e '(.permissions.allow | index("Bash(git commit *)") != null)
+      and (.permissions.ask | map(select(test("^Bash\\(git (-C \\* )?commit"))) | length == 0)
+      and (.permissions.allow | index("Bash(review-gate mark *)") != null)
+      and (.permissions.allow | index("Bash(review-gate defer *)") != null)
+      and (.permissions.allow | index("Bash(review-gate last)") != null)' \
+    "$settings" >/dev/null 2>&1; then
+    pass "git commit and review-gate run without a prompt"
+  else
+    fail "git commit or review-gate isn't allowed, or git commit still has an ask rule"
   fi
 
   local rule

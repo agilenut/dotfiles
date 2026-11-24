@@ -66,12 +66,16 @@ test_review_gate() {
     git -C "$1" add "$2"
   }
   # A triage file where /review writes one for the repo's current branch.
+  # Each call writes a new file, as each /review run does, since mark
+  # refuses a triage file that already recorded a review.
   rg_triage() {
-    local branch
+    local branch n file
     branch=$(git -C "$1" branch --show-current)
     mkdir -p "$1/.reviews/code"
-    echo triage >"$1/.reviews/code/2026-01-01-000000-${branch//\//-}-triage.md"
-    printf '%s' "$1/.reviews/code/2026-01-01-000000-${branch//\//-}-triage.md"
+    n=$(find "$1/.reviews/code" -name '*-triage.md' | wc -l | tr -d ' ')
+    file="$1/.reviews/code/2026-01-01-$(printf '%06d' "$n")-${branch//\//-}-triage.md"
+    echo triage >"$file"
+    printf '%s' "$file"
   }
   rg_mark() {
     local dir="$1"
@@ -172,6 +176,13 @@ test_review_gate() {
   git -C "$r" switch -q --detach
   rg_mark_refused "$r/.reviews/code/2026-01-01-000000-main-triage.md" "HEAD is detached"
   git -C "$r" switch -q main
+  # A triage file that already recorded a review can't record another tree.
+  local used
+  used=$(rg_triage "$r")
+  rg_claude "$r" "$REVIEW_GATE" mark "$used" >/dev/null
+  rg_stage "$r" a.txt after-the-review
+  rg_mark_refused "$used" "already recorded a review"
+  git -C "$r" reset -q --hard
 
   # ---- Defer ----
   rg_stage "$r" a.txt five
@@ -297,8 +308,9 @@ test_review_gate() {
   rg_claude "$p" git commit -qm four >/dev/null 2>&1
   if out=$(rg_claude "$p" git push -q origin main 2>&1); then
     fail "push of a deferred commit without a branch review was allowed"
-  elif grep -q ' three$' <<<"$out" && ! grep -q ' four$' <<<"$out"; then
-    pass "push refuses a deferred commit below a reviewed one, and names only it"
+  elif grep -q ' three$' <<<"$out" && ! grep -q ' four$' <<<"$out" \
+    && grep -q 'Run /review unreviewed, then push again' <<<"$out"; then
+    pass "push refuses a deferred commit below a reviewed one, names only it, and names /review unreviewed"
   else
     fail "push refusal doesn't name just the uncovered commit: $out"
   fi

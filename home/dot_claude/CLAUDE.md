@@ -33,7 +33,8 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
   read the error and try one or two other ways to get the same result.
   If none works, give me the command to run. A refusal is different. Stop
   and ask me when I deny a prompt, when a permission rule or hook blocks
-  the action, or when a tool stops to avoid losing data (chezmoi
+  the action (a review-gate refusal is the exception; see Git), or when a
+  tool stops to avoid losing data (chezmoi
   won't overwrite a changed file, git won't discard uncommitted work).
   Don't get the same result another way or force past it. If you can't
   tell a failure from a refusal, treat it as a refusal.
@@ -265,8 +266,8 @@ _Permission prompting, preferred commands, and command shapes._
 - NEVER use inline scripts (`sh -c`, `bash -c`, `python -c`,
   `python -m …`, `node -e`, or any `<lang> -c/-e` form, temporary scripts,
   or heredocs feeding interpreters when other tools will work since they
-  prompt. A heredoc that only supplies text, such as a commit message,
-  isn't an inline script.
+  prompt. A heredoc that only supplies text, such as a PR body, isn't an
+  inline script.
 - Query and filter files are data, not scripts: a GraphQL query read with
   `gh api graphql -F query=@<file>` or a `jq -f <file>` filter, kept in
   the scratchpad. Use one when a one-line command gets too complex to
@@ -326,8 +327,9 @@ _How to scope, sequence, and pause work for non-trivial tasks._
   invoke `/plan` to scope it; tangents mid-implementation stay tangents
   unless explicitly escalated
 - Plan Commits row tags drive review cadence: `review: per-commit`
-  forces `/review` before each commit. `end-of-PR` runs once before
-  pushing (typically before `gh pr create`).
+  forces `/review` before each commit. `end-of-PR` commits run
+  `review-gate defer "<reason>"`, and one `/review branch` covers them
+  before pushing (typically before `gh pr create`).
 - Keep the plan current as work proceeds, not just at the start. When a
   step completes or a follow-up / discovery surfaces, update the plan in
   the same commit (tracked plans) or save immediately (gitignored).
@@ -608,7 +610,14 @@ _Branching, committing, PRs._
   lets the slug lean short. The whole branch becomes the worktree leaf
   (`<repo>--<branch-slug>`), so keep it tight; `EnterWorktree({name})`
   and a multi-PR plan's short `work:` value follow the same convention.
-- Never commit/push/merge/amend/force-push unless asked
+- Commit, and amend commits not yet pushed, without asking. Never push,
+  merge, or force-push unless asked. A local commit is easy to undo, and
+  the review-gate git hook refuses one that no review covers, so a commit
+  doesn't need my approval; a push changes what others see. After each
+  commit, tell me in one line what it changed, and keep going without
+  waiting for a reply. A review-gate refusal that names a review means
+  the review is missing, not a decision for me: run that review, then
+  retry. Only `/review` runs `review-gate mark`.
 - When the user signals PR-lifecycle work (creating, merging, "is CI
   done", "open the PR", bare "pr"), invoke `/pr` first — don't run
   free-form `gh pr create` / `gh pr merge` / `gh pr checks` ahead of
@@ -640,13 +649,17 @@ _Branching, committing, PRs._
   pre-commit until clean, then commit. A bare `M` (first column blank)
   is deliberately unstaged — leave it.
 
-- Before committing, consider if a review is warranted. If a plan
-  governs the work, follow its review tag. Otherwise, run `/review`
-  for non-trivial changes (new behavior, multi-file refactors); skip
-  for truly trivial (typo, dep bump, comment edit). Files an agent or a
-  person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md,
-  runbooks) are behavior, not docs: review a change to their instructions
-  like code. A typo fix in them is still trivial; a README is still docs.
+- Every commit needs a review or a deferral, or the review-gate git hook
+  refuses it. If a plan governs the work, follow its review tag.
+  Otherwise, run `/review` for non-trivial changes (new behavior,
+  multi-file refactors); for truly trivial ones (typo, dep bump, a
+  one-line comment fix), run `review-gate defer "<reason>"`. A deferred
+  commit needs a review before the next push: `/review branch` before a
+  branch's first push, `/review unreviewed` before a later one. Files an
+  agent or a person follows as steps (skills, agents, prompts,
+  CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs: review a change
+  to their instructions like code. A typo fix in them is still trivial; a
+  README is still docs.
 - Each commit must build, test, and pass independently, no dead code or
   forward refs
 - Commit message: title ≤70 chars, imperative summary. Body: 1-3
@@ -655,13 +668,15 @@ _Branching, committing, PRs._
   Target ~10-20 lines total. Don't enumerate files, don't recap the
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
-- Pass commit messages, PR bodies, and comment text inline in a quoted
-  heredoc (`git commit -m "$(cat <<'EOF' ... EOF)"`, same for
-  `--body`), so I read the text in the permission prompt before I
-  approve it; `-F` and `--body-file` show only a path. The quoted
-  `'EOF'` keeps `$` and backticks in the text as written. If a
-  worktree-isolated session refuses the inline form, show the full text
-  in chat first, then use the file form.
+- Pass PR bodies and comment text inline in a quoted heredoc
+  (`--body "$(cat <<'EOF' ... EOF)"`), so I read the text in the
+  permission prompt before I approve it; `--body-file` shows only a path.
+  The quoted `'EOF'` keeps `$` and backticks in the text as written.
+  Commit messages don't prompt. After `/review`, commit with
+  `git commit -F <its commit-msg.txt>`, which keeps the exact text the
+  review checked; otherwise use the same heredoc with `-m`. Message text
+  after `-m` can match a deny rule: a message that mentions `--no-verify`,
+  or `-n` after a space, is denied, so reword it.
 - People and models read commits and PR bodies later to trace why
   something changed. Like a commit message, a PR body states the why and
   the decisions behind the change plainly, plus whatever else its skill

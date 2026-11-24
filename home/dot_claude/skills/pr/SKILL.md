@@ -49,10 +49,18 @@ an open PR with no checks as CI_RUNNING.
   and re-stage until clean. Apply the stale-index gate before committing
   (CLAUDE.md `## Git`): `git status --short`, re-`git add` any file with a
   second-column change (`MM`/`AM`/`MD`/`RM`) even if it looks already staged — a
-  prior `/review` may have edited the working tree after staging. Craft a
-  commit message; announce, then run
-  `git commit -m "<message>" && git push` as one Bash call (add
-  `-u origin <branch>` if no upstream) — one prompt covers commit and push.
+  prior `/review` may have edited the working tree after staging. The
+  review-gate git hook refuses a commit no review covers, so run `/review`
+  first, or `review-gate defer "<reason>"` for a trivial change. Commit
+  per the global CLAUDE.md `## Git` rule on commit messages (`-F` with
+  `/review`'s `commit-msg.txt`, else a heredoc `-m`); the commit doesn't
+  prompt.
+  - Reviewed commit on a branch with an upstream: announce, then push
+    (`git commit ... && git push` as one Bash call is fine).
+  - Deferred commit on a branch with an upstream: run
+    `/review unreviewed` first, since a push is refused for a commit with
+    only a deferral, commit any fixes it stages, then announce and push.
+  - No upstream: commit only; NO_PR pushes after its branch review.
 - Re-run state detection.
 
 ### NO_PR
@@ -61,6 +69,12 @@ an open PR with no checks as CI_RUNNING.
 - **Local checks** (see Reference: Local Checks). A failing check stops PR
   creation: one fix attempt under CI_FAILED step 2's stop conditions,
   commit (DIRTY), and re-run state detection.
+- **Branch review.** Unless `review-gate last` prints HEAD's commit, run
+  `/review branch`, so the PR gets one review of the whole branch; it
+  records the review the first push needs. Commit any fixes it stages
+  (a heredoc `-m` message); the branch review's record already covers
+  that commit. Re-run the local
+  checks if it staged fixes.
 - **The issue.** Take its number from the plan's `stories:` or PR table,
   the branch name, or the commits; if none, ask. A PR the global rules
   exempt from needing an issue (small doc or text fix, security patch,
@@ -131,6 +145,8 @@ an open PR with no checks as CI_RUNNING.
   ones that hold. Ask the user first when a finding would change what
   the PR claims, or when its fix needs a detail you don't have. If the
   reviewer's output has no `## Findings` section, say so and continue.
+- **Push.** If the branch has no upstream or is ahead of it, announce,
+  then run `git push -u origin <branch>`.
 - `gh pr create` (include `--label <label>` if a label was selected), then
   re-run state detection
 
@@ -175,8 +191,10 @@ an open PR with no checks as CI_RUNNING.
    **Root cause** / **Fix** / **Files** / **Local verification**.
 5. Apply the stale-index gate (CLAUDE.md `## Git`): `git status --short`,
    re-`git add` any second-column change so the Edit's fix is in the index.
-   Announce, then run `git commit -m "<message>" && git push` as one Bash
-   call — one prompt covers commit and push.
+   Run `/review` on the fix, since the push is refused for a commit no
+   review covers. Announce, then run
+   `git commit -F <its commit-msg.txt> && git push` as one Bash call (only
+   the push prompts).
 6. Re-run state detection. Expect CI_RUNNING; if `gh pr checks` still
    shows the old failed run, look for a newer run id.
 
@@ -294,8 +312,11 @@ any line matches PATTERN, instead of succeeding when some line doesn't.
 5. **Verify** (same rule as CI_FAILED step 3): `pre-commit` mandatory,
    then the Local Checks.
 6. Post the summary block (same format as CI_FAILED step 4).
-7. Announce, then run `git commit -m "<message>" && git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
-   as one Bash call, so one prompt covers commit, push, and PR create. The body
+7. A new branch's first push needs a branch review: run
+   `review-gate defer "CI fix; branch review follows"`, commit, then
+   `/review branch` and commit any fixes it stages. Announce, then run
+   `git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
+   as one Bash call, so one prompt covers push and PR create. The body
    references the original PR's issue the same way the original PR did
    ("Closes" or "Part of #N") and skips the AC status table: the fix
    restores CI for work already reviewed.
@@ -352,12 +373,12 @@ This skill never names a project's commands; the repo's CLAUDE.md does.
 _Output, prompt announcements, re-verification._
 
 - **Announce before prompting commands.** For commands that trigger native
-  prompts (commits, pushes, merges, PR/issue create / edit / comment),
+  prompts (pushes, merges, PR/issue create / edit / comment),
   output a one-line intent announcement immediately before the Bash call
   so the prompt has full context (e.g. "Merging PR #NNN — approve prompt").
-- **Pass every commit message, PR body, and comment inline**, per the
-  global CLAUDE.md `## Git` rule. Wherever a step shows
-  `-m "<message>"` or `--body "<body>"`, use that rule's heredoc form.
+- **Pass every PR body and comment inline**, per the global CLAUDE.md
+  `## Git` rule. Wherever a step shows `--body "<body>"`, use that rule's
+  heredoc form.
 - Terminal output (status, CI summaries): use plain `path:line` format for
   file references
 - GitHub content (PR body, comments, issue edits): use markdown links
