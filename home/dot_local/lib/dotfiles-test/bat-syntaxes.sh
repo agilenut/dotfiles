@@ -2,9 +2,9 @@
 # Custom bat syntax tests
 # shellcheck shell=bash
 
-# Custom syntaxes in ~/.config/bat/syntaxes reach bat and delta (lazygit's diff
-# pager) only through bat's compiled cache, so these check the deployed cache,
-# not the source files.
+# Custom syntaxes in ~/.config/bat/syntaxes reach bat and delta (the diff pager
+# for git and lazygit) only through bat's compiled cache, so these check the
+# deployed cache, not the source files.
 test_bat_syntaxes() {
   section "Custom bat Syntaxes"
 
@@ -15,7 +15,7 @@ test_bat_syntaxes() {
 
   # Applying only the syntax files (chezmoi apply <target>) skips the
   # cache-rebuild script, so the cache can lag the deployed syntax.
-  local fix="chezmoi apply ~/.config/bat/syntaxes, then run bat cache --build"
+  local fix="fix: chezmoi apply ~/.config/bat/syntaxes, then bat cache --build"
   if bat --list-languages | grep -q '^Bats:bats$'; then
     pass "bat maps .bats files to the Bats syntax"
   else
@@ -34,8 +34,10 @@ test_bat_syntaxes() {
   # renders differently under each.
   local line='@test "adds two numbers" {'
   local as_bats as_bash
-  as_bats="$(printf '%s\n' "$line" | bat --color=always --style=plain --language=bats 2>/dev/null)"
-  as_bash="$(printf '%s\n' "$line" | bat --color=always --style=plain --language=bash 2>/dev/null)"
+  # bat exits non-zero on an unknown syntax; || true keeps set -e in
+  # dotfiles-test from ending the run before the fail below reports it.
+  as_bats="$(printf '%s\n' "$line" | bat --color=always --style=plain --language=bats 2>/dev/null)" || true
+  as_bash="$(printf '%s\n' "$line" | bat --color=always --style=plain --language=bash 2>/dev/null)" || true
   if [[ -n $as_bats && $as_bats != "$as_bash" ]]; then
     pass "bat highlights @test differently under the Bats syntax than under Bash"
   else

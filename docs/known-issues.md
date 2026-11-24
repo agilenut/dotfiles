@@ -27,15 +27,19 @@ hunk - which is why only PHP is affected.
   theme is not the problem (an earlier plan note wrongly suggested this).
 - Raising `diff.context` enough to always include `<?php` means near-full-file
   context on every diff in every language - not worth it.
-- Untried: a source-only PHP syntax (`source.php`, no HTML wrapper) in
-  `~/.config/bat/syntaxes` might fix it. bat ships only the embedded syntax,
-  but delta reads custom syntaxes from bat's cache (this repo's Bats syntax
-  works that way). It would have to win the `.php` extension over the built-in
-  syntax. Correction: this entry originally said delta used only its
-  compiled-in syntaxes, and that 0.19.2 was the latest release. delta 0.22
-  lists syntaxes from bat's cache (verified 2026-11-24).
 
 Upstream delta limitation for HTML-embedded languages. _Diagnosed 2026-07-07._
+
+**Untried fix:** a source-only PHP syntax (`source.php`, no HTML wrapper) in
+`~/.config/bat/syntaxes` might fix it. bat ships only the embedded syntax, but
+delta reads custom syntaxes from bat's cache (this repo's Bats syntax works
+that way). The custom syntax would also need to take the `.php` extension from
+the built-in one.
+
+_Correction:_ this entry originally said delta used only its compiled-in
+syntaxes and that 0.19.2 was the latest release. delta 0.22 lists syntaxes
+from bat's cache (verified 2026-11-24); whether 0.19.2 also did wasn't
+checked.
 
 ## charmbracelet CLIs leak terminal-probe escapes under tmux
 
