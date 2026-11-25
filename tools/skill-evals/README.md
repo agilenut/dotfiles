@@ -1,21 +1,27 @@
 # Skill evals
 
-Headless tests for skill text. Each case puts the model at one decision
-point in a skill, gives it the facts earlier steps would have produced, and
-checks its decision with jq. They exist so a rewrite of a skill can be run
+Headless tests for skill and CLAUDE.md text. Each case puts the model at
+one decision point, gives it the facts earlier steps would have produced,
+and checks its decision with jq. They exist so a rewrite can be run
 against the same cases as the text it replaces.
+
+- `review/` tests the `/review` skill. Run it without `--safe-mode`, so
+  the global CLAUDE.md loads as it does in a real session.
+- `claude-md/` tests the global CLAUDE.md itself: how a session acts on
+  review-gate's refusals and on `/review`'s `Recorded:` and
+  `Not recorded` lines. Run it with `--safe-mode`, so the deployed copy
+  doesn't load next to the text under test.
 
 Each call runs with no built-in tools (`--tools ""`), no MCP servers
 (`--strict-mcp-config`), and no hooks, from an empty temporary directory.
 No project `CLAUDE.md` or memory reaches the model; the global
-`~/.claude/CLAUDE.md` still loads, as it does when the skill runs for
-real. By default the skill text goes at the start of the user message, as
-a skill arrives in a real session. `--placement system` puts it in the
-system prompt instead (after Claude Code's own), so every case shares it
-in the prompt cache: cheaper while iterating, but placement can change an
-answer, so a full run in the default placement is the check before a
-skill change ships. `review/baseline.md` has the results for each
-placement.
+`~/.claude/CLAUDE.md` loads unless `--safe-mode` is set. By default the
+text under test goes at the start of the user message, as a skill arrives
+in a real session. `--placement system` puts it in the system prompt
+instead (after Claude Code's own), so every case shares it in the prompt
+cache: cheaper while iterating, but placement can change an answer, so a
+full run in the default placement is the check before a change ships.
+`review/baseline.md` has the results for each placement.
 
 ## What a pass shows
 
@@ -32,6 +38,10 @@ whether the model applies the skill's rules to those facts, not:
 - whether it keeps a rule in mind deep into a long real run
 - whether it does the steps in order, with real tool calls and files
 
+With no tools, Claude Code's own Bash tool guidance (which may say, for
+example, to commit only when the user asks) isn't in context. So a
+`claude-md/` pass doesn't show that CLAUDE.md wins over that guidance.
+
 ## Run
 
 ```bash
@@ -47,6 +57,9 @@ bash tools/skill-evals/run.sh <skill file> tools/skill-evals/review --runs 5 end
 
 # Some cases with the skill in the system prompt, cheaper while iterating
 bash tools/skill-evals/run.sh <skill file> tools/skill-evals/review --placement system end-round4
+
+# The CLAUDE.md suite, on the source copy
+bash tools/skill-evals/run.sh home/dot_claude/CLAUDE.md tools/skill-evals/claude-md --safe-mode
 
 # Check the case files only (no model calls)
 bash tools/skill-evals/run.sh <skill file> tools/skill-evals/review --check
@@ -65,22 +78,24 @@ whether the case or the skill text is at fault before changing either.
 
 ## Cost
 
-Each call sends the whole skill plus the global `CLAUDE.md`. A case's
-first run writes its prompt to the prompt cache and its later runs read
-it, so most of a case's cost is its first run. A full `/review` suite of 3
-runs per case takes about 20 minutes (2026-11). `run.sh` prints the total
-cost when it finishes; `summary.tsv` has each call's cost, and
-`review/baseline.md` has the measured numbers.
+Each call sends the whole text under test, plus the global `CLAUDE.md`
+unless `--safe-mode` is set. A case's first run writes its prompt to the
+prompt cache and its later runs read it, so most of a case's cost is its
+first run. A full `/review` suite of 3 runs per case takes about 20
+minutes (2026-11). `run.sh` prints the total cost when it finishes;
+`summary.tsv` has each call's cost, and `review/baseline.md` has the
+measured numbers.
 
 ## Layout
 
-- `run.sh`: the runner (skill file and suite folder are arguments)
-- `<skill>/preamble.md`: framing shared by a suite's cases
-- `<skill>/cases/<name>.md`: the scenario and the JSON shape to answer in
-- `<skill>/cases/<name>.jq`: checks; prints the names of those that failed
-- `<skill>/behaviors.md`: what the skill must keep doing, where in the
-  skill it does it, and the cases that cover it
-- `<skill>/baseline.md`: pass counts on each text the suite has run on
+- `run.sh`: the runner (the text under test and the suite folder are
+  arguments)
+- `<suite>/preamble.md`: framing shared by a suite's cases
+- `<suite>/cases/<name>.md`: the scenario and the JSON shape to answer in
+- `<suite>/cases/<name>.jq`: checks; prints the names of those that failed
+- `review/behaviors.md`: what the `/review` skill must keep doing, where
+  in the skill it does it, and the cases that cover it
+- `<suite>/baseline.md`: pass counts on each text the suite has run on
 
 ## Writing a case
 

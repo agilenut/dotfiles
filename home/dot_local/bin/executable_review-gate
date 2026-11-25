@@ -2,7 +2,7 @@
 # Refuses Claude's commits and pushes that no review covers. Prompt rules
 # alone didn't stop Claude from skipping reviews, so this enforces each
 # review step; it checks that a review ran, not how good it was. The threat
-# model is Claude forgetting or cutting a corner, not evading.
+# model is Claude forgetting or skipping a step, not evading the check.
 #
 #   review-gate mark [--branch] <triage file>   record a review of the staged
 #                                               tree (--branch: of the whole
@@ -26,7 +26,7 @@
 # change with the same nearby lines (patch-id, so a rebase that doesn't
 # touch the lines around the change keeps it), or by a branch review of it
 # or a commit built on it. The first push of a branch with two
-# or more new commits also needs a branch review of exactly the pushed
+# or more new commits also needs a branch review that covers the pushed
 # commit. Every pushed ref is checked, tags included, and a push is checked
 # even from a repo with no remote. Merge commits are skipped: a merge edited
 # by hand is finished with `git commit`, which runs the commit check. The
@@ -119,8 +119,7 @@ branch_covered() {
 has_record() {
   local log
   log=$(log_file)
-  # Not `grep -q`: an early exit can kill `cut`, and pipefail would then
-  # report a match as a failure.
+  # Not `grep -q`; see patch_covered.
   [ -f "$log" ] && cut -f1,2 "$log" | grep -E "^$1	($2)\$" >/dev/null
 }
 
@@ -171,8 +170,8 @@ uncovered_commits() {
 }
 
 # first_push_covered <commit>: a branch's first push of one new commit needs
-# only that commit's review; of two or more, also a branch review of exactly
-# this commit, so the PR gets one review of the whole branch. The count
+# only that commit's review; of two or more, also a branch review that
+# covers this commit, so the PR gets one review of the whole branch. The count
 # stays on unpushed commits, since a branch review in pushed history covered
 # another branch.
 first_push_covered() {
@@ -302,7 +301,8 @@ cmd_pre_commit() {
   has_record "$tree" 'commit|branch' && exit 0
   cat >&2 <<'EOF'
 review-gate: no review covers this commit. Stage everything you mean to
-commit (no -a or paths), run /review, then commit again.
+commit, run /review, then commit again. Don't add -a or list files to
+commit: the review covers only what is staged.
 If you ran this yourself outside Claude Code, Claude Code's environment
 leaked into this shell, for example from a tmux server a Claude session
 started; restart that tmux server or use a terminal outside it.

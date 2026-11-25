@@ -47,7 +47,8 @@ an open PR with no checks as CI_RUNNING.
 
 - Show `git diff --stat`. Commit the changes per the global CLAUDE.md
   `## Git` rules: `/review`, the stale-index gate, then the commit, plus
-  the suggestions commit when `/review`'s summary lists one.
+  the suggestions commit (`/review` Step 14 item 5) when the summary
+  lists `Worth doing next` items.
 - No upstream: don't push; NO_PR pushes once the PR is ready.
 - Upstream: announce, and push.
 - Re-run state detection.
@@ -79,13 +80,11 @@ after it except state detection.
   have joined a planned PR, have an issue the user agreed to, or have been
   dropped with the user's OK. Any left → raise them before creating the
   PR.
-- **Branch review.** It comes after the steps that can add commits,
-  since a commit after it means it must run again. Run
-  `review-gate covered`. If it fails, run `/review branch`: the first
-  push of two or more new commits needs it, and so does any commit with
-  no review of its own. If it prints `Not recorded`, stop and tell the
-  user its reason. If it staged fixes, commit them as one commit with a
-  heredoc `-m` message, then re-run the local checks. A commit after the
+- **Branch review.** It comes after the steps that can add commits. Run
+  `review-gate covered`. If it fails, run `/review branch`. If the review
+  prints `Not recorded`, stop and tell the user its reason. If the review
+  staged fixes, commit them as one commit with a heredoc `-m` message,
+  then re-run the local checks. A commit after the
   branch review, other than its fix commit, means the branch review must
   run again; re-running state detection after that commit brings you
   back to this step. When `git rev-list HEAD --not --remotes` prints
@@ -197,7 +196,7 @@ after it except state detection.
    Run `/review` on the fix, since a commit no review covers is refused,
    and commit as its summary says. The PR is already open, so the fix
    needs no branch review. Announce, then push.
-   With no suggestions commit to follow,
+   With no `Worth doing next` items to commit after it,
    `git commit -F <its commit-msg.txt> && git push` as one Bash call is
    fine (only the push prompts).
 6. Re-run state detection. Expect CI_RUNNING; if `gh pr checks` still
@@ -319,9 +318,10 @@ any line matches PATTERN, instead of succeeding when some line doesn't.
    then the Local Checks.
 6. Post the summary block (same format as CI_FAILED step 4).
 7. Run `/review` on the fix and commit it with the reviewed message. Make
-   no suggestions commit; list any `Worth doing next` items in the
-   summary block instead. The branch then has one unpushed commit, so its
-   first push needs no branch review. Announce, then run
+   no suggestions commit; list any `Worth doing next` items in the fix
+   PR's body instead, since step 6 already posted the summary block. The
+   branch then has one unpushed commit, so its first push needs no branch
+   review. Announce, then run
    `git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
    as one Bash call, so one prompt covers push and PR create. The body
    references the original PR's issue the same way the original PR did

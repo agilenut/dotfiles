@@ -671,7 +671,8 @@ _Branching, committing, PRs._
     covers. It exists because prompt rules alone didn't stop skipped
     reviews, so working around a refusal defeats its purpose. A refusal
     means a review is missing, not a decision for me: run the review it
-    names, commit what that review stages, then retry.
+    names, commit as that review's summary says, then retry a refused
+    push.
   - When a review prints `Not recorded`, stop and tell me its reason;
     don't commit or push around it. Only `/review` runs
     `review-gate mark`: a mark claims reviewers saw the tree, so a false
@@ -684,12 +685,13 @@ _Branching, committing, PRs._
   Target ~10-20 lines total. Don't enumerate files, don't recap the
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
-- Commit messages don't prompt. After a local-mode `/review`, commit with
-  `git commit -F <its commit-msg.txt>`, which keeps the exact text the
-  review checked; otherwise use a quoted heredoc with `-m`
+- A commit raises no permission prompt. After a local-mode `/review`,
+  commit with `git commit -F <its commit-msg.txt>`, which keeps the exact
+  text the review checked; otherwise use a quoted heredoc with `-m`
   (`git commit -m "$(cat <<'EOF' ... EOF)"`). Message text after `-m`
-  can match a deny rule: a message that mentions `--no-verify`, or `-n`
-  after a space, is denied, so reword it and retry.
+  can match a deny rule: a message that mentions an option a git deny
+  rule names (for example `--no-verify`, `--output`, or `-n` after a
+  space) is denied, so reword it and retry.
 - Pass PR bodies and comment text inline in a quoted heredoc
   (`--body "$(cat <<'EOF' ... EOF)"`), so I read the text in the
   permission prompt before I approve it; `--body-file` shows only a path.

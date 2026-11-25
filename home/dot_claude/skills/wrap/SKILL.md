@@ -272,8 +272,8 @@ one ("3 skip", "7 remove"). Then ask each "Asking separately" y/n.
 
 Run only what was approved. Doing more than asked (removing a worktree
 when asked to delete a branch) is the mistake users correct most. An
-approved commit follows the global commit rules and the plan's review
-tag; `/wrap` never commits on its own. Report each failure with its
+approved commit follows the global commit rules, including its
+`/review`; `/wrap` never commits on its own. Report each failure with its
 error.
 
 ## Step 7: Branch, worktree, and Docker cleanup

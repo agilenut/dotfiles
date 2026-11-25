@@ -117,7 +117,8 @@ Before committing changes to this repo:
 2. `dotfiles-test --auto-only` - run automated tests
 3. `pre-commit run --all-files` - run linting/formatting
 
-Then make small, focused commits. When adding new functionality, suggest corresponding tests.
+Then run `/review` and commit; each commit gets its own review after
+these steps. Make small, focused commits. When adding new functionality, suggest corresponding tests.
 
 ## Before a PR
 

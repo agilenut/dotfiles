@@ -6,7 +6,9 @@ effort, Claude Code 2.1.325, 3 runs per case.
 
 Texts:
 
-- **bf786dc**: the text at commit `bf786dc`
+- **bf786dc**: the text before the rewrite, at commit `bf786dc` on the
+  PR branch (GitHub keeps the PR's commits after a squash merge), blob
+  `5533d8b99447a0de738ee90b98ff61530375fb51`
 - **rewrite**: the goal-first rewrite as committed, blob
   `8063ab4003a66bed085d4cf7532c372d9cb3586d`
 

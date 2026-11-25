@@ -247,7 +247,7 @@ test_review_gate() {
   # ---- No way to skip a review ----
   rg_stage "$r" a.txt five
   local cmd
-  # Deferral is gone, along with `last`, which named the review after one.
+  # No commit skips its review, so review-gate has no `defer` or `last`.
   for cmd in defer last; do
     if rg_claude "$r" "$REVIEW_GATE" "$cmd" "some reason" >/dev/null 2>&1; then
       fail "review-gate $cmd still exists"

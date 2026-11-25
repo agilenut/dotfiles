@@ -54,6 +54,10 @@ CLAUDE_PERMISSIONS_ASK=(
 #   match too.
 # - git accepts any unique prefix of a long option, so `git fetch
 #   --upl=<cmd>` is `--upload-pack=<cmd>`.
+# - `--output=<file>` makes an allowed read, such as `git log`, `git diff`,
+#   `git show`, or `git rev-list`, write or truncate a file with no prompt,
+#   and a written `.git/config` can run a command on the next git call.
+#   git doesn't accept a shorter prefix of it for these commands.
 # - `git commit` is allowed because the review-gate git hook checks it, so
 #   the ways to skip or turn off that hook are denied: `--no-verify`
 #   (`--no-veri` is its shortest unique prefix), `git commit -n`, and
@@ -66,7 +70,7 @@ CLAUDE_PERMISSIONS_ASK=(
 #   The config rules also deny reads of those keys (`git config --get
 #   hook.*`); a read rarely matters, and no rule pattern can match a write
 #   without also matching the read. Known gaps, left open because the
-#   threat model is Claude forgetting or cutting a corner, not evading:
+#   threat model is Claude forgetting or skipping a step, not evading:
 #   editing a git config file directly (`sed -i`), plumbing such as `git
 #   commit-tree` or `git update-ref`, and commits fetched from a second
 #   remote, which count as pushed.
@@ -76,6 +80,7 @@ CLAUDE_PERMISSIONS_DENY=(
   'Bash(gh api *-X*--method*)'
   'Bash(gh api *--method*-X*)'
   'Bash(git *--upl*)'
+  'Bash(git *--output*)'
   'Bash(git *--no-veri*)'
   'Bash(git commit -n*)'
   'Bash(git commit * -n*)'
@@ -102,7 +107,8 @@ CLAUDE_PERMISSIONS_DENY=(
   'Bash(CLAUDECODE=*)'
   # Unsetting HOME or XDG_CONFIG_HOME hides the global git config that
   # registers the hook. The rules name the variables, so `unset JAVA_HOME`
-  # still runs.
+  # still runs; `HOME*` also denies `unset` of other names that start with
+  # HOME, such as HOMEBREW_PREFIX.
   'Bash(unset HOME*)'
   'Bash(unset * HOME*)'
   'Bash(unset *XDG_CONFIG_HOME*)'
@@ -180,8 +186,8 @@ test_claude_permissions() {
   else
     fail "git commit or review-gate isn't allowed, or git commit still has an ask rule"
   fi
-  # Deferral is gone, so no allow rule names the removed `defer` and
-  # `last` commands.
+  # review-gate has no `defer` or `last` subcommand, so no allow rule
+  # names them.
   if jq -e '.permissions.allow | map(select(test("^Bash\\(review-gate (defer|last)"))) | length == 0' \
     "$settings" >/dev/null 2>&1; then
     pass "no allow rule names review-gate defer or last"

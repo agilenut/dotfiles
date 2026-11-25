@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs a skill's eval cases headless and checks each answer with jq.
 #
-#   run.sh <skill file> <suite dir> [--runs N] [--model ID] [--placement system|user] [--check] [case ...]
+#   run.sh <skill file> <suite dir> [--runs N] [--model ID] [--placement system|user] [--safe-mode] [--check] [case ...]
 #
 # Each case is <suite>/cases/<name>.md (the scenario) plus <name>.jq (a jq
 # program that reads the model's JSON answer and prints the names of the
@@ -13,6 +13,10 @@
 # prompt, so every case shares it as a cached prefix: cheaper for iterating,
 # but placement can change an answer.
 #
+# --safe-mode keeps the user's CLAUDE.md, skills, and plugins out of the
+# session. Use it when the text under test is CLAUDE.md itself, so the
+# deployed file can't supply a rule that the copy under test deleted.
+#
 # The model gets no built-in tools and no MCP servers. Every run of every
 # case is reported; a failure doesn't stop the others. Exits 1 when any run
 # fails.
@@ -20,7 +24,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: run.sh <skill file> <suite dir> [--runs N] [--model ID] [--placement system|user] [--check] [case ...]" >&2
+  echo "usage: run.sh <skill file> <suite dir> [--runs N] [--model ID] [--placement system|user] [--safe-mode] [--check] [case ...]" >&2
   exit 2
 }
 
@@ -31,6 +35,7 @@ shift 2
 runs=3
 model=claude-opus-5-5
 check_only=false
+safe_mode=()
 placement=user
 cases=()
 while [ $# -gt 0 ]; do
@@ -38,6 +43,7 @@ while [ $# -gt 0 ]; do
     --runs) runs=$2 && shift 2 ;;
     --model) model=$2 && shift 2 ;;
     --placement) placement=$2 && shift 2 ;;
+    --safe-mode) safe_mode=(--safe-mode) && shift ;;
     --check) check_only=true && shift ;;
     -*) usage ;;
     *) cases+=("$1") && shift ;;
@@ -88,8 +94,8 @@ out=$(mktemp -d "$here/.runs/$(basename "$suite")-$placement-$(date +%Y-%m-%d-%H
 cp "$skill" "$out/skill.md"
 skill="$out/skill.md"
 # An empty working directory outside the repo, so no project CLAUDE.md,
-# memory, or git state reaches the model. The user's global CLAUDE.md still
-# loads, as it does when the skill runs for real.
+# memory, or git state reaches the model. The user's global CLAUDE.md loads,
+# as it does when a skill runs for real, unless --safe-mode is set.
 workdir=$(mktemp -d)
 trap 'rmdir "$workdir" 2>/dev/null || true' EXIT
 
@@ -115,7 +121,7 @@ run_one() {
     --settings '{"disableAllHooks": true}' \
     --no-session-persistence --permission-prompts none \
     --exclude-dynamic-system-prompt-sections \
-    ${skill_args[@]+"${skill_args[@]}"} \
+    ${skill_args[@]+"${skill_args[@]}"} ${safe_mode[@]+"${safe_mode[@]}"} \
     --output-format json <"$prompt") >"$dir/response.json" \
     2>"$dir/stderr.txt" || true
   jq -r '.result // ""' "$dir/response.json" >"$dir/result.md" 2>/dev/null || : >"$dir/result.md"
