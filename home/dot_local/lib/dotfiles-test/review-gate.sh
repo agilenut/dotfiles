@@ -13,13 +13,15 @@ test_review_gate() {
     return
   fi
 
-  # The scratch repos take each hook's event from the global config and
+  # The scratch repos take each hook's event from the user's git config and
   # override only its command, so every other case needs these entries.
+  # Read the merged config, not --global: when ~/.gitconfig exists (as on CI
+  # runners), --global reads only that file and misses ~/.config/git/config.
   local commit_cmd push_cmd
-  commit_cmd=$(git config --global --get hook.claude-review-commit.command || true)
-  push_cmd=$(git config --global --get hook.claude-review-push.command || true)
-  if git config --global --get-all hook.claude-review-commit.event | grep -qx pre-commit \
-    && git config --global --get-all hook.claude-review-push.event | grep -qx pre-push \
+  commit_cmd=$(git config --get hook.claude-review-commit.command || true)
+  push_cmd=$(git config --get hook.claude-review-push.command || true)
+  if git config --get-all hook.claude-review-commit.event | grep -qx pre-commit \
+    && git config --get-all hook.claude-review-push.event | grep -qx pre-push \
     && [[ "$commit_cmd" == '[ "$CLAUDECODE" = 1 ] || exit 0; exec '*'review-gate pre-commit' ]] \
     && [[ "$push_cmd" == '[ "$CLAUDECODE" = 1 ] || exit 0; exec '*'review-gate pre-push' ]]; then
     pass "global git config runs review-gate on pre-commit and pre-push, for Claude only"
