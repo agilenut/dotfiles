@@ -1,0 +1,348 @@
+#!/usr/bin/env bash
+# Refuses Claude's commits and pushes that no review covers. Prompt rules
+# alone didn't stop Claude from skipping reviews, so this enforces each
+# review step; it checks that a review ran, not how good it was. The threat
+# model is Claude forgetting or skipping a step, not evading the check.
+#
+#   review-gate mark [--branch] <triage file>   record a review of the staged
+#                                               tree (--branch: of the whole
+#                                               branch, plus any staged fixes)
+#   review-gate covered                         exit 0 if pushing HEAD as a new
+#                                               branch would pass; else print
+#                                               the review it needs
+#   review-gate pre-commit                      git hook (global git config)
+#   review-gate pre-push <remote> <url>         git hook (global git config)
+#
+# A review is recorded as the hash of the exact tree it approved and the
+# patch-id of the change it saw, so any later edit needs a new review. The
+# log lives in the git common dir, shared by all worktrees and never tracked.
+#
+# The hooks gate only commands run by Claude Code (CLAUDECODE=1). Commits are
+# gated only in repos with a remote; `git config claude.reviewHook true` opts
+# a repo in and `false` opts it out of both hooks. Every commit needs its own
+# review before it is made. A pushed commit is covered by reviews that chain
+# from its parent's tree to its own (so an amend or squash whose reviews
+# don't chain back to its new parent isn't covered), by a review of the same
+# change with the same nearby lines (patch-id, so a rebase that doesn't
+# touch the lines around the change keeps it), or by a branch review of it
+# or a commit built on it. The first push of a branch with two
+# or more new commits also needs a branch review that covers the pushed
+# commit. Every pushed ref is checked, tags included, and a push is checked
+# even from a repo with no remote. Merge commits are skipped: a merge edited
+# by hand is finished with `git commit`, which runs the commit check. The
+# commits a merge brings in are checked one by one, except under a merge a
+# branch review covers.
+
+set -euo pipefail
+
+die() {
+  printf 'review-gate: %s\n' "$*" >&2
+  exit 1
+}
+
+log_file() {
+  printf '%s/claude-reviews.log' "$(git rev-parse --path-format=absolute --git-common-dir)"
+}
+
+EMPTY_TREE=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+
+# patch_id: the patch-id of the diff on stdin, or `none` for an empty one.
+# --verbatim keeps whitespace, since indentation changes what Python, YAML
+# and Makefiles do. Callers pass plumbing diffs (no textconv or diff
+# config) with --binary, so the id depends only on the content and each
+# binary change gets its own id.
+patch_id() {
+  local id
+  id=$(git patch-id --verbatim | cut -d' ' -f1)
+  printf '%s' "${id:-none}"
+}
+
+# commit_patch_id <commit>: the patch-id of the commit's change from its
+# first parent (from the empty tree for a root commit).
+commit_patch_id() {
+  local parent
+  parent=$(git rev-parse -q --verify "$1^" || printf '%s' "$EMPTY_TREE")
+  git diff-tree -p --binary --no-textconv "$parent" "$1" | patch_id
+}
+
+# Log line: tree, kind, time, branch, triage path, base, head, patch-id. The
+# base is HEAD's tree when the review ran (a commit review saw only the
+# change from its base to its tree); the head is HEAD's commit then (a
+# branch review saw that commit's history plus what was staged); the
+# patch-id is that of the staged change from HEAD.
+record() {
+  local tree="$1" kind="$2" note="${3//[$'\t\n']/ }" branch base head patch
+  branch=$(git branch --show-current)
+  base=$(git rev-parse -q --verify 'HEAD^{tree}' || printf '%s' "$EMPTY_TREE")
+  head=$(git rev-parse -q --verify HEAD || printf none)
+  patch=$(git diff-index --cached -p --binary --no-textconv "$base" | patch_id)
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$tree" "$kind" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "${branch:-detached}" "$note" "$base" "$head" "$patch" >>"$(log_file)"
+}
+
+# patch_covered <commit>: a review saw this exact change, possibly on another
+# base, as before a rebase. The id covers the lines around each change too,
+# so a rebase that changed them needs a new review.
+patch_covered() {
+  local log patch
+  log=$(log_file)
+  [ -f "$log" ] || return 1
+  patch=$(commit_patch_id "$1")
+  [ "$patch" != none ] || return 1
+  # Not `grep -q`: an early exit can kill `cut`, and pipefail would then
+  # report a match as a failure.
+  cut -f8 "$log" | grep -Fx "$patch" >/dev/null
+}
+
+# branch_covered <commit>: a branch review ran on this commit, or on its
+# parent with this commit's tree staged (the review's fixes, committed after),
+# or recorded this commit's tree while on a sibling (same parent): an amend
+# that rewords the reviewed commit or folds the review's staged fixes into
+# it. A later commit that only repeats the tree, as a revert can, isn't
+# covered.
+branch_covered() {
+  local sha="$1" tree parent log head
+  log=$(log_file)
+  [ -f "$log" ] || return 1
+  tree=$(git rev-parse "$sha^{tree}")
+  parent=$(git rev-parse -q --verify "$sha^" || printf none)
+  # Read to the end: `grep -q` exiting early can kill the writer, and
+  # pipefail would then report a match as a failure.
+  while read -r head; do
+    [ "$head" = "$sha" ] || [ "$head" = "$parent" ] && return 0
+    [ "$(git rev-parse -q --verify "$head^" || printf none)" = "$parent" ] && return 0
+  done < <(grep -E "^$tree	branch	" "$log" | cut -f7 | sort -u || true)
+  return 1
+}
+
+# has_record <tree> <kind regex>
+has_record() {
+  local log
+  log=$(log_file)
+  # Not `grep -q`; see patch_covered.
+  [ -f "$log" ] && cut -f1,2 "$log" | grep -E "^$1	($2)\$" >/dev/null
+}
+
+# commit_covered <tree> <parent tree>: a chain of reviews runs from the
+# parent's tree to this tree, so every change between them was reviewed. A
+# branch review's line counts too: its staged fixes are a change from its
+# base. An amend or squash keeps its tree but can change its parent, so the
+# tree alone isn't enough.
+commit_covered() {
+  local tree="$1" parent="$2" log base
+  [ "$tree" = "$parent" ] && return 0
+  # Trees already checked on this walk; a change and its revert can both be
+  # reviewed, which makes a cycle.
+  case " ${visited:-} " in *" $tree "*) return 1 ;; esac
+  visited="${visited:-} $tree"
+  log=$(log_file)
+  [ -f "$log" ] || return 1
+  while read -r base; do
+    [ -n "$base" ] || continue
+    commit_covered "$base" "$parent" && return 0
+  done < <(grep -E "^$tree	(commit|branch)	" "$log" | cut -f6 | sort -u || true)
+  return 1
+}
+
+# uncovered_commits <commit>: the unpushed commits under <commit>, merges
+# aside, that no review covers, one `<sha> <subject>` per line. A branch
+# review covers its commit and every commit it is built on.
+#
+# Callers run it in $(...), where bash turns off set -e, so each step that
+# can fail returns its status and the caller stops on it.
+uncovered_commits() {
+  local tip="$1" sha tree parent_tree all new
+  local -a branch_reviewed=()
+  all=$(git rev-list "$tip" --not --remotes) || return 1
+  for sha in $all; do
+    branch_covered "$sha" && branch_reviewed+=("^$sha")
+  done
+  # The ^exclusions go before --not, which would flip them into inclusions.
+  new=$(git rev-list --no-merges "$tip" ${branch_reviewed[@]+"${branch_reviewed[@]}"} --not --remotes) \
+    || return 1
+  for sha in $new; do
+    tree=$(git rev-parse "$sha^{tree}")
+    parent_tree=$(git rev-parse -q --verify "$sha^^{tree}" || printf '%s' "$EMPTY_TREE")
+    visited="" commit_covered "$tree" "$parent_tree" && continue
+    patch_covered "$sha" && continue
+    git log -1 --format='%h %s' "$sha" || return 1
+  done
+}
+
+# first_push_covered <commit>: a branch's first push of one new commit needs
+# only that commit's review; of two or more, also a branch review that
+# covers this commit, so the PR gets one review of the whole branch. The count
+# stays on unpushed commits, since a branch review in pushed history covered
+# another branch.
+first_push_covered() {
+  [ "$(git rev-list --count "$1" --not --remotes)" -lt 2 ] || branch_covered "$1"
+}
+
+# gate_active [push]: a push proves there's a remote, so it's checked even in
+# a repo with none configured; only an explicit opt-out skips it.
+gate_active() {
+  local for_push="${1:-}"
+  [ "${CLAUDECODE:-}" = 1 ] || return 1
+  local setting
+  if ! setting=$(git config --type=bool --get claude.reviewHook); then
+    # Exit 1 means unset; anything else is a value git can't read as a bool.
+    [ -z "$(git config --get claude.reviewHook)" ] \
+      || die "claude.reviewHook must be true or false"
+  fi
+  case "$setting" in
+    true) return 0 ;;
+    false) return 1 ;;
+  esac
+  [ -n "$for_push" ] || [ -n "$(git remote)" ]
+}
+
+# A triage file /review wrote for this branch: <timestamp>-<branch>-triage.md
+# in .reviews/code/ at the root of any worktree of this repo, or of the folder
+# holding the git dir (the main checkout, or a bare-repo workspace).
+check_triage_file() {
+  local file="$1" dir branch root found=false
+  [ -f "$file" ] || die "triage file not found: $file"
+  dir=$(cd "$(dirname "$file")" && pwd -P)
+  branch=$(git branch --show-current)
+  [ -n "$branch" ] || die "HEAD is detached; check out the reviewed branch first"
+  while read -r root; do
+    [ -d "$root/.reviews/code" ] || continue
+    [ "$(cd "$root/.reviews/code" && pwd -P)" = "$dir" ] && found=true
+  done < <(
+    dirname "$(git rev-parse --path-format=absolute --git-common-dir)"
+    git rev-parse --show-toplevel
+    git worktree list --porcelain | sed -n 's/^worktree //p'
+  )
+  [ "$found" = true ] || die "triage file must be in the repo's .reviews/code/: $file"
+  # The whole slug must match, so feat/x doesn't accept chore/feat-x's file.
+  [[ "$(basename "$file")" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}-(.+)-triage\.md$ ]] \
+    && [ "${BASH_REMATCH[1]}" = "${branch//\//-}" ] \
+    || die "triage file must be this branch's (<timestamp>-${branch//\//-}-triage.md): $file"
+}
+
+# frontmatter_field <triage file> <name>: the field's value from the file's
+# frontmatter (the lines between the opening and closing `---`). Fails when
+# the file has no frontmatter.
+frontmatter_field() {
+  local line n=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}
+    n=$((n + 1))
+    if [ "$line" = --- ]; then
+      [ "$n" -gt 1 ] && return 0
+      continue
+    fi
+    [ "$n" -gt 1 ] || return 1
+    case "$line" in "$2:"*) line=${line#"$2:"} && printf '%s' "${line# }" ;; esac
+  done <"$1"
+  return 1
+}
+
+# /review writes `outcome:` when a round ends or pauses, so a triage file
+# whose round has ended can't record a review later.
+check_outcome() {
+  local outcome
+  outcome=$(frontmatter_field "$1" outcome) || die "triage file has no frontmatter: $1"
+  case "$outcome" in
+    "" | null) ;;
+    next-round) die "this round handed off to the next round; mark the next round's triage file when that round ends" ;;
+    not-recorded) die "this review ended Not recorded: $(frontmatter_field "$1" outcome-reason)" ;;
+    paused) die "this review is paused; run /review again, re-running the reviewers, to record a review" ;;
+    recorded) die "this triage file already recorded a review; run /review again for the current changes" ;;
+    *) die "unknown outcome in the triage file: $outcome" ;;
+  esac
+}
+
+cmd_mark() {
+  local kind=commit tree
+  if [ "${1:-}" = --branch ]; then
+    kind=branch
+    shift
+  fi
+  [ $# -eq 1 ] || die "usage: review-gate mark [--branch] <triage file>"
+  check_triage_file "$1"
+  local triage log
+  triage="$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+  log=$(log_file)
+  # One triage file per review run: reusing an old one would record edits
+  # made after that review.
+  if [ -f "$log" ] && cut -f5 "$log" | grep -Fx "$triage" >/dev/null; then
+    die "this triage file already recorded a review; run /review again for the current changes"
+  fi
+  check_outcome "$triage"
+  # The staged tree in both kinds: a branch review's staged fixes are part of
+  # what it approved, and with nothing staged this is HEAD's tree.
+  tree=$(git write-tree)
+  record "$tree" "$kind" "$triage"
+  printf 'Recorded %s review of tree %s\n' "$kind" "${tree:0:12}"
+}
+
+# Whether pushing HEAD as a new branch would pass, so /pr runs a branch
+# review only when the push needs one.
+cmd_covered() {
+  [ -z "$(git rev-list -1 HEAD --not --remotes)" ] && return 0
+  local found
+  found=$(uncovered_commits HEAD) || die "couldn't list the commits a push would send"
+  if first_push_covered HEAD && [ -z "$found" ]; then
+    return 0
+  fi
+  printf '/review branch\n'
+  return 1
+}
+
+cmd_pre_commit() {
+  gate_active || exit 0
+  # GIT_INDEX_FILE points at the index being committed, so `commit -a` and
+  # `commit <paths>` are checked as committed, not as staged.
+  local tree head_tree
+  tree=$(git write-tree)
+  head_tree=$(git rev-parse -q --verify 'HEAD^{tree}' || true)
+  [ "$tree" = "$head_tree" ] && exit 0
+  has_record "$tree" 'commit|branch' && exit 0
+  cat >&2 <<'EOF'
+review-gate: no review covers this commit. Stage everything you mean to
+commit, run /review, then commit again. Don't add -a or list files to
+commit: the review covers only what is staged.
+If you ran this yourself outside Claude Code, Claude Code's environment
+leaked into this shell, for example from a tmux server a Claude session
+started; restart that tmux server or use a terminal outside it.
+EOF
+  exit 1
+}
+
+cmd_pre_push() {
+  gate_active push || exit 0
+  local zero=0000000000000000000000000000000000000000
+  local local_sha remote_ref remote_sha uncovered="" found
+  while read -r _ local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue
+    # Every ref is checked, tags included: a tag publishes the commits under
+    # it. Only a branch's first push also needs a branch review.
+    [ -n "$(git rev-list -1 "$local_sha" --not --remotes)" ] || continue
+    if [[ "$remote_ref" == refs/heads/* ]] && [ "$remote_sha" = "$zero" ] \
+      && ! first_push_covered "$local_sha"; then
+      printf 'review-gate: the first push of %s has two or more new commits, so it needs a review of the whole branch.\nRun /review branch, commit any fixes it stages, then push again.\n' \
+        "${remote_ref#refs/heads/}" >&2
+      exit 1
+    fi
+    found=$(uncovered_commits "$local_sha") || die "couldn't list the commits this push sends"
+    [ -n "$found" ] && uncovered+="$found"$'\n'
+  done
+
+  if [ -n "$uncovered" ]; then
+    {
+      echo "review-gate: no review covers these commits:"
+      printf '%s' "$uncovered" | sed 's/^/  /'
+      echo "Run /review branch, commit any fixes it stages, then push again."
+    } >&2
+    exit 1
+  fi
+}
+
+case "${1:-}" in
+  mark) shift && cmd_mark "$@" ;;
+  covered) cmd_covered ;;
+  pre-commit) cmd_pre_commit ;;
+  pre-push) cmd_pre_push ;;
+  *) die 'usage: review-gate mark [--branch] <triage file> | covered | pre-commit | pre-push' ;;
+esac

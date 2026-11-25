@@ -149,9 +149,9 @@ Sections, in order (single-PR default):
   Example: `Pure Prettier defaults over .prettierrc.json — user accepts wholesale style flip for ecosystem alignment; CLAUDE.md bullets updated same PR`
 
 - **Glossary** (when terms were sharpened during the walk) — canonical term → 1-line meaning. Only include the terms that actually got resolved.
-- **Commits** — numbered; each with title (verb-led, ≤8 words), scope (1-line description), review timing (`per-commit` | `end-of-PR`), manual test (`none` | `<steps>`). Apply Reference: Commit Boundaries and Reference: Review & Test Defaults.
+- **Commits** — numbered; each with title (verb-led, ≤8 words), scope (1-line description), manual test (`none` | `<steps>`); no review field, since every commit gets `/review` (global CLAUDE.md `## Git`). Apply Reference: Commit Boundaries and Reference: Manual Test Defaults.
 
-  Example: `1. Add user_role column — expand-contract migration with backfill — review: per-commit — manual: none`
+  Example: `1. Add user_role column — expand-contract migration with backfill — manual: none`
 
 - **Manual test (PR-level)** — when applicable
 - **Edges / risks** — items to weigh
@@ -173,7 +173,7 @@ Worktree: run all PRs from ONE working tree (substitute the real `work:` name). 
 
 ### PR 1: <title> (branch: <name>)
 
-1. Commit title — scope — review: per-commit — manual: none
+1. Commit title — scope — manual: none
 2. ...
 
 ### PR 2: <title> (branch: <name>)
@@ -243,8 +243,6 @@ Before starting PR N (N > 1):
 - An indivisible or mechanical change (rename, codemod, schema squash) stays whole, with a short reviewer's guide in the PR body.
 - 10+ commits is a soft signal to split, not a rule.
 
-## Reference: Review & Test Defaults
+## Reference: Manual Test Defaults
 
-- Review timing: `per-commit` for non-trivial; `end-of-PR` for a series of small mechanical commits in one PR
-- Default toward review; skip only for truly trivial (typo, dep bump). A change to the instructions in files an agent or a person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md, runbooks) is never trivial; a typo fix in them still is.
 - Manual test: only when something can't be fully automated (UX/CSS/runtime behavior). Distinguish "testable in CI" from "I can't verify without you"

@@ -272,8 +272,8 @@ one ("3 skip", "7 remove"). Then ask each "Asking separately" y/n.
 
 Run only what was approved. Doing more than asked (removing a worktree
 when asked to delete a branch) is the mistake users correct most. An
-approved commit follows the global commit rules and the plan's review
-tag; `/wrap` never commits on its own. Report each failure with its
+approved commit follows the global commit rules, including its
+`/review`; `/wrap` never commits on its own. Report each failure with its
 error.
 
 ## Step 7: Branch, worktree, and Docker cleanup
@@ -410,10 +410,6 @@ show.
   transcript): copy the worktree's over it. Without that check, a line
   only in the worktree may be one another session deleted from the main
   tree, such as a closed Open item.
-- `.last-reviewed.json`: merge the two as JSON objects, keeping every
-  branch's entry. When both name a different commit for one branch, keep
-  the one that descends from the other (`git merge-base --is-ancestor`);
-  when neither does, such as after a rebase, ask in "Asking separately".
 - Anything else: merge when each side only added lines, in different
   places, and a related session wrote the worktree's; otherwise show the
   diff in "Asking separately" and ask which to keep.

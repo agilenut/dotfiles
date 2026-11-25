@@ -324,7 +324,7 @@ _Examples:_ reviewer proposes a different decomposition into commits
     `My take: FIX`. Split judgment-laden parts (heading restructures,
     content rewrites, Decision rewordings) into needs-review.
   - **Convention sweeps across plan steps with one obvious winner** —
-    e.g., every commit row declares `review: per-commit` except one.
+    e.g., every commit row declares its manual test except one.
     Confident → auto-fix. Hedging → escalate.
 
   When escalating from hedging, render `Why surfacing this:` showing the
@@ -360,7 +360,7 @@ _Examples:_ reviewer proposes a different decomposition into commits
 - **Pattern-wide**: only when reviewer's recommendation is a **rename**
   of a plan-internal contract (endpoint, field, glossary term), a
   **convention change** across plan steps ("every commit description
-  should declare `review: per-commit`"), or **pattern substitution** in
+  should declare its manual test"), or **pattern substitution** in
   the plan's structure. Signals: `"rename"`, `"every commit"`,
   `"consistency"`, `"across the plan"`. Local fixes (typo in one step,
   single missing detail) → skip.
@@ -729,6 +729,7 @@ action-or-content focused. Examples: `typo in step title`,
 `missing chezmoi apply line`, `Decisions-section addition`,
 `split commit 1 into three`.
 
-No `.last-reviewed.json` analog — carry-over via prior triage handles
-dedup. "When was this plan last reviewed?" requires listing
-`.reviews/plans/` and matching by plan-name prefix.
+Plan reviews record nothing with `review-gate` (that is for code);
+carry-over via prior triage handles dedup. "When was this plan last
+reviewed?" requires listing `.reviews/plans/` and matching by plan-name
+prefix.

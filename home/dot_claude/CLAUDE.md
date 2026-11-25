@@ -33,10 +33,12 @@ _Cross-cutting rules for collaboration, decisions, and meta-process._
   read the error and try one or two other ways to get the same result.
   If none works, give me the command to run. A refusal is different. Stop
   and ask me when I deny a prompt, when a permission rule or hook blocks
-  the action, or when a tool stops to avoid losing data (chezmoi
-  won't overwrite a changed file, git won't discard uncommitted work).
-  Don't get the same result another way or force past it. If you can't
-  tell a failure from a refusal, treat it as a refusal.
+  the action, or when a tool stops to avoid losing data (chezmoi won't
+  overwrite a changed file, git won't discard uncommitted work). Don't
+  get the same result another way or force past it. If you can't tell a
+  failure from a refusal, treat it as a refusal. The Git section has two
+  exceptions: a review-gate refusal, and a commit denied for its message
+  text.
 
 ## Language
 
@@ -265,8 +267,8 @@ _Permission prompting, preferred commands, and command shapes._
 - NEVER use inline scripts (`sh -c`, `bash -c`, `python -c`,
   `python -m …`, `node -e`, or any `<lang> -c/-e` form, temporary scripts,
   or heredocs feeding interpreters when other tools will work since they
-  prompt. A heredoc that only supplies text, such as a commit message,
-  isn't an inline script.
+  prompt. A heredoc that only supplies text, such as a PR body, isn't an
+  inline script.
 - Query and filter files are data, not scripts: a GraphQL query read with
   `gh api graphql -F query=@<file>` or a `jq -f <file>` filter, kept in
   the scratchpad. Use one when a one-line command gets too complex to
@@ -299,8 +301,10 @@ _Permission prompting, preferred commands, and command shapes._
   - run `git` from the working directory, with no `cd <dir> &&` before
     it and no `git -C`
   - no `$(...)` or backticks: run the inner command first and use its
-    output. The quoted-heredoc message form in the Git section is the
-    exception, since that text is meant to be read before approval.
+    output. The quoted-heredoc form in the Git section (PR bodies,
+    comments, and `git commit -m` messages) is the exception: the
+    `--body` text is read before approval, and Claude Code approves the
+    commit form under the `git commit` allow rule.
   - no loops: pass all the items to one command, or run one command each
   - a pipe instead of `<(...)`, no `&` to run a command in the background,
     at most one `cd`
@@ -325,9 +329,9 @@ _How to scope, sequence, and pause work for non-trivial tasks._
 - When the user signals new work (story / issue / "let's build X"),
   invoke `/plan` to scope it; tangents mid-implementation stay tangents
   unless explicitly escalated
-- Plan Commits row tags drive review cadence: `review: per-commit`
-  forces `/review` before each commit. `end-of-PR` runs once before
-  pushing (typically before `gh pr create`).
+- A plan doesn't set when commits are reviewed: every commit gets
+  `/review` (Git section), even where an older plan's Commits row says
+  `review: end-of-PR`.
 - Keep the plan current as work proceeds, not just at the start. When a
   step completes or a follow-up / discovery surfaces, update the plan in
   the same commit (tracked plans) or save immediately (gitignored).
@@ -362,11 +366,11 @@ _Boy-scouting, atomic PRs, backward compat, definition of done, under pressure._
 
 ### Definition of Done
 
-| Stage  | Bar                                                                                |
-| ------ | ---------------------------------------------------------------------------------- |
-| Commit | code + tests + pre-commit + review if non-trivial + local tests + manual if needed |
-| Merge  | docs + CI green + security scans + dependency audits                               |
-| Done   | main CI + post-merge checks (staging where there is one) + every AC checked off    |
+| Stage  | Bar                                                                             |
+| ------ | ------------------------------------------------------------------------------- |
+| Commit | code + tests + pre-commit + `/review` + local tests + manual if needed          |
+| Merge  | docs + CI green + security scans + dependency audits                            |
+| Done   | main CI + post-merge checks (staging where there is one) + every AC checked off |
 
 The board's Done column means the Done row. After Done, work goes Live:
 deployed to prod, applied, or published. Release state lives where the
@@ -608,7 +612,12 @@ _Branching, committing, PRs._
   lets the slug lean short. The whole branch becomes the worktree leaf
   (`<repo>--<branch-slug>`), so keep it tight; `EnterWorktree({name})`
   and a multi-PR plan's short `work:` value follow the same convention.
-- Never commit/push/merge/amend/force-push unless asked
+- Commit, and amend commits not yet pushed, without asking. Never push,
+  merge, or force-push unless asked. A local commit is easy to undo, and
+  the review-gate git hook refuses one that no review covers, so a commit
+  doesn't need my approval; a push changes what others see. After each
+  commit, tell me in one line what it changed, and keep going without
+  waiting for a reply.
 - When the user signals PR-lifecycle work (creating, merging, "is CI
   done", "open the PR", bare "pr"), invoke `/pr` first — don't run
   free-form `gh pr create` / `gh pr merge` / `gh pr checks` ahead of
@@ -640,13 +649,34 @@ _Branching, committing, PRs._
   pre-commit until clean, then commit. A bare `M` (first column blank)
   is deliberately unstaged — leave it.
 
-- Before committing, consider if a review is warranted. If a plan
-  governs the work, follow its review tag. Otherwise, run `/review`
-  for non-trivial changes (new behavior, multi-file refactors); skip
-  for truly trivial (typo, dep bump, comment edit). Files an agent or a
-  person follows as steps (skills, agents, prompts, CLAUDE.md, AGENTS.md,
-  runbooks) are behavior, not docs: review a change to their instructions
-  like code. A typo fix in them is still trivial; a README is still docs.
+- Every commit gets `/review` before it is made, and that review's fixes
+  go into the same commit. I review only at the PR, and a test showed a
+  review per commit catches far more than one branch review at PR time.
+  `/review` picks reviewers from the diff, so a tiny change gets a small,
+  cheap review; no change is too small to review. Files an agent or a
+  person follows as steps (skills, agents, prompts, CLAUDE.md,
+  AGENTS.md, runbooks) are behavior, not docs: review a change to their
+  instructions like code.
+  - A commit holds only its own work, since nobody approves it. Stage
+    only that work's files, leave other changes unstaged, and name them
+    in the one-line note after the commit. Ask only when other work is
+    already staged or shares a file with this work. `/review` stages what
+    it reviewed.
+  - Before a branch's first push, `/pr` runs a branch review
+    (`/review branch`) when the push needs one: two or more new commits,
+    or a commit with no review of its own. Its fixes are one commit on
+    top. After the PR is open, a new commit needs only its own
+    `/review`.
+  - The review-gate git hook refuses a commit or a push that no review
+    covers. It exists because prompt rules alone didn't stop skipped
+    reviews, so working around a refusal defeats its purpose. A refusal
+    means a review is missing, not a decision for me: run the review it
+    names, commit as that review's summary says, then retry a refused
+    push.
+  - When a review prints `Not recorded`, stop and tell me its reason;
+    don't commit or push around it. Only `/review` runs
+    `review-gate mark`: a mark claims reviewers saw the tree, so a false
+    one lets unreviewed work be pushed.
 - Each commit must build, test, and pass independently, no dead code or
   forward refs
 - Commit message: title ≤70 chars, imperative summary. Body: 1-3
@@ -655,13 +685,17 @@ _Branching, committing, PRs._
   Target ~10-20 lines total. Don't enumerate files, don't recap the
   diff, don't add section headers like "Backend:" / "Frontend:" unless
   the change genuinely spans layers in non-obvious ways.
-- Pass commit messages, PR bodies, and comment text inline in a quoted
-  heredoc (`git commit -m "$(cat <<'EOF' ... EOF)"`, same for
-  `--body`), so I read the text in the permission prompt before I
-  approve it; `-F` and `--body-file` show only a path. The quoted
-  `'EOF'` keeps `$` and backticks in the text as written. If a
-  worktree-isolated session refuses the inline form, show the full text
-  in chat first, then use the file form.
+- A commit raises no permission prompt. After a local-mode `/review`,
+  commit with `git commit -F <its commit-msg.txt>`, which keeps the exact
+  text the review checked; otherwise use a quoted heredoc with `-m`
+  (`git commit -m "$(cat <<'EOF' ... EOF)"`). Message text after `-m`
+  can match a deny rule: a message that mentions an option a git deny
+  rule names (for example `--no-verify`, `--output`, or `-n` after a
+  space) is denied, so reword it and retry.
+- Pass PR bodies and comment text inline in a quoted heredoc
+  (`--body "$(cat <<'EOF' ... EOF)"`), so I read the text in the
+  permission prompt before I approve it; `--body-file` shows only a path.
+  The quoted `'EOF'` keeps `$` and backticks in the text as written.
 - People and models read commits and PR bodies later to trace why
   something changed. Like a commit message, a PR body states the why and
   the decisions behind the change plainly, plus whatever else its skill
@@ -893,9 +927,10 @@ Worktree).
 
 All review output goes to `.reviews/` relative to main worktree's
 project root: `.reviews/code/` for code reviews, `.reviews/plans/` for
-plan reviews. Branch review state is tracked in
-`.reviews/code/.last-reviewed.json`. An isolated worktree session uses
-the worktree's own `.reviews/` (see Worktree).
+plan reviews. `/review` records each tree it covered in `review-gate`'s
+log, which lives in the git common dir, so all worktrees share it. An
+isolated worktree session uses the worktree's own `.reviews/` (see
+Worktree).
 
 ## Database
 

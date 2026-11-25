@@ -38,6 +38,14 @@ CLAUDE_PERMISSIONS_ASK=(
   'Bash(az webapp config appsettings list *)'
   'Bash(az webapp config connection-string list *)'
   'Bash(az webapp deployment list-publishing-profiles *)'
+  # Pushes, merges, and PR creation need the user's approval; local commits
+  # don't, since the review-gate git hook checks them.
+  'Bash(git push *)'
+  'Bash(git -C * push *)'
+  'Bash(git merge *)'
+  'Bash(git -C * merge *)'
+  'Bash(gh pr create *)'
+  'Bash(gh pr merge *)'
 )
 
 # Deny rules for shapes an allow rule would otherwise approve:
@@ -46,12 +54,64 @@ CLAUDE_PERMISSIONS_ASK=(
 #   match too.
 # - git accepts any unique prefix of a long option, so `git fetch
 #   --upl=<cmd>` is `--upload-pack=<cmd>`.
+# - `--output=<file>` makes an allowed read, such as `git log`, `git diff`,
+#   `git show`, or `git rev-list`, write or truncate a file with no prompt,
+#   and a written `.git/config` can run a command on the next git call.
+#   git doesn't accept a shorter prefix of it for these commands.
+# - `git commit` is allowed because the review-gate git hook checks it, so
+#   the ways to skip or turn off that hook are denied: `--no-verify`
+#   (`--no-veri` is its shortest unique prefix), `git commit -n`, and
+#   config changes to `hook.*` or `claude.reviewHook` (both spellings of
+#   `reviewHook`, since git config keys ignore case; other spellings, such
+#   as `Hook.`, aren't matched). No allow rule approves those config
+#   writes; the deny rules stop them in auto mode too. A combined short
+#   flag such as `-an` isn't matched. Message text after `-m` can match a
+#   deny rule, so a commit message that mentions `--no-verify` is denied.
+#   The config rules also deny reads of those keys (`git config --get
+#   hook.*`); a read rarely matters, and no rule pattern can match a write
+#   without also matching the read. Known gaps, left open because the
+#   threat model is Claude forgetting or skipping a step, not evading:
+#   editing a git config file directly (`sed -i`), plumbing such as `git
+#   commit-tree` or `git update-ref`, and commits fetched from a second
+#   remote, which count as pushed.
 CLAUDE_PERMISSIONS_DENY=(
   'Bash(gh api *-X*-X*)'
   'Bash(gh api *--method*--method*)'
   'Bash(gh api *-X*--method*)'
   'Bash(gh api *--method*-X*)'
   'Bash(git *--upl*)'
+  'Bash(git *--output*)'
+  'Bash(git *--no-veri*)'
+  'Bash(git commit -n*)'
+  'Bash(git commit * -n*)'
+  'Bash(git -C * commit -n*)'
+  'Bash(git -C * commit * -n*)'
+  'Bash(git config *hook.*)'
+  'Bash(git -C * config *hook.*)'
+  'Bash(git config *claude.reviewHook*)'
+  'Bash(git -C * config *claude.reviewHook*)'
+  'Bash(git config *claude.reviewhook*)'
+  'Bash(git -C * config *claude.reviewhook*)'
+  # An included config file can override the hook command.
+  'Bash(git config *include*)'
+  'Bash(git -C * config *include*)'
+  # The hook runs only when CLAUDECODE=1, so clearing or changing it in
+  # the same command turns the gate off (`unset` has an allow rule).
+  # Claude Code matches each part of a compound command on its own, so a
+  # rule anchored on the assignment catches `x && CLAUDECODE= git commit`
+  # without denying reads such as `grep 'CLAUDECODE=' file`.
+  'Bash(unset *CLAUDECODE*)'
+  'Bash(export *CLAUDECODE*)'
+  'Bash(env -u*CLAUDECODE*)'
+  'Bash(env *CLAUDECODE=*)'
+  'Bash(CLAUDECODE=*)'
+  # Unsetting HOME or XDG_CONFIG_HOME hides the global git config that
+  # registers the hook. The rules name the variables, so `unset JAVA_HOME`
+  # still runs; `HOME*` also denies `unset` of other names that start with
+  # HOME, such as HOMEBREW_PREFIX.
+  'Bash(unset HOME*)'
+  'Bash(unset * HOME*)'
+  'Bash(unset *XDG_CONFIG_HOME*)'
 )
 
 test_claude_permissions() {
@@ -113,6 +173,26 @@ test_claude_permissions() {
     pass "autoMode lists keep the built-in entries"
   else
     fail "an autoMode list has no \"\$defaults\" entry, so it drops the built-in entries"
+  fi
+
+  # Claude commits and records reviews without a prompt in every mode; the
+  # review-gate git hook refuses commits no review covers.
+  if jq -e '(.permissions.allow | index("Bash(git commit *)") != null)
+      and (.permissions.ask | map(select(test("^Bash\\(git (-C \\* )?commit"))) | length == 0)
+      and (.permissions.allow | index("Bash(review-gate mark *)") != null)
+      and (.permissions.allow | index("Bash(review-gate covered)") != null)' \
+    "$settings" >/dev/null 2>&1; then
+    pass "git commit and review-gate run without a prompt"
+  else
+    fail "git commit or review-gate isn't allowed, or git commit still has an ask rule"
+  fi
+  # review-gate has no `defer` or `last` subcommand, so no allow rule
+  # names them.
+  if jq -e '.permissions.allow | map(select(test("^Bash\\(review-gate (defer|last)"))) | length == 0' \
+    "$settings" >/dev/null 2>&1; then
+    pass "no allow rule names review-gate defer or last"
+  else
+    fail "an allow rule still names review-gate defer or last"
   fi
 
   local rule
