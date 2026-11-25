@@ -295,8 +295,6 @@
       "Bash(realpath *)",
       "Bash(recap-daily)",
       "Bash(review-gate covered)",
-      "Bash(review-gate defer *)",
-      "Bash(review-gate last)",
       "Bash(review-gate mark *)",
       "Bash(ruff *)",
       "Bash(sed *)",

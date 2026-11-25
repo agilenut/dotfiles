@@ -46,27 +46,23 @@ an open PR with no checks as CI_RUNNING.
 ### DIRTY
 
 - Show `git diff --stat`. Commit the changes per the global CLAUDE.md
-  `## Git` rules: `/review` or a deferral, the stale-index gate, then the
-  commit, plus any commits `/review` says follow it.
-- No upstream: don't push; NO_PR pushes after its branch review.
-- Upstream: if a commit since the last push was deferred, run the
-  review the latest deferral printed and commit what it stages, so one
-  push goes through. Then announce, and push.
+  `## Git` rules: `/review`, the stale-index gate, then the commit, plus
+  the suggestions commit when `/review`'s summary lists one.
+- No upstream: don't push; NO_PR pushes once the PR is ready.
+- Upstream: announce, and push.
 - Re-run state detection.
 
 ### NO_PR
+
+The user approves the push and the PR creation in one prompt, so do
+everything that could need work or a question before it; nothing runs
+after it except state detection.
 
 - `git log --oneline <base>..HEAD` to summarize commits (`<base>` as
   `/review` defines it)
 - **Local checks** (see Reference: Local Checks). A failing check stops PR
   creation: one fix attempt under CI_FAILED step 2's stop conditions,
   commit (DIRTY), and re-run state detection.
-- **Branch review.** The first push needs a review of the whole branch,
-  so every PR gets one. Run `review-gate covered`. Exit 0 means the push
-  would pass; go on. Otherwise run `/review branch`. If it prints
-  `Not recorded`, stop and tell the user its reason. Otherwise commit
-  what it stages and any suggestions commit, as its summary says. If
-  those commits changed any file, re-run the local checks.
 - **The issue.** Take its number from the plan's `stories:` or PR table,
   the branch name, or the commits; if none, ask. A PR the global rules
   exempt from needing an issue (small doc or text fix, security patch,
@@ -83,6 +79,18 @@ an open PR with no checks as CI_RUNNING.
   have joined a planned PR, have an issue the user agreed to, or have been
   dropped with the user's OK. Any left → raise them before creating the
   PR.
+- **Branch review.** It comes after the steps that can add commits,
+  since a commit after it means it must run again. Run
+  `review-gate covered`. If it fails, run `/review branch`: the first
+  push of two or more new commits needs it, and so does any commit with
+  no review of its own. If it prints `Not recorded`, stop and tell the
+  user its reason. If it staged fixes, commit them as one commit with a
+  heredoc `-m` message, then re-run the local checks. A commit after the
+  branch review, other than its fix commit, means the branch review must
+  run again; re-running state detection after that commit brings you
+  back to this step. When `git rev-list HEAD --not --remotes` prints
+  nothing, the branch was pushed before its PR existed, so `covered`
+  passes and no branch review runs; say so in the report.
 - Select one label based on the primary nature of the change. Check which
   labels exist in the repo (`gh label list --json name`) and use the best
   match:
@@ -137,10 +145,13 @@ an open PR with no checks as CI_RUNNING.
   ones that hold. Ask the user first when a finding would change what
   the PR claims, or when its fix needs a detail you don't have. If the
   reviewer's output has no `## Findings` section, say so and continue.
-- **Push.** If the branch has no upstream or is ahead of it, announce,
-  then run `git push -u origin <branch>`.
-- `gh pr create` (include `--label <label>` if a label was selected), then
-  re-run state detection
+- **Report, then push and create.** Ask any question before this step.
+  Report in chat, in a few lines: the commits and that each was reviewed,
+  what the branch review fixed or why it didn't run, and anything the
+  user should know before approving the prompt. Then run
+  `git push -u origin <branch> && gh pr create --title "<title>" --body "<body>"`
+  as one Bash call (add `--label <label>` if a label was selected), so
+  one prompt covers both. Then re-run state detection.
 
 ### CI_RUNNING
 
@@ -183,8 +194,9 @@ an open PR with no checks as CI_RUNNING.
    **Root cause** / **Fix** / **Files** / **Local verification**.
 5. Apply the stale-index gate (CLAUDE.md `## Git`): `git status --short`,
    re-`git add` any second-column change so the Edit's fix is in the index.
-   Run `/review` on the fix, since the push is refused for a commit no
-   review covers, and commit as its summary says. Announce, then push.
+   Run `/review` on the fix, since a commit no review covers is refused,
+   and commit as its summary says. The PR is already open, so the fix
+   needs no branch review. Announce, then push.
    With no suggestions commit to follow,
    `git commit -F <its commit-msg.txt> && git push` as one Bash call is
    fine (only the push prompts).
@@ -306,10 +318,10 @@ any line matches PATTERN, instead of succeeding when some line doesn't.
 5. **Verify** (same rule as CI_FAILED step 3): `pre-commit` mandatory,
    then the Local Checks.
 6. Post the summary block (same format as CI_FAILED step 4).
-7. A new branch's first push needs a branch review, which also covers
-   the fix, so one review is enough: stage the fix and run
-   `review-gate defer "CI fix; branch review follows"`, commit, then run
-   `/review branch` and commit as its summary says. Announce, then run
+7. Run `/review` on the fix and commit it with the reviewed message. Make
+   no suggestions commit; list any `Worth doing next` items in the
+   summary block instead. The branch then has one unpushed commit, so its
+   first push needs no branch review. Announce, then run
    `git push -u origin fix/<branch>-ci && gh pr create --title "<title>" --body "<body>"`
    as one Bash call, so one prompt covers push and PR create. The body
    references the original PR's issue the same way the original PR did

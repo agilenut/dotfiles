@@ -74,7 +74,7 @@ test_review_gate() {
     mkdir -p "$1/.reviews/code"
     n=$(find "$1/.reviews/code" -name '*-triage.md' | wc -l | tr -d ' ')
     file="$1/.reviews/code/2026-01-01-$(printf '%06d' "$n")-${branch//\//-}-triage.md"
-    echo triage >"$file"
+    printf -- '---\nround: 1\n---\n' >"$file"
     printf '%s' "$file"
   }
   rg_mark() {
@@ -120,10 +120,10 @@ test_review_gate() {
   rg_stage "$r" a.txt two
   if out=$(rg_claude "$r" git commit -qm unreviewed 2>&1); then
     fail "unreviewed commit by Claude was allowed"
-  elif grep -q '/review, then commit again' <<<"$out" && grep -q 'review-gate defer' <<<"$out"; then
-    pass "unreviewed commit is refused, naming review and defer"
+  elif grep -q 'run /review, then commit again' <<<"$out" && ! grep -qi 'defer' <<<"$out"; then
+    pass "unreviewed commit is refused, naming /review as the only way forward"
   else
-    fail "refusal message doesn't name both ways forward: $out"
+    fail "refusal message doesn't name /review alone: $out"
   fi
   # Claude reads the refusal, so it must not say how to clear the variable
   # the gate depends on.
@@ -188,7 +188,7 @@ test_review_gate() {
   rg_triage "$r" >/dev/null
   local other
   for other in 2026-01-01-000000-other-branch-triage.md 2026-01-01-000000-chore-main-triage.md notes-main-triage.md; do
-    echo triage >"$r/.reviews/code/$other"
+    printf -- '---\nround: 1\n---\n' >"$r/.reviews/code/$other"
   done
   rg_mark_refused "$r/a.txt" "must be in the repo's .reviews/code/"
   rg_mark_refused "$r/.reviews/code/2026-01-01-000000-other-branch-triage.md" "must be this branch's"
@@ -204,27 +204,68 @@ test_review_gate() {
   rg_stage "$r" a.txt after-the-review
   rg_mark_refused "$used" "already recorded a review"
   git -C "$r" reset -q --hard
+  # A triage file whose round ended can't record: its frontmatter's outcome
+  # says how the round ended. Only the frontmatter counts, not the body.
+  rg_outcome() {
+    local file
+    file=$(rg_triage "$r")
+    printf -- '---\nbranch: main\n%s\n---\n\n## Summary\n' "$1" >"$file"
+    printf '%s' "$file"
+  }
+  rg_mark_refused "$(rg_outcome 'outcome: next-round')" "handed off to the next round"
+  rg_mark_refused "$(rg_outcome $'outcome: not-recorded\noutcome-reason: base reviewer failed')" "ended Not recorded: base reviewer failed"
+  rg_mark_refused "$(rg_outcome 'outcome: paused')" "is paused"
+  rg_mark_refused "$(rg_outcome 'outcome: recorded')" "already recorded a review"
+  rg_mark_refused "$(rg_outcome 'outcome: done')" "unknown outcome"
+  local crlf
+  crlf=$(rg_triage "$r")
+  printf -- '---\r\noutcome: next-round\r\n---\r\n' >"$crlf"
+  rg_mark_refused "$crlf" "handed off to the next round"
+  # Without frontmatter the outcome can't be read, so the file can't record.
+  local bare
+  bare=$(rg_triage "$r")
+  printf -- '\n---\noutcome: not-recorded\n---\n' >"$bare"
+  rg_mark_refused "$bare" "has no frontmatter"
+  bare=$(rg_triage "$r")
+  printf -- '---\nround: 1\n' >"$bare"
+  rg_mark_refused "$bare" "has no frontmatter"
+  rg_mark_accepted() {
+    local file
+    file=$(rg_triage "$r")
+    printf -- "$1" >"$file"
+    if rg_claude "$r" "$REVIEW_GATE" mark "$file" >/dev/null 2>&1; then
+      pass "mark accepts a triage file $2"
+    else
+      fail "mark refused a triage file $2"
+    fi
+    git -C "$r" reset -q --hard
+  }
+  rg_mark_accepted '---\nbranch: main\nround: 1\n---\n\noutcome: next-round is quoted here\n' "with no outcome in its frontmatter"
+  rg_mark_accepted '---\noutcome:\n---\n' "with an empty outcome"
+  rg_mark_accepted '---\noutcome: null\n---\n' "with outcome: null"
 
-  # ---- Defer ----
+  # ---- No way to skip a review ----
   rg_stage "$r" a.txt five
-  if rg_claude "$r" "$REVIEW_GATE" defer >/dev/null 2>&1; then
-    fail "defer accepted an empty reason"
-  else
-    pass "defer requires a reason"
-  fi
-  rg_claude "$r" "$REVIEW_GATE" defer $'end-of-PR\trename' >/dev/null
-  if rg_claude "$r" git commit -qm deferred >/dev/null 2>&1; then
-    pass "deferred commit is allowed"
-  else
-    fail "deferred commit was refused"
-  fi
+  local cmd
+  # Deferral is gone, along with `last`, which named the review after one.
+  for cmd in defer last; do
+    if rg_claude "$r" "$REVIEW_GATE" "$cmd" "some reason" >/dev/null 2>&1; then
+      fail "review-gate $cmd still exists"
+    else
+      pass "review-gate has no $cmd command"
+    fi
+  done
+  # The push check matches a rebased commit by its change, so mark records
+  # the staged change's patch-id beside its tree.
+  rg_mark "$r"
   local log
   log="$(git -C "$r" rev-parse --path-format=absolute --git-common-dir)/claude-reviews.log"
-  if cut -f2,5 "$log" | grep -qx 'defer	end-of-PR rename' && ! cut -f1 "$log" | grep -qv '^[0-9a-f]\{40\}$'; then
-    pass "defer logs its reason on one line"
+  if tail -n 1 "$log" | cut -f8 | grep -qx '[0-9a-f]\{40\}'; then
+    pass "mark records a patch-id"
   else
-    fail "defer reason missing from the review log, or it broke a line"
+    fail "mark didn't record a patch-id: $(tail -n 1 "$log")"
   fi
+  git -C "$r" reset -q --hard
 
   # ---- Repo scope ----
   local nr="$fx/no-remote"
@@ -302,60 +343,124 @@ test_review_gate() {
     fail "push without CLAUDECODE was refused"
   fi
 
+  # A branch with one commit: its commit review is the whole branch, so the
+  # first push needs no branch review.
   local p="$fx/push"
   rg_with_remote "$p"
   rg_stage "$p" p.txt one
   rg_mark "$p"
   rg_claude "$p" git commit -qm one >/dev/null 2>&1
-  if out=$(rg_claude "$p" git push -q origin main 2>&1); then
-    fail "first push without a branch review was allowed"
-  elif grep -q 'Run /review branch, commit any fixes it stages, then push again' <<<"$out"; then
-    pass "first push needs a branch review"
+  if rg_claude "$p" "$REVIEW_GATE" covered >/dev/null 2>&1; then
+    pass "covered accepts a one-commit branch with its commit review"
+  else
+    fail "covered refused a one-commit branch with its commit review"
+  fi
+  if rg_claude "$p" git push -q -u origin main >/dev/null 2>&1; then
+    pass "first push of a one-commit branch needs only its commit review"
+  else
+    fail "first push of a reviewed one-commit branch was refused"
+  fi
+  # A one-commit branch whose commit has no review of its own (the user's,
+  # or made while the gate was off) still needs a review.
+  local oc="$fx/one-unreviewed"
+  rg_with_remote "$oc"
+  rg_stage "$oc" o.txt one
+  rg_user "$oc" git commit -qm by-user >/dev/null 2>&1
+  if out=$(rg_claude "$oc" "$REVIEW_GATE" covered 2>&1); then
+    fail "covered accepted a one-commit branch whose commit has no review"
+  elif [ "$out" = "/review branch" ]; then
+    pass "covered refuses a one-commit branch whose commit has no review"
+  else
+    fail "covered printed '$out', expected '/review branch'"
+  fi
+  if out=$(rg_claude "$oc" git push -q origin main 2>&1); then
+    fail "first push of an unreviewed one-commit branch was allowed"
+  elif grep -q ' by-user$' <<<"$out"; then
+    pass "first push of a one-commit branch with no review is refused and names the commit"
+  else
+    fail "push of an unreviewed one-commit branch refused for the wrong reason: $out"
+  fi
+
+  # Two commits, each reviewed: the first push also needs a review of the
+  # whole branch, recorded on exactly the commit being pushed.
+  local mc="$fx/multi"
+  rg_with_remote "$mc"
+  rg_stage "$mc" m.txt one
+  rg_mark "$mc"
+  rg_claude "$mc" git commit -qm one >/dev/null 2>&1
+  rg_stage "$mc" m.txt two
+  rg_mark "$mc"
+  rg_claude "$mc" git commit -qm two >/dev/null 2>&1
+  if out=$(rg_claude "$mc" git push -q origin main 2>&1); then
+    fail "first push of two commits without a branch review was allowed"
+  elif grep -q 'needs a review of the whole branch' <<<"$out" \
+    && grep -q 'Run /review branch, commit any fixes it stages, then push again' <<<"$out"; then
+    pass "first push of two commits needs a branch review, and says what to run"
   else
     fail "first-push refusal doesn't say what to run: $out"
   fi
-  rg_mark "$p" --branch
-  # A commit on top with its own review (a polish commit after the branch
-  # review) keeps the first push covered: its review chains to the
-  # branch-reviewed commit.
-  local pp="$fx/polish"
-  rg_with_remote "$pp"
-  rg_stage "$pp" q.txt one
-  rg_mark "$pp" --branch
-  rg_claude "$pp" git commit -qm one >/dev/null 2>&1
-  rg_stage "$pp" q.txt one-polished
-  rg_mark "$pp"
-  rg_claude "$pp" git commit -qm polish >/dev/null 2>&1
-  if rg_claude "$pp" git push -q -u origin main >/dev/null 2>&1; then
-    pass "first push of a branch review plus a reviewed polish commit is allowed"
+  if out=$(rg_claude "$mc" "$REVIEW_GATE" covered 2>&1); then
+    fail "covered accepted two commits with no branch review"
+  elif [ "$out" = "/review branch" ]; then
+    pass "covered refuses two commits with no branch review and names the review"
   else
-    fail "first push refused a reviewed polish commit on top of a branch review"
+    fail "covered printed '$out', expected '/review branch'"
   fi
-  rg_stage "$pp" q.txt unreviewed-on-top
-  rg_claude "$pp" "$REVIEW_GATE" defer "x" >/dev/null
-  rg_claude "$pp" git commit -qm unreviewed >/dev/null 2>&1
-  # A first push to a new branch name, so the check is the first-push one.
-  # The later-push check refuses a deferred commit too, so check the message.
-  if out=$(rg_claude "$pp" git push -q origin HEAD:refs/heads/second 2>&1); then
-    fail "first push accepted a deferred commit on top of a branch review"
-  elif grep -q 'needs a review of the whole branch' <<<"$out"; then
-    pass "first push still refuses a deferred commit on top of a branch review"
+  # The branch review's fixes, committed from the tree it recorded.
+  rg_stage "$mc" m.txt two-fixed
+  rg_mark "$mc" --branch
+  rg_claude "$mc" git commit -qm "review fixes" >/dev/null 2>&1
+  if rg_claude "$mc" "$REVIEW_GATE" covered >/dev/null 2>&1 \
+    && rg_claude "$mc" git push -q -u origin main >/dev/null 2>&1; then
+    pass "a branch review's fix commit can be pushed: its tree is the one recorded"
   else
-    fail "first push refused a deferred commit, but not as a first push: $out"
+    fail "push of a branch review's fix commit was refused"
+  fi
+  if rg_claude "$mc" "$REVIEW_GATE" covered >/dev/null 2>&1; then
+    pass "covered accepts a HEAD that is already pushed"
+  else
+    fail "covered refused a HEAD that is already pushed"
   fi
 
-  # A branch cut from a pushed, branch-reviewed branch needs its own branch
-  # review: the review in pushed history covers the other branch's PR.
+  # Anything committed after the branch review, even with its own review,
+  # means the branch review didn't see what is pushed.
+  local ar="$fx/after-review"
+  rg_with_remote "$ar"
+  rg_stage "$ar" a.txt one
+  rg_mark "$ar"
+  rg_claude "$ar" git commit -qm one >/dev/null 2>&1
+  rg_stage "$ar" a.txt two
+  rg_mark "$ar" --branch
+  rg_claude "$ar" git commit -qm two >/dev/null 2>&1
+  rg_stage "$ar" a.txt three
+  rg_mark "$ar"
+  rg_claude "$ar" git commit -qm three >/dev/null 2>&1
+  if out=$(rg_claude "$ar" git push -q origin main 2>&1); then
+    fail "first push allowed a commit made after the branch review"
+  elif grep -q 'needs a review of the whole branch' <<<"$out"; then
+    pass "a commit after the branch review needs a new branch review before the first push"
+  else
+    fail "first push refused a commit after the branch review for the wrong reason: $out"
+  fi
+
+  # A branch cut from a pushed branch needs its own branch review: one in
+  # pushed history covered the other branch's PR.
   local sb="$fx/stacked"
   rg_with_remote "$sb"
   rg_stage "$sb" s.txt one
-  rg_mark "$sb" --branch
+  rg_mark "$sb"
   rg_claude "$sb" git commit -qm one >/dev/null 2>&1
+  rg_stage "$sb" s.txt two
+  rg_mark "$sb" --branch
+  rg_claude "$sb" git commit -qm two >/dev/null 2>&1
   rg_claude "$sb" git push -q -u origin main >/dev/null 2>&1
   git -C "$sb" switch -q -c feat-b
-  rg_stage "$sb" s.txt two
+  rg_stage "$sb" s.txt three
   rg_mark "$sb"
-  rg_claude "$sb" git commit -qm two >/dev/null 2>&1
+  rg_claude "$sb" git commit -qm three >/dev/null 2>&1
+  rg_stage "$sb" s.txt four
+  rg_mark "$sb"
+  rg_claude "$sb" git commit -qm four >/dev/null 2>&1
   if out=$(rg_claude "$sb" git push -q origin feat-b 2>&1); then
     fail "first push of a stacked branch was allowed with no branch review of its own"
   elif grep -q 'needs a review of the whole branch' <<<"$out"; then
@@ -364,96 +469,144 @@ test_review_gate() {
     fail "stacked-branch push refused for the wrong reason: $out"
   fi
 
-  # covered answers what a branch's first push of HEAD would answer.
-  if out=$(rg_claude "$sb" "$REVIEW_GATE" covered 2>&1); then
-    fail "covered accepted a stacked branch with no branch review"
-  elif [ "$out" = "/review branch" ]; then
-    pass "covered refuses a branch with no branch review and names the review"
-  else
-    fail "covered printed '$out', expected '/review branch'"
-  fi
-  rg_mark "$sb" --branch
-  if rg_claude "$sb" "$REVIEW_GATE" covered >/dev/null 2>&1; then
-    pass "covered accepts a branch-reviewed HEAD"
-  else
-    fail "covered refused a branch-reviewed HEAD"
-  fi
-  git -C "$sb" switch -q main
-  if rg_claude "$sb" "$REVIEW_GATE" covered >/dev/null 2>&1; then
-    pass "covered accepts a HEAD that is already pushed"
-  else
-    fail "covered refused a HEAD that is already pushed"
-  fi
-  # The reviewed polish commit on a pushed branch: covered matches the push.
-  git -C "$pp" reset -q --hard HEAD^
-  if rg_claude "$pp" "$REVIEW_GATE" covered >/dev/null 2>&1; then
-    pass "covered accepts a reviewed polish commit on top of a branch review"
-  else
-    fail "covered refused a reviewed polish commit on top of a branch review"
-  fi
-  if rg_claude "$p" git push -q origin main >/dev/null 2>&1; then
-    pass "first push after a branch review is allowed"
-  else
-    fail "first push after a branch review was refused"
-  fi
-
+  # Later pushes: each new commit needs its own review, or a branch review
+  # of a commit built on it. The user's own commits and commits made while
+  # the gate was off have no review of their own.
   rg_stage "$p" p.txt two
   rg_mark "$p"
   rg_claude "$p" git commit -qm two >/dev/null 2>&1
+  rg_stage "$p" p.txt three
+  rg_mark "$p"
+  rg_claude "$p" git commit -qm three >/dev/null 2>&1
   if rg_claude "$p" git push -q origin main >/dev/null 2>&1; then
     pass "later push of commits with their own reviews is allowed"
   else
     fail "later push of reviewed commits was refused"
   fi
-
-  rg_stage "$p" p.txt three
-  rg_claude "$p" "$REVIEW_GATE" defer "mechanical" >/dev/null
-  rg_claude "$p" git commit -qm three >/dev/null 2>&1
-  rg_stage "$p" p.txt four
+  rg_stage "$p" p.txt by-user
+  rg_user "$p" git commit -qm by-user >/dev/null 2>&1
+  rg_stage "$p" p.txt reviewed-after
   rg_mark "$p"
-  rg_claude "$p" git commit -qm four >/dev/null 2>&1
+  rg_claude "$p" git commit -qm reviewed-after >/dev/null 2>&1
   if out=$(rg_claude "$p" git push -q origin main 2>&1); then
-    fail "push of a deferred commit without a branch review was allowed"
-  elif grep -q ' three$' <<<"$out" && ! grep -q ' four$' <<<"$out" \
-    && grep -q 'Run /review unreviewed, commit any fixes it stages, then push again' <<<"$out"; then
-    pass "push refuses a deferred commit that a reviewed one is built on, names only it, and names /review unreviewed"
+    fail "push of a commit with no review was allowed"
+  elif grep -q ' by-user$' <<<"$out" && ! grep -q ' reviewed-after$' <<<"$out" \
+    && grep -q 'Run /review branch, commit any fixes it stages, then push again' <<<"$out"; then
+    pass "push refuses a commit with no review, names only it, and names /review branch"
   else
     fail "push refusal doesn't name just the uncovered commit: $out"
   fi
   rg_mark "$p" --branch
-  rg_stage "$p" p.txt five
-  rg_claude "$p" "$REVIEW_GATE" defer "after the branch review" >/dev/null
-  rg_claude "$p" git commit -qm five >/dev/null 2>&1
-  if out=$(rg_claude "$p" git push -q origin main 2>&1); then
-    fail "a commit made after a branch review was covered by it"
-  elif grep -q ' five$' <<<"$out" && ! grep -q ' three$' <<<"$out"; then
-    pass "a branch review covers earlier commits but not later ones"
-  else
-    fail "push refusal after a branch review named the wrong commits: $out"
-  fi
-  rg_mark "$p" --branch
   if rg_claude "$p" git push -q origin main >/dev/null 2>&1; then
-    pass "push after a branch review of HEAD is allowed"
+    pass "a branch review of HEAD covers the commits under it"
   else
     fail "push after a branch review of HEAD was refused"
   fi
 
-  # A merged side branch: a branch review of the side branch doesn't cover
-  # main-line commits that aren't its ancestors.
+  # A rebase gives commits new trees; a commit whose change is the same is
+  # matched by its patch-id, and one whose change differs needs a review.
+  local rb="$fx/rebase"
+  rg_with_remote "$rb"
+  printf 'a\nb\nc\n' >"$rb/f.txt"
+  printf 'x\n' >"$rb/g.txt"
+  git -C "$rb" add f.txt g.txt
+  rg_user "$rb" git commit -qm base >/dev/null 2>&1
+  rg_user "$rb" git push -q -u origin main >/dev/null 2>&1
+  git -C "$rb" switch -q -c feat
+  printf 'a\nB\nc\n' >"$rb/f.txt"
+  git -C "$rb" add f.txt
+  rg_mark "$rb"
+  rg_claude "$rb" git commit -qm change >/dev/null 2>&1
+  git -C "$rb" switch -q main
+  printf 'y\n' >"$rb/g.txt"
+  git -C "$rb" add g.txt
+  rg_user "$rb" git commit -qm "main moves" >/dev/null 2>&1
+  rg_user "$rb" git push -q origin main >/dev/null 2>&1
+  git -C "$rb" switch -q feat
+  rg_user "$rb" git rebase -q main >/dev/null 2>&1
+  if [ "$(git -C "$rb" show HEAD:g.txt)" != y ]; then
+    fail "setup: the rebase didn't happen, so this case tests nothing"
+  elif rg_claude "$rb" git push -q origin feat >/dev/null 2>&1; then
+    pass "a commit rebased with no conflict keeps its review"
+  else
+    fail "a cleanly rebased reviewed commit was refused"
+  fi
+  git -C "$rb" switch -q main
+  printf 'a\nZ\nc\n' >"$rb/f.txt"
+  git -C "$rb" add f.txt
+  rg_user "$rb" git commit -qm "main conflicts" >/dev/null 2>&1
+  rg_user "$rb" git push -q origin main >/dev/null 2>&1
+  git -C "$rb" switch -q -c feat-2 main~1
+  printf 'a\nB\nc\n' >"$rb/f.txt"
+  git -C "$rb" add f.txt
+  rg_mark "$rb"
+  rg_claude "$rb" git commit -qm change-2 >/dev/null 2>&1
+  rg_user "$rb" git rebase -q main >/dev/null 2>&1 || true
+  printf 'a\nBZ\nc\n' >"$rb/f.txt"
+  git -C "$rb" add f.txt
+  rg_user "$rb" env GIT_EDITOR=true git rebase --continue >/dev/null 2>&1
+  if [ "$(git -C "$rb" show HEAD:f.txt | sed -n 2p)" != BZ ]; then
+    fail "setup: the conflicted rebase didn't finish, so this case tests nothing"
+  elif out=$(rg_claude "$rb" git push -q origin feat-2 2>&1); then
+    fail "a commit whose change differs after a rebase kept its old review"
+  elif grep -q ' change-2$' <<<"$out"; then
+    pass "a commit whose change differs after a rebase needs a new review"
+  else
+    fail "push after a conflicted rebase refused for the wrong reason: $out"
+  fi
+
+  # A conflict resolved with a change that differs only in whitespace still
+  # needs a review: indentation changes what Python or YAML does.
+  local ws="$fx/whitespace"
+  rg_with_remote "$ws"
+  printf 'a\nb\nc\n' >"$ws/w.txt"
+  git -C "$ws" add w.txt
+  rg_user "$ws" git commit -qm base >/dev/null 2>&1
+  rg_user "$ws" git push -q -u origin main >/dev/null 2>&1
+  git -C "$ws" switch -q -c ws-feat
+  printf 'a\n  X\nc\n' >"$ws/w.txt"
+  git -C "$ws" add w.txt
+  rg_mark "$ws"
+  rg_claude "$ws" git commit -qm indented >/dev/null 2>&1
+  local reviewed_sha
+  reviewed_sha=$(git -C "$ws" rev-parse HEAD)
+  git -C "$ws" switch -q main
+  printf 'a\n b\nc\n' >"$ws/w.txt"
+  git -C "$ws" add w.txt
+  rg_user "$ws" git commit -qm "main reindents" >/dev/null 2>&1
+  rg_user "$ws" git push -q origin main >/dev/null 2>&1
+  git -C "$ws" switch -q ws-feat
+  rg_user "$ws" git rebase -q main >/dev/null 2>&1 || true
+  printf 'a\nX\nc\n' >"$ws/w.txt"
+  git -C "$ws" add w.txt
+  rg_user "$ws" env GIT_EDITOR=true git rebase --continue >/dev/null 2>&1
+  if [ "$(git -C "$ws" diff-tree -p HEAD~1 HEAD | git patch-id --stable | cut -d' ' -f1)" \
+    != "$(git -C "$ws" diff-tree -p "$reviewed_sha~1" "$reviewed_sha" | git patch-id --stable | cut -d' ' -f1)" ]; then
+    fail "setup: the resolution differs in more than whitespace, so this case tests nothing"
+  elif out=$(rg_claude "$ws" git push -q origin ws-feat 2>&1); then
+    fail "a conflict resolution that differs only in whitespace kept the old review"
+  elif grep -q ' indented$' <<<"$out"; then
+    pass "a conflict resolution that differs only in whitespace needs a new review"
+  else
+    fail "push after a whitespace-only resolution refused for the wrong reason: $out"
+  fi
+
+  # A merge commit has no single change to match; the unpushed commits it
+  # brings in are checked one by one. A merge edited by hand is finished
+  # with `git commit`, which runs the commit check.
   git -C "$p" switch -q -c side
   rg_stage "$p" side.txt one
-  rg_claude "$p" "$REVIEW_GATE" defer "side" >/dev/null
+  rg_mark "$p"
   rg_claude "$p" git commit -qm side-one >/dev/null 2>&1
-  rg_mark "$p" --branch
   git -C "$p" switch -q main
   rg_stage "$p" p.txt main-only
-  rg_claude "$p" "$REVIEW_GATE" defer "main only" >/dev/null
-  rg_claude "$p" git commit -qm main-only >/dev/null 2>&1
+  rg_user "$p" git commit -qm main-only >/dev/null 2>&1
   rg_user "$p" git merge -q --no-edit side >/dev/null 2>&1
   if out=$(rg_claude "$p" git push -q origin main 2>&1); then
-    fail "a branch review of a merged side branch covered main-line commits"
-  elif grep -q ' main-only$' <<<"$out" && ! grep -q ' side-one$' <<<"$out"; then
-    pass "a branch review covers only the commits it is built on"
+    fail "a merge pushed a commit with no review"
+  elif grep -q ' main-only$' <<<"$out" && ! grep -q ' side-one$' <<<"$out" \
+    && ! grep -q "Merge branch" <<<"$out"; then
+    pass "a merge's commits are checked one by one, and the merge itself is skipped"
   else
     fail "push refusal after a merge named the wrong commits: $out"
   fi
@@ -468,8 +621,7 @@ test_review_gate() {
   # A tag publishes the commits under it, so a tag on an unreviewed
   # commit gets the same check as a branch push.
   rg_stage "$p" p.txt tagged
-  rg_claude "$p" "$REVIEW_GATE" defer "tagged" >/dev/null
-  rg_claude "$p" git commit -qm tagged >/dev/null 2>&1
+  rg_user "$p" git commit -qm tagged >/dev/null 2>&1
   git -C "$p" tag v2
   if out=$(rg_claude "$p" git push -q origin v2 2>&1); then
     fail "a tag on an unreviewed commit was pushed"
@@ -483,8 +635,7 @@ test_review_gate() {
   # Any other ref (not a branch, not a tag) gets the same check as a
   # later branch push, so unreviewed commits can't go out that way.
   rg_stage "$p" p.txt custom-ref
-  rg_claude "$p" "$REVIEW_GATE" defer "custom ref" >/dev/null
-  rg_claude "$p" git commit -qm custom-ref >/dev/null 2>&1
+  rg_user "$p" git commit -qm custom-ref >/dev/null 2>&1
   if out=$(rg_claude "$p" git push -q origin HEAD:refs/review/x 2>&1); then
     fail "an unreviewed commit was pushed to a custom ref"
   elif grep -q ' custom-ref$' <<<"$out"; then
@@ -498,27 +649,40 @@ test_review_gate() {
   local am="$fx/amend"
   rg_with_remote "$am"
   rg_stage "$am" m.txt base
-  rg_mark "$am" --branch
+  rg_mark "$am"
   rg_claude "$am" git commit -qm base >/dev/null 2>&1
   rg_claude "$am" git push -q -u origin main >/dev/null 2>&1
-  # Deferred commit A, then a reviewed change amended into it: the review
-  # saw only A->T, so the amended commit's change from base isn't covered.
-  rg_stage "$am" m.txt deferred-a
-  rg_claude "$am" "$REVIEW_GATE" defer "a" >/dev/null
-  rg_claude "$am" git commit -qm a >/dev/null 2>&1
+  # An unreviewed commit A, then a reviewed change amended into it: the
+  # review saw only A->T, so the amended commit's change from base isn't
+  # covered.
+  rg_stage "$am" m.txt unreviewed-a
+  rg_user "$am" git commit -qm a >/dev/null 2>&1
   rg_stage "$am" n.txt reviewed-b
   rg_mark "$am"
   rg_claude "$am" git commit -q --amend -m "a and b" >/dev/null 2>&1
   if [ "$(git -C "$am" log -1 --format=%s)" != "a and b" ]; then
     fail "setup: the amend didn't happen, so this case tests nothing"
   elif rg_claude "$am" git push -q origin main >/dev/null 2>&1; then
-    fail "an amend folding a reviewed change into a deferred commit was pushed unreviewed"
+    fail "an amend folding a reviewed change into an unreviewed commit was pushed"
   else
-    pass "an amend into a deferred commit isn't covered by the later review"
+    pass "an amend into an unreviewed commit isn't covered by the later review"
+  fi
+  # A reviewed change amended into a reviewed commit: the reviews chain from
+  # the commit's parent to its tree.
+  git -C "$am" reset -q --hard origin/main
+  rg_stage "$am" m.txt reviewed-a
+  rg_mark "$am"
+  rg_claude "$am" git commit -qm a >/dev/null 2>&1
+  rg_stage "$am" n.txt reviewed-b
+  rg_mark "$am"
+  rg_claude "$am" git commit -q --amend -m "a and b" >/dev/null 2>&1
+  if rg_claude "$am" git push -q origin main >/dev/null 2>&1; then
+    pass "an amend of a reviewed commit with a reviewed change can be pushed"
+  else
+    fail "an amend of a reviewed commit with a reviewed change was refused"
   fi
   # Two commits each reviewed, squashed into one: the reviews chain from
   # the squashed commit's parent to its tree, so it's covered.
-  git -C "$am" reset -q --hard origin/main
   rg_stage "$am" m.txt reviewed-c
   rg_mark "$am"
   rg_claude "$am" git commit -qm c >/dev/null 2>&1
@@ -533,27 +697,25 @@ test_review_gate() {
     fail "a squash of reviewed commits was refused"
   fi
   # A branch review covers the commit it ran on (or one that commits its
-  # staged fixes), not every commit that later has the same tree: a
-  # deferred commit followed by its revert has the reviewed tree again.
-  git -C "$am" reset -q --hard origin/main
+  # staged fixes), not every commit that later has the same tree: an
+  # unreviewed commit followed by its revert has the reviewed tree again.
   rg_stage "$am" m.txt reviewed-tip
   rg_mark "$am" --branch
   rg_claude "$am" git commit -qm tip >/dev/null 2>&1
   rg_claude "$am" git push -q origin main >/dev/null 2>&1
   printf 'secret\n' >"$am/leak.txt"
   git -C "$am" add leak.txt
-  rg_claude "$am" "$REVIEW_GATE" defer "adds a file" >/dev/null
-  rg_claude "$am" git commit -qm "add leak" >/dev/null 2>&1
+  rg_user "$am" git commit -qm "add leak" >/dev/null 2>&1
   git -C "$am" rm -q leak.txt
-  rg_claude "$am" git commit -qm "remove leak" >/dev/null 2>&1
+  rg_user "$am" git commit -qm "remove leak" >/dev/null 2>&1
   if [ "$(git -C "$am" rev-parse 'HEAD^{tree}')" != "$(git -C "$am" rev-parse 'origin/main^{tree}')" ]; then
     fail "setup: the revert didn't restore the reviewed tree, so this case tests nothing"
   elif out=$(rg_claude "$am" git push -q origin main 2>&1); then
-    fail "a deferred commit hidden by a revert to a branch-reviewed tree was pushed"
+    fail "an unreviewed commit hidden by a revert to a branch-reviewed tree was pushed"
   elif grep -q ' add leak$' <<<"$out"; then
     pass "a branch review doesn't cover a later commit that only repeats its tree"
   else
-    fail "push refusal after a revert didn't name the deferred commit: $out"
+    fail "push refusal after a revert didn't name the unreviewed commit: $out"
   fi
 
   # A message-only amend of a branch-reviewed commit keeps its tree and
@@ -563,8 +725,7 @@ test_review_gate() {
   rg_stage "$rw" base.txt base
   rg_user "$rw" git commit -qm base >/dev/null 2>&1
   rg_stage "$rw" r.txt one
-  rg_claude "$rw" "$REVIEW_GATE" defer "branch review follows" >/dev/null
-  rg_claude "$rw" git commit -qm "first wording" >/dev/null 2>&1
+  rg_user "$rw" git commit -qm "first wording" >/dev/null 2>&1
   # The branch review runs on the commit already made, then it's reworded.
   rg_mark "$rw" --branch
   rg_claude "$rw" git commit -q --amend -m "second wording" >/dev/null 2>&1
@@ -578,8 +739,7 @@ test_review_gate() {
   # A branch review's staged fixes amended into the reviewed commit (not
   # committed on top) are covered too: same parent, the recorded tree.
   rg_stage "$rw" r.txt two
-  rg_claude "$rw" "$REVIEW_GATE" defer "branch review follows" >/dev/null
-  rg_claude "$rw" git commit -qm "needs a fix" >/dev/null 2>&1
+  rg_user "$rw" git commit -qm "needs a fix" >/dev/null 2>&1
   rg_stage "$rw" r.txt two-fixed
   rg_mark "$rw" --branch
   rg_claude "$rw" git commit -q --amend --no-edit >/dev/null 2>&1
@@ -626,7 +786,7 @@ test_review_gate() {
   git -C "$p" worktree add -q -b wt-sibling "$wt2" >/dev/null 2>&1
   git -C "$wt" switch -q -c wt-two
   mkdir -p "$wt2/.reviews/code"
-  echo triage >"$wt2/.reviews/code/2026-01-01-000000-wt-two-triage.md"
+  printf -- '---\nround: 1\n---\n' >"$wt2/.reviews/code/2026-01-01-000000-wt-two-triage.md"
   rg_stage "$wt" w.txt two
   if rg_claude "$wt" "$REVIEW_GATE" mark "$wt2/.reviews/code/2026-01-01-000000-wt-two-triage.md" >/dev/null 2>&1; then
     pass "mark accepts a triage file in another worktree of the repo"
@@ -642,94 +802,12 @@ test_review_gate() {
   printf 'gitdir: ./.bare\n' >"$bw/.git"
   git -C "$bw" worktree add -q --orphan -b main "$bw/main" >/dev/null 2>&1
   git -C "$bw/main" config commit.gpgsign false
-  echo triage >"$bw/.reviews/code/2026-01-01-000000-main-triage.md"
+  printf -- '---\nround: 1\n---\n' >"$bw/.reviews/code/2026-01-01-000000-main-triage.md"
   rg_stage "$bw/main" b.txt one
   if rg_claude "$bw/main" "$REVIEW_GATE" mark "$bw/.reviews/code/2026-01-01-000000-main-triage.md" >/dev/null 2>&1; then
     pass "mark accepts a triage file at a bare-repo workspace's root"
   else
     fail "mark refused a triage file at a bare-repo workspace's root"
-  fi
-
-  # ---- Branch review of staged fixes, and the last branch review ----
-  local br="$fx/branch-fix"
-  rg_with_remote "$br"
-  rg_stage "$br" f.txt one
-  rg_mark "$br" --branch
-  rg_claude "$br" git commit -qm one >/dev/null 2>&1
-  local branch_reviewed_sha
-  branch_reviewed_sha=$(git -C "$br" rev-parse HEAD)
-  rg_stage "$br" f.txt two
-  rg_mark "$br"
-  rg_claude "$br" git commit -qm two >/dev/null 2>&1
-  rg_stage "$br" f.txt three
-  rg_claude "$br" "$REVIEW_GATE" defer "later" >/dev/null
-  rg_claude "$br" git commit -qm three >/dev/null 2>&1
-  if [ "$(rg_claude "$br" "$REVIEW_GATE" last)" = "$branch_reviewed_sha" ]; then
-    pass "last prints the newest branch-reviewed commit, skipping commit reviews and deferrals"
-  else
-    fail "last printed '$(rg_claude "$br" "$REVIEW_GATE" last)', expected $branch_reviewed_sha"
-  fi
-  # A branch review whose fixes are staged: the fix commit is the pushed tip.
-  rg_stage "$br" f.txt review-fix
-  rg_mark "$br" --branch
-  if rg_claude "$br" git commit -qm "review fixes" >/dev/null 2>&1 \
-    && rg_claude "$br" git push -q origin main >/dev/null 2>&1; then
-    pass "a branch review records its staged fixes, so the fix commit can be pushed"
-  else
-    fail "push of a branch review's fix commit was refused"
-  fi
-  if [ -z "$(rg_claude "$nr" "$REVIEW_GATE" last)" ]; then
-    pass "last prints nothing when no commit was reviewed"
-  else
-    fail "last printed a commit in a repo with no reviews"
-  fi
-
-  # A log with only commit reviews: no branch review yet, which is normal.
-  local cr="$fx/commit-only"
-  rg_with_remote "$cr"
-  rg_stage "$cr" c.txt one
-  rg_mark "$cr"
-  rg_claude "$cr" git commit -qm one >/dev/null 2>&1
-  if out=$(rg_claude "$cr" "$REVIEW_GATE" last 2>&1) && [ -z "$out" ]; then
-    pass "last prints nothing and succeeds when the log has only commit reviews"
-  else
-    fail "last failed or printed '$out' with only commit reviews in the log"
-  fi
-
-  # ---- The review each hint names ----
-  # No upstream, or no branch review in the pushed history: /review branch.
-  rg_stage "$cr" c.txt two
-  out=$(rg_claude "$cr" "$REVIEW_GATE" defer "no upstream yet" 2>&1)
-  if grep -q 'run /review branch' <<<"$out" && ! grep -q 'unreviewed' <<<"$out"; then
-    pass "defer names /review branch on a branch with no upstream"
-  else
-    fail "defer hint on a branch with no upstream: $out"
-  fi
-  rg_claude "$cr" git commit -qm two >/dev/null 2>&1
-  rg_mark "$cr" --branch
-  rg_claude "$cr" git push -q -u origin main >/dev/null 2>&1
-  rg_stage "$cr" c.txt three
-  out=$(rg_claude "$cr" "$REVIEW_GATE" defer "after a pushed branch review" 2>&1)
-  if grep -q 'run /review unreviewed' <<<"$out"; then
-    pass "defer names /review unreviewed after a pushed branch review"
-  else
-    fail "defer hint after a pushed branch review: $out"
-  fi
-  rg_claude "$cr" git commit -qm three >/dev/null 2>&1
-  # Push a branch that isn't checked out: the hint follows the pushed
-  # branch, which has no branch review, not HEAD's history, which does.
-  git -C "$cr" branch side "$(git -C "$cr" rev-list --max-parents=0 HEAD)"
-  git -C "$cr" switch -q side
-  rg_stage "$cr" s.txt side
-  rg_claude "$cr" "$REVIEW_GATE" defer "side" >/dev/null
-  rg_claude "$cr" git commit -qm side-one >/dev/null 2>&1
-  git -C "$cr" switch -q main
-  git -C "$cr" push -q origin "$(git -C "$cr" rev-list --max-parents=0 HEAD):refs/heads/side" >/dev/null 2>&1
-  out=$(rg_claude "$cr" git push -q origin side 2>&1) || true
-  if grep -q 'Run /review branch, commit any fixes it stages, then push again' <<<"$out"; then
-    pass "a later push's hint follows the pushed branch, not HEAD"
-  else
-    fail "later-push hint for a branch that isn't checked out: $out"
   fi
 
   trap - EXIT

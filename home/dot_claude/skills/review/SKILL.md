@@ -11,12 +11,13 @@ dialog the ambiguous middle one finding at a time, persist reasoning to a
 triage file.
 
 The caller commits and pushes on the strength of this review. When it
-records (Step 14), `review-gate` lets the reviewed tree be committed and
-pushed with no prompt to the user, so a record must mean reviewers saw
-everything in that tree. Within that, the review should fix what would
-break, take good suggestions rather than drop them, ask the user only
-when the call is theirs, and end: fixes that change behavior get another
-look, for at most four rounds.
+records (Step 14), `review-gate` lets the reviewed tree be committed with
+no prompt to the user and counts it as reviewed when a push is checked,
+so a record must
+mean reviewers saw everything in that tree. Within that, the review
+should fix what would break, take good suggestions rather than drop
+them, ask the user only when the call is theirs, and finish: fixes that
+change behavior get another look, for at most four rounds.
 
 ## Invariants
 
@@ -48,7 +49,9 @@ _Figure out what to review and which reviewers to spawn._
 
 First, in every mode, run `git status --short` and keep its output as the
 starting state (Step 8 saves it in the triage file). Step 14 checks it
-before recording the review.
+before recording the review. Before a fix edits a file the starting state
+lists as changed outside the change under review, ask, per the global
+CLAUDE.md's Git rule on what a commit holds.
 
 `<base>` is where this branch leaves the branch it will merge into, in
 every mode. Run `git fetch origin`. In PR mode, `<base>` is
@@ -67,12 +70,9 @@ modes skip what needs `<base>` (Step 2's commit bodies).
 
 Explicit arg (first non-reviewer argument wins):
 
-- `branch` → branch mode: `<base>..HEAD`, everything the branch's first
-  push sends
+- `branch` → branch mode (the branch review `/pr` runs): `<base>..HEAD`,
+  everything the branch's first push sends
 - `pr` → PR mode: PR diff
-- `unreviewed` → diff since the newest commit a branch review covered,
-  `<sha>` from `review-gate last`; if it prints nothing (no branch review
-  in this history, as after a rebase), use branch mode and say so
 - `suggestions` → local mode for the suggestions commit that follows a
   recorded review (Step 14 item 5)
 
@@ -80,12 +80,10 @@ Default precedence (no arg):
 
 1. Run `git status` and `git diff --stat`
 2. Uncommitted changes → **local mode**
-3. Clean tree → run `review-gate last`; if it prints a commit `<sha>` and
-   `git log <sha>..HEAD` has commits → **unreviewed mode**
-4. Else → `gh pr view --json number,title,baseRefName,headRefName`
-5. PR exists → **PR mode**
-6. Else → **branch mode**
-7. On main with no changes → nothing to review
+3. Clean tree → `gh pr view --json number,title,baseRefName,headRefName`
+4. PR exists → **PR mode**
+5. Else → **branch mode**
+6. On main with no changes → nothing to review
 
 ### PR-mode pre-check
 
@@ -111,20 +109,27 @@ the mode chosen above. When a round's fixes change behavior, Step 14
 starts the next round itself, up to round 4. Every round keeps all
 fixes uncommitted and uses round 1's mode and `<base>`.
 
-- Rounds 1 and 2 review the whole scope: the mode's diff, which round 2
-  takes again so it includes round 1's fixes.
+- Rounds 1 and 2 review the whole scope. Round 2 reviews the mode's diff
+  again plus the fixes so far, so it sees round 1's uncommitted fixes.
 - Rounds 3 and 4 review the fixes so far, with the whole scope as
   context, since rounds 1 and 2 already reviewed the rest. Reviewers
   report problems in the fixes and in anything the fixes affect or leave
   inconsistent elsewhere.
 
-The fixes so far are every earlier round's fixes:
-`git diff HEAD -- <files the fixes touched>` in branch, unreviewed, and
-PR mode, and `git diff -- <files the fixes touched>` in local mode, where
-round 1 staged the change (Step 2). Before a later round's diff, run
-`git add -N` on files the fixes created, so the diff shows them. A later
-round drafts no new commit message; in local mode it updates round 1's
-draft for the fixes.
+Round 1 saves `reviewed-tree:` (`git rev-parse HEAD^{tree}`, or in local
+mode `git write-tree` after Step 2 stages the change) in its triage
+frontmatter. The fixes so far are every earlier round's fixes, shown
+against that tree: run `git add -N` on files the fixes created, then
+`git diff <reviewed-tree> -- <files the fixes touched>`, with the files
+the triage files' entries name. The diff shows the fixes whether or not
+they have been staged since.
+
+Each round takes its own timestamp for its triage and reviewer files. Its
+frontmatter copies round 1's fields except `timestamp:`, `round:` and
+`rerun-of:` (its own, Step 14) and `outcome:` and `outcome-reason:`
+(only Step 12 and Step 14 write those). A later round
+drafts no new commit message; in local mode it updates round 1's draft
+for the fixes.
 
 Two terms decide what a later round does with a finding (Step 7) and
 whether another round is due (Step 14):
@@ -167,27 +172,30 @@ _Read everything the orchestrator AND reviewers need before spawning._
      `No plan/PR/commit bodies — reduced confidence; more findings landed in needs-review.`
 - **Diff** per mode:
 
-  - Local: the change being committed, which is the tracked edits that
-    belong to it (`git diff` + `git diff --cached`, by path) plus each
-    untracked file that belongs to it, as a new file
-    (`git diff --no-index /dev/null <file>`). A file belongs to the
-    change when the other changes use or reference it, or the task or
-    plan names it. A tracked plan's edit for this work belongs to it
-    (Planning puts it in the same commit); untracked or ignored files
-    under `.reviews/` and `.plans/` don't. When unsure, leave the file
-    out. List every left-out path in the final summary, and don't stage
-    it: Claude commits without a prompt, so a stray file or another
-    task's edit would go into a commit nobody looked at. Stage the
-    change's paths now (`git add -- <paths>`), so later rounds can show
-    the fixes as unstaged edits (Step 1, Rounds).
-  - Unreviewed: `git diff <sha>..HEAD`
+  - Local: the change being committed: its tracked edits (`git diff` +
+    `git diff --cached`, by path) plus each untracked file that belongs
+    to it, as a new file (`git diff --no-index /dev/null <file>`).
+    - A file belongs when the other changes use or reference it, or the
+      task or plan names it. A tracked plan's edit for this work belongs
+      (the global CLAUDE.md's Planning section puts it in the same
+      commit); untracked or ignored files under `.reviews/` and `.plans/`
+      don't.
+    - When unsure, leave the file out. List every left-out path in the
+      final summary and don't stage it: Claude commits without a prompt,
+      so a stray file or another task's edit would go into a commit
+      nobody looked at.
+    - A file that also holds another task's edits: ask, per the global
+      CLAUDE.md's Git rule on what a commit holds, since staging is by
+      file.
+    - Stage the change's paths now (`git add -- <paths>`) and save the
+      tree later rounds diff against (Step 1, Rounds).
   - Branch: `git diff <base>..HEAD` (Step 1)
   - PR: `gh pr diff <number>`
 
-  In branch and unreviewed mode, the end-to-end diff hides content one
-  commit adds and a later one removes, yet every commit is pushed. Give
-  reviewers the per-commit patches too (`git log -p <range>`), as the
-  history the push publishes.
+  In branch mode, the end-to-end diff hides content one commit adds and a
+  later one removes, yet every commit is pushed. Give reviewers the
+  per-commit patches too (`git log -p <base>..HEAD`), as the history the
+  push publishes.
 
   If the diff is >500 lines, say so in one line and continue with the
   whole diff. A review narrowed to some files isn't recorded (Step 14),
@@ -299,11 +307,9 @@ Each Agent prompt receives:
   whole scope, or the fixes so far with the whole scope as context;
   Step 1, Rounds), and goes to the same reviewers as round 1.
 - `language-reviewer` only: commit messages as text to review. Local
-  mode passes the drafted message file. Branch, unreviewed, and PR modes
-  pass the messages in the diff's range
-  (`git log <range> --format='commit %h%n%B'`, with `<base>..HEAD` in
-  branch mode, `<sha>..HEAD` in unreviewed mode, and
-  `<baseRefName>..HEAD` in PR mode).
+  mode passes the drafted message file. Branch and PR modes pass the
+  messages in the diff's range
+  (`git log <base>..HEAD --format='commit %h%n%B'`).
 - `ai-reviewer` only: this session's model ID, and
   `CLAUDE_CODE_SUBAGENT_MODEL` if it is set
   (`echo "$CLAUDE_CODE_SUBAGENT_MODEL"`). Claude Code files (agents,
@@ -440,6 +446,8 @@ number is a soft signal only.
   (`skipped (user redirected)` / `skipped (user accepted SKIP)`) → carry
   as auto-skip with
   `previously skipped by user: <reason>; reference: <prior-triage-path>`.
+  Follow the prior triage's `rerun-of:` chain too, so a skip from an
+  earlier round of this review carries and the user isn't asked again.
   Other prior statuses (`auto-skipped` / `fixed` / `pending`) → do NOT
   carry; re-bucket fresh. (`accepted (fix pending)` entries never reach
   this check: Step 12's Abort / pause applies them before reviewers
@@ -649,7 +657,9 @@ _Apply mechanical fixes; verify each via build / targeted test._
         `dotnet test --filter <TestClass>`
       - `pyproject.toml` → no compile typically; `pytest <path>` for tests
       - markdown-only diff → no build/test needed
-   3. None detected → pause and ask:
+   3. The repo's own checks, found the way the `pr` skill's
+      Reference: Local Checks finds them
+   4. None detected → pause and ask:
       `No <build|test> command detected. Options: (a) name a command, (b) skip and verify manually, (c) abort auto-fix. a/b/c?`
       Do NOT silent-skip — applies the hesitation → escalate rule to the
       safety net.
@@ -836,7 +846,8 @@ file via Edit. `n` → skip.
 
 User types `stop` / `pause` / `quit` / interrupt → run the fix pass
 above on the answers given so far, leave unanswered items
-`Status: pending` in triage, print:
+`Status: pending` in triage, write `outcome: paused` in its frontmatter, and
+print:
 
 ```text
 Paused at question <q> of <K>; <n> answered fixes applied. Resume with
@@ -869,7 +880,7 @@ Frontmatter:
 ```yaml
 ---
 branch: <branch>
-mode: <local | branch | unreviewed | pr> # round 1's, in every round
+mode: <local | branch | pr> # round 1's, in every round
 reviewers-ran: [base, language, security, ux, ai]
 plan-file: <path or null>
 timestamp: <iso>
@@ -877,6 +888,11 @@ start-status: |
   <Step 1's `git status --short` output, or empty>
 round: <1 to 4>
 rerun-of: <the previous round's triage path, or null>
+reviewed-tree: <the tree round 1 reviewed (Step 1, Rounds)>
+# Leave out the next two lines until the round ends (Step 14) or pauses
+# (Step 12); `review-gate mark` refuses a file that has an outcome.
+outcome: <recorded | next-round | not-recorded | paused>
+outcome-reason: <with not-recorded only: the reason>
 suggestions-of: <triage path of the review whose suggestions this commit applies, or null>
 ---
 ```
@@ -977,8 +993,7 @@ as the last chat output of the round._
      with `Fixes changed behavior; starting round <n+1> of at most 4.` in
      place of the record line, then start that round (Step 1, Rounds)
      without asking. Its triage file sets `round: <n+1>` and `rerun-of:`
-     this round's triage file, so the count survives compaction and new
-     sessions.
+     this round's triage file.
    - Due after round 4: don't start a fifth. Record nothing; the summary
      prints `Not recorded: four rounds of fixes kept changing behavior.`
      and then what kept turning up across the rounds and whether the
@@ -995,9 +1010,10 @@ as the last chat output of the round._
    - the review was narrowed to some files
    - the dialog was resumed from a paused triage without re-running the
      reviewers, so the tree may have changed since they ran
-   - round 1's starting state (Step 1) had something staged in branch,
-     unreviewed, or PR mode, or uncommitted changes in a file a fix later
-     touched, which no round saw
+   - in branch or PR mode, round 1's starting state
+     (Step 1) had something staged
+   - in any mode, a fix touched a file that held changes no round
+     reviewed
 
    To record:
 
@@ -1013,9 +1029,9 @@ as the last chat output of the round._
    3. Check that `git diff --cached --name-only` lists only the paths from
       sub-item 1; if it lists others, don't record.
    4. After the last edit, run in round 1's mode: local mode
-      `review-gate mark <triage file path>`; branch, unreviewed, and PR
-      modes `review-gate mark --branch <triage file path>`, which also
-      covers the staged fixes. Any edit after this needs a new review. If
+      `review-gate mark <triage file path>`; branch and PR modes
+      `review-gate mark --branch <triage file path>`, which also covers
+      the staged fixes. Any edit after this needs a new review. If
       `mark` refuses or fails, print `Not recorded` with its output.
 
 3. PR mode: `gh pr checks <number> --json name,state --jq '.[] | select(.state != "SUCCESS" and .state != "PENDING")'`,
@@ -1065,8 +1081,15 @@ as the last chat output of the round._
    - otherwise
      `Not recorded: <reason, or mark's output>. A commit of this tree will be refused until a review records it.`
 
-   `Not recorded` means the review has ended without a record, so the
-   caller stops and tells the user the reason.
+   `Not recorded` means the review has ended without a record.
+
+   Before printing the summary, write how the round ended in its triage
+   frontmatter: `outcome: recorded` once `mark` succeeds,
+   `outcome: next-round`, or `outcome: not-recorded` with
+   `outcome-reason: <the reason>`. The triage file is outside the
+   recorded tree, so this edit needs no new review. `review-gate mark`
+   refuses a triage file with an outcome, so a round that ended can't
+   record later.
 
    `Logged polish` lists rounds 2 to 4's logged polish, only when the
    review records; with no record, it stays in the triage files. Put an
@@ -1105,11 +1128,12 @@ as the last chat output of the round._
       are staged: one commit on the reviewed HEAD, before any other
       commit, with a heredoc `-m` message; the record covers a commit of
       exactly that tree on that parent.
-   2. When the summary lists `Worth doing next` items, applies them,
-      runs `/review suggestions` on that change, and commits it as one
-      more commit per that review's own item 5. Its review chains back
-      to the commit under it, so the push accepts it, a first push
-      included.
+   2. In local and PR mode, when the summary lists `Worth doing next`
+      items, applies them, runs `/review suggestions` on that change, and
+      commits it as one more commit per that review's own item 5. In
+      branch mode it lists the items for the user instead: a commit after
+      a branch review isn't covered by it, so a first push would need
+      that review again.
 
    A `/review suggestions` run is a local-mode review like any other,
    with `suggestions-of:` set to the triage file Step 2's prior-triage
@@ -1117,5 +1141,5 @@ as the last chat output of the round._
    `Not taken`. So at most one suggestions commit follows a recorded
    review.
 
-   The caller pushes, when it was asked to, only after both commits:
+   The caller pushes, when it was asked to, only after these commits:
    each push prompts the user.

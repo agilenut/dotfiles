@@ -329,9 +329,9 @@ _How to scope, sequence, and pause work for non-trivial tasks._
 - When the user signals new work (story / issue / "let's build X"),
   invoke `/plan` to scope it; tangents mid-implementation stay tangents
   unless explicitly escalated
-- Plan Commits row tags drive review cadence: `review: per-commit`
-  forces `/review` before each commit, and `end-of-PR` commits are
-  deferred and reviewed before the push (Git section).
+- A plan doesn't set when commits are reviewed: every commit gets
+  `/review` (Git section), even where an older plan's Commits row says
+  `review: end-of-PR`.
 - Keep the plan current as work proceeds, not just at the start. When a
   step completes or a follow-up / discovery surfaces, update the plan in
   the same commit (tracked plans) or save immediately (gitignored).
@@ -366,11 +366,11 @@ _Boy-scouting, atomic PRs, backward compat, definition of done, under pressure._
 
 ### Definition of Done
 
-| Stage  | Bar                                                                                |
-| ------ | ---------------------------------------------------------------------------------- |
-| Commit | code + tests + pre-commit + review if non-trivial + local tests + manual if needed |
-| Merge  | docs + CI green + security scans + dependency audits                               |
-| Done   | main CI + post-merge checks (staging where there is one) + every AC checked off    |
+| Stage  | Bar                                                                             |
+| ------ | ------------------------------------------------------------------------------- |
+| Commit | code + tests + pre-commit + `/review` + local tests + manual if needed          |
+| Merge  | docs + CI green + security scans + dependency audits                            |
+| Done   | main CI + post-merge checks (staging where there is one) + every AC checked off |
 
 The board's Done column means the Done row. After Done, work goes Live:
 deployed to prod, applied, or published. Release state lives where the
@@ -649,34 +649,31 @@ _Branching, committing, PRs._
   pre-commit until clean, then commit. A bare `M` (first column blank)
   is deliberately unstaged — leave it.
 
-- Every commit needs a review or a deferral, or the review-gate git hook
-  refuses it. If a plan governs the work, follow its review tag.
-  Otherwise, run `/review` for non-trivial changes (new behavior,
-  multi-file refactors), and defer only truly trivial ones (typo, dep
-  bump, a one-line comment fix), where `/review` would cost more than it
-  finds. Files an agent or a person follows as steps (skills, agents,
-  prompts, CLAUDE.md, AGENTS.md, runbooks) are behavior, not docs:
-  review a change to their instructions like code. A typo fix in them is
-  still trivial; a README is still docs.
+- Every commit gets `/review` before it is made, and that review's fixes
+  go into the same commit. I review only at the PR, and a test showed a
+  review per commit catches far more than one branch review at PR time.
+  `/review` picks reviewers from the diff, so a tiny change gets a small,
+  cheap review; no change is too small to review. Files an agent or a
+  person follows as steps (skills, agents, prompts, CLAUDE.md,
+  AGENTS.md, runbooks) are behavior, not docs: review a change to their
+  instructions like code.
   - A commit holds only its own work, since nobody approves it. Stage
     only that work's files, leave other changes unstaged, and name them
     in the one-line note after the commit. Ask only when other work is
     already staged or shares a file with this work. `/review` stages what
-    it reviewed. For a deferral, stage, run pre-commit, and pass the
-    stale-index gate first: `review-gate defer "<reason>"` records
-    exactly what is staged.
-  - A deferral moves the review to before the next push. A branch's
-    first push needs a review of the whole branch (`/review branch`); a
-    later push needs each new commit covered by its own `/review` or by
-    a later branch review. A refused push costs me another approval, so
-    before pushing deferred commits, run the review the latest deferral
-    printed, once, and commit what it stages.
-  - A review-gate refusal means a review is missing, not a decision for
-    me. After a refused commit, run `/review`, or defer if the commit
-    qualifies, then commit again. After a refused push, run the review
-    the refusal names, commit what it stages, then push again.
+    it reviewed.
+  - Before a branch's first push, `/pr` runs a branch review
+    (`/review branch`) when the push needs one: two or more new commits,
+    or a commit with no review of its own. Its fixes are one commit on
+    top. After the PR is open, a new commit needs only its own
+    `/review`.
+  - The review-gate git hook refuses a commit or a push that no review
+    covers. It exists because prompt rules alone didn't stop skipped
+    reviews, so working around a refusal defeats its purpose. A refusal
+    means a review is missing, not a decision for me: run the review it
+    names, commit what that review stages, then retry.
   - When a review prints `Not recorded`, stop and tell me its reason;
-    don't commit, defer, or push around it. Only `/review` runs
+    don't commit or push around it. Only `/review` runs
     `review-gate mark`: a mark claims reviewers saw the tree, so a false
     one lets unreviewed work be pushed.
 - Each commit must build, test, and pass independently, no dead code or

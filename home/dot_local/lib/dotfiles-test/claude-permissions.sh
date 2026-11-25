@@ -63,9 +63,13 @@ CLAUDE_PERMISSIONS_ASK=(
 #   writes; the deny rules stop them in auto mode too. A combined short
 #   flag such as `-an` isn't matched. Message text after `-m` can match a
 #   deny rule, so a commit message that mentions `--no-verify` is denied.
-#   Known gaps, outside the threat model (Claude forgetting or cutting a
-#   corner, not evading): editing a git config file directly (`sed -i`),
-#   and plumbing such as `git commit-tree` or `git update-ref`.
+#   The config rules also deny reads of those keys (`git config --get
+#   hook.*`); a read rarely matters, and no rule pattern can match a write
+#   without also matching the read. Known gaps, left open because the
+#   threat model is Claude forgetting or cutting a corner, not evading:
+#   editing a git config file directly (`sed -i`), plumbing such as `git
+#   commit-tree` or `git update-ref`, and commits fetched from a second
+#   remote, which count as pushed.
 CLAUDE_PERMISSIONS_DENY=(
   'Bash(gh api *-X*-X*)'
   'Bash(gh api *--method*--method*)'
@@ -170,13 +174,19 @@ test_claude_permissions() {
   if jq -e '(.permissions.allow | index("Bash(git commit *)") != null)
       and (.permissions.ask | map(select(test("^Bash\\(git (-C \\* )?commit"))) | length == 0)
       and (.permissions.allow | index("Bash(review-gate mark *)") != null)
-      and (.permissions.allow | index("Bash(review-gate defer *)") != null)
-      and (.permissions.allow | index("Bash(review-gate last)") != null)
       and (.permissions.allow | index("Bash(review-gate covered)") != null)' \
     "$settings" >/dev/null 2>&1; then
     pass "git commit and review-gate run without a prompt"
   else
     fail "git commit or review-gate isn't allowed, or git commit still has an ask rule"
+  fi
+  # Deferral is gone, so no allow rule names the removed `defer` and
+  # `last` commands.
+  if jq -e '.permissions.allow | map(select(test("^Bash\\(review-gate (defer|last)"))) | length == 0' \
+    "$settings" >/dev/null 2>&1; then
+    pass "no allow rule names review-gate defer or last"
+  else
+    fail "an allow rule still names review-gate defer or last"
   fi
 
   local rule
